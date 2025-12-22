@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroCar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/neurocar.css">
+</head>
+<body>
+
+    <div id="login-screen" class="login-screen">
+        <div class="login-box">
+            <h1 style="font-size:3rem; margin:0;">🚗</h1>
+            <h2>Login NeuroCar</h2>
+            <form onsubmit="fazerLogin(event)">
+                <input type="text" id="username" class="login-input" placeholder="Usuário NeuroChat" required>
+                <input type="password" id="password" class="login-input" placeholder="Senha" required>
+                <button type="submit" class="btn-action btn-green">ENTRAR</button>
+            </form>
+            <p style="margin-top:20px; color:#666; font-size:0.9rem;">
+                <a href="http://192.168.10.133" style="color:#2c3e50; text-decoration:none;">⬅ Voltar ao Portal</a>
+            </p>
+        </div>
+    </div>
+
+    <div id="app-content" style="display:none;">
+        <header>
+            <div class="header-left">
+                <a href="http://192.168.10.133" class="btn-voltar">⬅ Portal</a>
+                <h2 style="margin:0; font-size:1.4rem;">🚗 NeuroCar</h2>
+            </div>
+            
+            <div class="header-right">
+                <div style="font-weight:600; font-size:0.9rem;" id="user-display">...</div>
+                <button onclick="logout()" style="background:#c0392b; border:none; color:white; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold;">Sair</button>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <div id="car-display">Carregando status...</div>
+        </div>
+
+        <div class="history-section">
+            <h3 style="color:#555; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📜 Histórico de Uso</h3>
+            <table id="history-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Condutor</th>
+                        <th>Saída</th>
+                        <th>Chegada</th>
+                        <th>Tempo</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="modal-checkin" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color: #2c3e50;">Devolver Veículo</h3>
+            <p style="color:#666;">Informe a quilometragem atual:</p>
+            <input type="number" id="input-km" class="login-input" placeholder="Ex: 12550">
+            <input type="text" id="input-obs" class="login-input" placeholder="Observação (Opcional)">
+            <button onclick="confirmarCheckin()" class="btn-action btn-green">✅ Confirmar</button>
+            <button onclick="fecharModal()" style="background:none; border:none; color:#777; margin-top:15px; cursor:pointer;">Cancelar</button>
+        </div>
+    </div>
+
+    <script src="js/neurocar.js"></script>
+</body>
+</html>

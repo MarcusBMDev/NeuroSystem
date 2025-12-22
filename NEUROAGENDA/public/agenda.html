@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroAgenda</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Estilo extra para o formulário novo */
+        .form-group { text-align: left; margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem; }
+        .form-control { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9; }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .checkbox-item { background: #eee; padding: 5px 10px; border-radius: 15px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; }
+        .checkbox-item input { margin-right: 5px; width: auto; }
+        .read-only { background-color: #e9ecef; cursor: not-allowed; color: #666; }
+    </style>
+</head>
+<body>
+
+    <div id="agenda-app">
+        <div id="agenda-app">
+        <header class="app-header" style="background-color: #0d47a1; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+            
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <a href="http://192.168.10.133" style="text-decoration: none; background-color: rgba(255,255,255,0.2); color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.3);">
+                    ⬅ Voltar ao Portal
+                </a>
+                <h2 style="margin: 0; font-size: 1.8rem; font-weight: 700;">📅 NeuroAgenda</h2>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span id="user-name-display" style="font-weight: 600; font-size: 1.1rem;">Carregando...</span>
+                
+                <button onclick="logout()" style="background-color: #c62828; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                    Sair
+                </button>
+            </div>
+        </header>
+
+        
+
+        <div class="app-container">
+            <aside class="sidebar">
+                <label><strong>1. Escolha a Sala:</strong></label>
+                <div class="room-selector">
+                    <div class="room-btn room-blue active" onclick="selectRoom(1, this)">Sala de Reuni&otilde;es</div>
+                    <div class="room-btn room-orange" onclick="selectRoom(2, this)">NeuroCopa</div>
+                </div>
+
+                <label><strong>2. Escolha a Data:</strong></label>
+                <input type="date" id="date-picker" onchange="loadSlots()">
+
+                <div style="margin-top: 30px;">
+                    <label><strong>Meus Agendamentos:</strong></label>
+                    <div id="my-bookings-list" class="my-bookings-list"></div>
+                </div>
+            </aside>
+
+            <main class="schedule-grid">
+                <h3 id="grid-title" style="margin-top:0; color: #555;">Disponibilidade</h3>
+                <div id="slots-container" class="slots-container"></div>
+            </main>
+        </div>
+    </div>
+
+   <div id="booking-modal" class="modal-overlay">
+    <div class="modal-content" style="width: 400px; text-align: left;">
+        <h3 id="modal-title" style="margin-top:0; text-align: center;">Nova Reserva</h3>
+        <p id="modal-details" style="color:#555; text-align: center; margin-bottom: 20px; font-size: 0.9rem;"></p>
+
+        <div id="booking-form">
+            <div class="form-group">
+                <label>Responsável / Setor:</label>
+                <input type="text" id="user-info-readonly" class="form-control read-only" readonly>
+            </div>
+            <div class="form-group">
+                <label>Cargo / Função:</label>
+                <input type="text" id="booking-role" class="form-control" placeholder="Ex: Coordenador">
+            </div>
+            <div class="form-group">
+                <label>Finalidade da Reserva:</label>
+                <input type="text" id="booking-reason" class="form-control" placeholder="Ex: Reunião Mensal">
+            </div>
+            <div class="form-group">
+                <label>Materiais Necessários:</label>
+                <div id="materials-container" class="checkbox-group"></div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+            
+            <button id="btn-confirm-booking" class="btn-primary" onclick="confirmBooking()">Confirmar Agendamento</button>
+            
+            <button id="btn-block-slot" class="btn-primary" style="background-color: #555;" onclick="blockSlot()">🔒 BLOQUEAR HORÁRIO</button>
+
+            <button id="btn-force-cancel" class="btn-primary" style="background-color: #c62828;">🚨 CANCELAR</button>
+            
+            <button class="btn-primary btn-secondary" onclick="closeBookingModal()">Fechar</button>
+        </div>
+    </div>
+</div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="btn-force-cancel" class="btn-primary" style="display:none; background-color: #c62828;">🚨 CANCELAR RESERVA</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/agenda.js"></script>
+</body>
+</html>

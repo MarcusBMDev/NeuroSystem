@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso - PsicoNeuroConnect</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: url('fundo.png') no-repeat center center fixed; 
+            background-size: cover;
+            display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; 
+        }
+        .container { 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 2rem; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            width: 320px; 
+            text-align: center; 
+            border-top: 5px solid #0d47a1; 
+        }
+        h2 { color: #0d47a1; margin-bottom: 1rem; }
+        input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #0d47a1; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 15px; }
+        button:hover { background-color: #1565c0; }
+        .toggle-btn { background: none; color: #555; font-size: 0.85rem; margin-top: 15px; text-decoration: underline; cursor: pointer;}
+        #error-msg { color: #d32f2f; font-size: 0.85rem; display: none; margin-top: 10px; background: #ffebee; padding: 5px; border-radius: 4px;}
+        .register-only { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 id="title">Entrar</h2>
+        
+        <input type="text" id="username" placeholder="Usuário (Login)" autocomplete="off">
+        <input type="password" id="password" placeholder="Senha">
+        
+        <div id="register-fields" class="register-only">
+            <p style="font-size: 0.8rem; color: #666; text-align: left; margin: 0;">*Senha: Mínimo 6 caracteres.</p>
+            
+            <select id="department">
+                <option value="" disabled selected>Selecione o Departamento</option>
+                
+                <optgroup label="Diretoria / Estratégico">
+                    <option value="Diretoria Geral">Diretoria Geral</option>
+                    <option value="Diretoria Financeira e Controle Interno">Diretoria Financeira e Controle Interno</option>
+                    <option value="Diretoria Pedagógica">Diretoria Pedagógica</option>
+                    <option value="Marketing">Marketing</option>
+                </optgroup>
+
+                <optgroup label="Coordenações">
+                    <option value="Coordenação ABA">Coordenação ABA</option>
+                    <option value="Coordenação Agendamento/Recepção">Coordenação Agendamento/Recepção</option>
+                    <option value="Coordenação Faturamento">Coordenação Faturamento</option>
+                    <option value="Coordenação Operacional">Coordenação Operacional</option>
+                    <option value="Coordenação de RH">Coordenação de RH</option>
+                    <option value="Coordenação TCC/AVN">Coordenação TCC/AVN</option>
+                </optgroup>
+
+                <optgroup label="Administrativo & Financeiro">
+                    <option value="Faturamento - Unidade 1">Faturamento - Unidade 1</option>
+                    <option value="Faturamento - Unidade 3">Faturamento - Unidade 3</option>
+                    <option value="Financeiro">Financeiro</option>
+                    <option value="RH">RH</option>
+                </optgroup>
+
+                <optgroup label="Operacional / Atendimento">
+                    <option value="Relacionamento e Comercial">Relacionamento e Comercial</option>
+                    <option value="Assessoria">Assessoria</option>
+                    <option value="Recepção 1">Recepção 1</option>
+                    <option value="Recepção 2">Recepção 2</option>
+                    <option value="Recepção 3">Recepção 3</option>
+                    <option value="ASG - UNIDADE 1">ASG - UNIDADE 1</option>
+                    <option value="ASG - UNIDADE 3">ASG - UNIDADE 3</option>
+                </optgroup>
+
+                <optgroup label="Pedagógico / Clínico">
+                    <option value="ABA">ABA</option>
+                    <option value="Apoio AVN - Unidade 3">Apoio AVN - Unidade 3</option>
+                    <option value="Apoio Pedagógico">Apoio Pedagógico</option>
+                </optgroup>
+
+                <optgroup label="Equipe Terapêutica">
+                    <option value="Terapeutas - Unidade 1">Terapeutas - Unidade 1</option>
+                    <option value="Terapeutas - Unidade 2">Terapeutas - Unidade 3</option>
+                </optgroup>
+
+            </select>
+        </div>
+
+        <button id="action-btn" onclick="performAction()">Entrar</button>
+        <button class="toggle-btn" onclick="toggleMode()">Não tem conta? Registre-se</button>
+        
+        <p id="error-msg"></p>
+    </div>
+
+    <script>
+        if (localStorage.getItem('chatUser')) window.location.href = '/chat.html';
+
+        let isLoginMode = true;
+
+        function toggleMode() {
+            isLoginMode = !isLoginMode;
+            const title = document.getElementById('title');
+            const btn = document.getElementById('action-btn');
+            const toggle = document.querySelector('.toggle-btn');
+            const extraFields = document.getElementById('register-fields');
+            const errorMsg = document.getElementById('error-msg');
+            
+            errorMsg.style.display = 'none';
+
+            if (isLoginMode) {
+                title.textContent = 'Entrar';
+                btn.textContent = 'Entrar';
+                toggle.textContent = 'Não tem conta? Registre-se';
+                extraFields.style.display = 'none';
+            } else {
+                title.textContent = 'Novo Funcionário';
+                btn.textContent = 'Registrar';
+                toggle.textContent = 'Voltar para Login';
+                extraFields.style.display = 'block';
+            }
+        }
+
+        async function performAction() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const dept = document.getElementById('department').value;
+
+            if (isLoginMode) {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    localStorage.setItem('chatUser', JSON.stringify(result));
+                    window.location.href = '/chat.html';
+                } else {
+                    showError(result.message);
+                }
+
+            } else {
+                if(!user || !pass || !dept) return showError("Preencha todos os campos.");
+
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        username: user, 
+                        password: pass,
+                        department: dept
+                    })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Funcionário cadastrado com sucesso!');
+                    toggleMode(); 
+                } else {
+                    showError(result.message);
+                }
+            }
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error-msg');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
