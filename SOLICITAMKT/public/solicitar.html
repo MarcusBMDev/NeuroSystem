@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Solicitação | NeuroMarketing</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="solicitar-body">
+    
+    <div class="solicitar-header">
+        <div style="flex: 1;">
+            <a href="http://192.168.10.133" class="btn-back-portal">
+                ⬅ Voltar ao Portal
+            </a>
+        </div>
+
+        <div style="flex: 2; text-align: center;">
+            <h1>📝 Solicitar ao Marketing</h1>
+        </div>
+
+        <div style="flex: 1; text-align: right;">
+            <a href="/painel.html" id="btnPainel" class="btn btn-outline hidden" style="background:white;">📊 Painel</a>
+            <button onclick="logout()" class="btn" style="background:#555;">Sair</button>
+        </div>
+    </div>
+
+    <div class="glass-container">
+        <form id="formSolicitacao">
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label>Nome</label>
+                    <input id="name" readonly style="background:#eee; font-weight:bold; color:#555;">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Setor</label>
+                    <input id="dept" readonly style="background:#eee; font-weight:bold; color:#555;">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Tipo de Demanda *</label>
+                <select id="type" required>
+                    <option value="">Selecione...</option>
+                    <option value="Post Instagram">Post Instagram</option>
+                    <option value="Vídeo">Vídeo</option>
+                    <option value="Comunicado">Comunicado WhatsApp</option>
+                    <option value="Placas">Placas</option>
+                    <option value="Modelo de Slide">Modelo de Slide</option>
+                    <option value="Eventos">Eventos</option>
+                    <option value="Outros">Outros</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>O que deve ser produzido? *</label>
+                <span class="helper-text">Detalhe: peça, formato, tamanho, mídia.</span>
+                <textarea id="desc" required rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Mensagem Principal *</label>
+                <textarea id="msg" required placeholder="O texto que vai na arte..." rows="2"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Referências</label>
+                <textarea id="refs" placeholder="Links, cores, exemplos..." rows="1"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Arquivos (Máx 5)</label>
+                <input type="file" id="files" multiple style="background:#fff;">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label>Entrega *</label>
+                    <input type="date" id="date" required>
+                    <span class="warning">Urgência requer aprovação.</span>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Aprovador *</label>
+                    <input type="text" id="approver" required placeholder="Nome do Gestor">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Observações</label>
+                <textarea id="notes" rows="1"></textarea>
+            </div>
+
+            <button type="submit" class="btn" style="width:100%; font-size:1.1rem; padding:12px;">Enviar Pedido</button>
+        </form>
+
+        <div style="margin-top: 30px; border-top: 2px solid #eee; padding-top:20px;">
+            <h2 style="color: #444; font-size:1.2rem;">📂 Meus Pedidos Recentes</h2>
+            <div id="myList">Carregando...</div>
+        </div>
+    </div>
+
+    <script src="js/solicitar.js"></script>
+</body>
+</html>

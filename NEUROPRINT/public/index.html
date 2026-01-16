@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Nova Impressão - NeuroPrint</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>🖨️ Nova Impressão</h2>
+                <div>
+                    <a href="http://192.168.10.133" style="color: #0d6efd; text-decoration: none; margin-right: 15px; font-weight: bold;">
+                        🏠 Portal
+                    </a>
+                    <a href="#" onclick="logout()" style="color: red; text-decoration: none;">
+                        Sair
+                    </a>
+                </div>
+            </div>
+            
+            <div id="welcomeMsg" class="subtitle"></div>
+            <button id="btnAdmin" class="secondary hidden" onclick="window.location.href='admin.html'">⚙️ Acessar Painel Admin</button>
+            <br><br>
+
+            <form id="printForm">
+                <input type="hidden" name="user_id" id="userId">
+                <div class="form-group">
+                    <label>Arquivos (PDF):</label>
+                    <input type="file" name="files" multiple required accept=".pdf"> 
+                    <small>Segure CTRL para selecionar vários.</small>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Páginas:</label>
+                        <input type="text" name="page_range" placeholder="Ex: Todas, 1-3">
+                    </div>
+                    <div class="form-group" style="width: 100px;">
+                        <label>Cópias:</label>
+                        <input type="number" name="copies" value="1" min="1">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Modo:</label>
+                        <select name="color_mode"><option value="PB">Preto e Branco</option><option value="Colorida">Colorida</option></select>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; align-items: flex-end;">
+                    <div class="form-group" style="flex: 2;">
+                        <label>Precisa para quando? (Data/Hora)</label>
+                        <input type="datetime-local" name="deadline">
+                    </div>
+                    <div class="form-group" style="flex: 1; padding-bottom: 15px;">
+                         <label style="color:#dc3545; font-weight:bold; cursor:pointer;">
+                            <input type="checkbox" name="is_urgent"> 🔥 É Urgente?
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Observações:</label>
+                    <textarea name="observacao" rows="2" placeholder="Ex: Frente e verso, papel especial..."></textarea>
+                </div>
+                <button type="submit">Enviar Solicitação</button>
+            </form>
+        </div>
+
+        <div class="mt-5" style="margin-top: 30px;">
+            <h3>Meus Pedidos Recentes</h3>
+            <table class="table" style="width:100%; background:white; border-radius:8px; padding:10px;">
+                <thead>
+                    <tr style="text-align:left;"><th>Arquivo(s)</th><th>Status</th></tr>
+                </thead>
+                <tbody id="my-requests-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const userData = JSON.parse(localStorage.getItem('neuroUser'));
+        
+        // Se não tiver logado, manda pro login
+        if (!userData) window.location.href = 'login.html';
+
+        // Preenche dados iniciais
+        document.getElementById('userId').value = userData.id;
+        document.getElementById('welcomeMsg').innerText = `Olá, ${userData.username}`;
+        
+        // Botão Admin (só aparece se for admin)
+        if (userData.isAdmin) {
+            document.getElementById('btnAdmin').classList.remove('hidden');
+        }
+
+        function logout() { 
+            localStorage.removeItem('neuroUser'); 
+            window.location.href = 'login.html'; 
+        }
+
+        // --- FUNÇÃO QUE BUSCA OS PEDIDOS ---
+        async function loadMyRequests() {
+            try {
+                // Adicionei um timestamp na URL (?t=...) para evitar que o navegador use cache antigo
+                const res = await fetch(`/api/print/my-requests?user_id=${userData.id}&t=${new Date().getTime()}`);
+                const data = await res.json();
+                
+                const list = document.getElementById('my-requests-list');
+                list.innerHTML = '';
+
+                if(data.length === 0) {
+                    list.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#999;">Nenhum pedido recente.</td></tr>';
+                    return;
+                }
+
+                data.forEach(req => {
+                    // Configuração Visual dos Status
+                    let icon = '🕒'; 
+                    let label = 'Pendente'; 
+                    let cor = '#f0ad4e'; // Laranja
+                    let bg = '#fff8e1';
+
+                    // Verifica exatamente como está escrito no banco
+                    if(req.status === 'em_andamento') { 
+                        icon = '🖨️'; 
+                        label = 'Imprimindo'; 
+                        cor = '#0275d8'; // Azul
+                        bg = '#e0f2f1';
+                    }
+                    if(req.status === 'impresso') { 
+                        icon = '✅'; 
+                        label = 'Pronto'; 
+                        cor = '#198754'; // Verde
+                        bg = '#e8f5e9';
+                    }
+
+                    // Formata lista de arquivos
+                    const arquivos = req.file_name ? req.file_name.split(';').join(', ') : 'Arquivo';
+
+                    list.innerHTML += `
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:12px;">
+                                <div style="font-weight:600; color:#444;">${arquivos}</div>
+                                <div style="font-size:0.8rem; color:#888;">#${req.id} - ${new Date(req.created_at).toLocaleDateString('pt-BR')}</div>
+                            </td>
+                            <td style="padding:12px; text-align:right;">
+                                <span style="background:${bg}; color:${cor}; padding:5px 10px; border-radius:15px; font-weight:bold; font-size:0.85rem; display:inline-block;">
+                                    ${icon} ${label}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) { 
+                console.error("Erro ao atualizar lista:", e); 
+            }
+        }
+
+        // --- ENVIO DO FORMULÁRIO ---
+        document.getElementById('printForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+            
+            // Feedback visual de carregamento
+            btn.disabled = true;
+            btn.innerText = 'Enviando... ⏳';
+
+            const formData = new FormData(e.target);
+            try {
+                const res = await fetch('/api/print/request', {
+                    method: 'POST', 
+                    body: formData, 
+                    headers: { 'user-id': userData.id } 
+                });
+                
+                const result = await res.json();
+
+                if (res.ok) {
+                    // Sucesso
+                    alert('✅ Solicitação enviada!');
+                    e.target.reset();
+                    loadMyRequests(); // Atualiza a lista imediatamente
+                } else {
+                    alert('❌ Erro: ' + (result.error || 'Falha desconhecida'));
+                }
+            } catch (error) { 
+                alert('Erro de conexão com o servidor.'); 
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        });
+
+        // --- INICIALIZAÇÃO ---
+        loadMyRequests(); // Carrega ao abrir
+        
+        // ATUALIZAÇÃO AUTOMÁTICA
+        setInterval(loadMyRequests, 5000); 
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - NeuroPrint</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>🔐 NeuroPrint</h2>
+            <span class="subtitle">Faça login com sua conta do NeuroChat</span>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Usuário</label>
+                    <input type="text" id="username" required placeholder="Seu usuário">
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="password" required placeholder="Sua senha">
+                </div>
+                <button type="submit">Entrar</button>
+            </form>
+
+            <div style="text-align: center; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                <a href="http://192.168.10.133" style="text-decoration: none; color: #666; font-size: 0.9rem;">
+                    ⬅ Voltar para o Portal
+                </a>
+            </div>
+            </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            const res = await fetch('/api/print/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                // Salva os dados do usuário no navegador
+                localStorage.setItem('neuroUser', JSON.stringify(data));
+                
+                // Redireciona para o formulário
+                window.location.href = 'index.html';
+            } else {
+                alert('❌ ' + data.error);
+            }
+        });
+    </script>
+</body>
+</html>

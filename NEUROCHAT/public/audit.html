@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Auditoria - NeuroChat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            padding: 30px; 
+            background: #f0f2f5; 
+            color: #333;
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+        }
+        
+        /* Cabeçalho */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        h1 { 
+            color: #0d47a1; 
+            margin: 0; 
+            font-size: 1.5rem;
+        }
+        .subtitle {
+            color: #666;
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+
+        /* Botão Excel */
+        .btn-excel {
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        .btn-excel:hover { background-color: #1b5e20; }
+
+        /* Tabela */
+        .table-wrapper {
+            overflow-x: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 0.9rem;
+        }
+        th { 
+            background: #f8f9fa; 
+            color: #444; 
+            font-weight: 600; 
+            padding: 12px 15px; 
+            text-align: left; 
+            border-bottom: 2px solid #ddd;
+        }
+        td { 
+            padding: 12px 15px; 
+            border-bottom: 1px solid #eee; 
+            vertical-align: top;
+        }
+        tr:hover { background-color: #f9f9f9; }
+
+        /* Badges e Estilos de Célula */
+        .badge-user {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+        .msg-text { line-height: 1.5; }
+        .msg-meta { color: #999; font-size: 0.75rem; margin-top: 4px; }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📄 Auditoria de Mensagens</h1>
+                <div class="subtitle">Histórico completo de interações</div>
+            </div>
+            <button class="btn-excel" onclick="downloadExcel()">
+                📥 Baixar Excel (.xlsx)
+            </button>
+        </div>
+
+        <div id="loading" style="text-align:center; padding: 20px;">
+            Carregando dados...
+        </div>
+
+        <div class="table-wrapper" id="table-container" style="display:none">
+            <table id="audit-table">
+                <thead>
+                    <tr>
+                        <th style="width: 150px;">Data / Hora</th>
+                        <th style="width: 200px;">Remetente</th>
+                        <th>Conteúdo da Mensagem</th>
+                        <th style="width: 100px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+    // Variável global para guardar os dados para o Excel
+    let fullAuditData = [];
+    let targetUserName = "Usuario";
+
+    // Pega o ID da URL (ex: audit.html?target=87)
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = urlParams.get('target');
+
+    async function init() {
+        // --- AUTENTICAÇÃO ---
+        const storedUser = localStorage.getItem('neurochat_user');
+        
+        if (!storedUser) {
+            document.body.innerHTML = '<h3 style="color:red; padding:20px; text-align:center;">Sessão expirada. Por favor, faça login novamente no painel principal.</h3>';
+            return;
+        }
+
+        const adminUser = JSON.parse(storedUser); 
+        // --------------------
+
+        const loading = document.getElementById('loading');
+        const tableContainer = document.getElementById('table-container');
+        
+        try {
+            const response = await fetch('/admin/get-full-history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminId: adminUser.id,
+                    targetUserId: targetId
+                })
+            });
+
+            const data = await response.json();
+
+            loading.style.display = 'none';
+
+            if (data.success) {
+                fullAuditData = data.messages; // Guarda para o Excel
+                renderTable(data.messages);
+                tableContainer.style.display = 'block';
+            } else {
+                document.body.innerHTML = `<h3 style="color:red; text-align:center;">Erro: ${data.message}</h3>`;
+            }
+        } catch (error) {
+            console.error(error);
+            loading.innerHTML = '<p style="color:red">Erro de conexão com o servidor.</p>';
+        }
+    }
+
+    function renderTable(messages) {
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = '';
+
+        if (!messages || messages.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhuma mensagem encontrada para este usuário.</td></tr>';
+            return;
+        }
+
+        // Tenta descobrir o nome do alvo baseado nas mensagens para usar no nome do arquivo
+        const firstMsg = messages.find(m => m.user_id == targetId);
+        if(firstMsg) targetUserName = firstMsg.user || firstMsg.username;
+
+        messages.forEach(msg => {
+            const dateObj = new Date(msg.raw_time || msg.timestamp);
+            const dateStr = dateObj.toLocaleDateString('pt-BR');
+            const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            const isTarget = (msg.user_id == targetId);
+            const rowColor = isTarget ? '#fff' : '#f9f9f9'; // Alterna cor levemente se quiser
+
+            // Formatação de Arquivo vs Texto
+            let content = msg.text || '';
+            if (msg.fileName) {
+                content = `📁 <b>Arquivo:</b> ${msg.fileName}<br><span style="color:#666">${msg.text || ''}</span>`;
+            }
+
+            // Badge de Remetente
+            const senderName = msg.user || msg.username;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <strong>${dateStr}</strong><br>
+                    <span class="msg-meta">${timeStr}</span>
+                </td>
+                <td>
+                    <span class="badge-user">${senderName}</span>
+                    ${isTarget ? '' : '<br><small>(Outro Usuário)</small>'}
+                </td>
+                <td class="msg-text">
+                    ${content}
+                    ${msg.is_edited ? '<span style="font-size:0.7em; color:#e65100; margin-left:5px;">(Editada)</span>' : ''}
+                    ${msg.is_deleted ? '<span style="font-size:0.7em; color:red; margin-left:5px;">(Apagada)</span>' : ''}
+                </td>
+                <td>
+                    ${msg.is_read ? '<span style="color:green">✔ Lido</span>' : '<span style="color:#999">Enviado</span>'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function downloadExcel() {
+        if (!fullAuditData || fullAuditData.length === 0) {
+            alert("Não há dados para exportar.");
+            return;
+        }
+
+        // 1. Prepara os dados limpos para o Excel (Sem HTML)
+        const excelData = fullAuditData.map(msg => {
+            const dateObj = new Date(msg.raw_time || msg.timestamp);
+            return {
+                "Data": dateObj.toLocaleDateString('pt-BR'),
+                "Hora": dateObj.toLocaleTimeString('pt-BR'),
+                "Remetente": msg.user || msg.username,
+                "Departamento": msg.department || 'N/A',
+                "Mensagem": msg.text,
+                "Arquivo Anexado": msg.fileName || 'Não',
+                "Status": msg.is_read ? 'Lido' : 'Não Lido',
+                "Editado": msg.is_edited ? 'Sim' : 'Não'
+            };
+        });
+
+        // 2. Cria a planilha (Worksheet)
+        const ws = XLSX.utils.json_to_sheet(excelData);
+
+        // 3. Ajusta largura das colunas (Opcional, mas fica bonito)
+        const wscols = [
+            {wch: 12}, // Data
+            {wch: 10}, // Hora
+            {wch: 20}, // Remetente
+            {wch: 20}, // Dept
+            {wch: 50}, // Mensagem
+            {wch: 20}, // Arquivo
+            {wch: 10}  // Status
+        ];
+        ws['!cols'] = wscols;
+
+        // 4. Cria o arquivo (Workbook)
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+
+        // 5. Gera o download com nome dinâmico
+        const safeName = targetUserName.replace(/[^a-zA-Z0-9]/g, '_');
+        XLSX.writeFile(wb, `Auditoria_${safeName}_${Date.now()}.xlsx`);
+    }
+
+    // Inicia ao carregar
+    init();
+    </script>
+
+</body>
+</html>

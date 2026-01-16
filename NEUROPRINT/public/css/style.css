@@ -1,0 +1,71 @@
+/* public/css/style.css */
+:root {
+    --primary: #0d6efd; /* Azul NeuroChat */
+    --secondary: #6c757d;
+    --bg-color: #eef2f6;
+    --card-bg: #ffffff;
+    --text-main: #333;
+    --danger: #dc3545;
+    --success: #198754;
+    --warning: #ffc107;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+body { background-color: var(--bg-color); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding-top: 40px; color: var(--text-main); }
+
+/* Containers */
+.container { width: 100%; max-width: 600px; padding: 20px; } /* Login e Pedido */
+.container-wide { width: 95%; max-width: 1200px; padding: 20px; } /* Painel Admin */
+
+.card {
+    background: var(--card-bg);
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+/* Tipografia e Cabeçalhos */
+h2 { color: var(--primary); margin-bottom: 0.5rem; text-align: center; font-size: 1.8rem; }
+.subtitle { text-align: center; color: #666; margin-bottom: 2rem; display: block; font-size: 1.1rem; }
+
+/* Formulários */
+.form-group { margin-bottom: 1.5rem; }
+label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #444; font-size: 1rem; }
+
+input, select, textarea {
+    width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; transition: 0.3s; background-color: #fafafa;
+}
+
+input:focus, select:focus, textarea:focus { border-color: var(--primary); background-color: #fff; outline: none; }
+
+/* Botões */
+button {
+    width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+}
+button:hover { background-color: #0b5ed7; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3); }
+
+button.secondary { background-color: #6c757d; margin-bottom: 20px; }
+button.secondary:hover { background-color: #5c636a; }
+
+/* --- TABELA DO ADMIN (Dashboard) --- */
+.dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.refresh-btn { width: auto; padding: 10px 20px; display: flex; align-items: center; gap: 8px; }
+
+table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; }
+th { background-color: #f8f9fa; text-align: left; padding: 16px; border-bottom: 2px solid #dee2e6; color: #555; font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
+td { padding: 16px; border-bottom: 1px solid #eee; vertical-align: middle; background: white; }
+
+/* Efeito Zebra e Hover na Tabela */
+tr:hover td { background-color: #f8faff; }
+tr:last-child td { border-bottom: none; }
+
+/* Badges de Status */
+.status-tag { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; display: inline-block; }
+.status-pendente { background: #fff8e1; color: #b7791f; border: 1px solid #fce8b2; }
+.status-em_andamento { background: #e0f2f1; color: #00695c; border: 1px solid #b2dfdb; }
+.status-impresso { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+
+.btn-action { width: auto; padding: 8px 16px; font-size: 0.9rem; margin-right: 5px; }
+.urgent-row td { background-color: #fff5f5; border-bottom: 1px solid #fed7d7; }
+.urgent-badge { color: var(--danger); font-weight: bold; display: flex; align-items: center; gap: 5px; }

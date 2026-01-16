@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Requisição de Compra - NeuroCompras</title>
+    <link rel="stylesheet" href="css/requisicao.css">
+</head>
+<body>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px; background: #fff; border-radius: 8px;">
+    <a href="http://192.168.10.133" style="text-decoration: none; color: #555;">⬅ Voltar ao Portal</a>
+    
+    <button id="btn-admin" onclick="window.location.href='/financeiro.html'" style="display: none; background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+        🔒 Painel Financeiro
+    </button>
+    
+    <button onclick="sair()" style="background: none; border: 1px solid #ccc; padding: 5px 10px; cursor: pointer;">Sair</button>
+</div>
+
+<div class="container">
+    <h2>📝 Nova Requisição de Compra</h2>
+    
+    <div id="mensagem" class="alerta"></div>
+
+    <form id="form-requisicao" enctype="multipart/form-data">
+        
+        <div class="form-group">
+            <label>Solicitante:</label>
+            <input type="text" id="nome_solicitante" name="nome_solicitante" readonly>
+            <input type="hidden" id="usuario_id" name="usuario_id">
+        </div>
+
+        <div class="form-group">
+            <label>Setor:</label>
+            <input type="text" id="setor" name="setor" readonly>
+        </div>
+
+        <div class="form-group">
+            <label for="descricao">O que precisa comprar? (Descrição detalhada)</label>
+            <textarea id="descricao" name="descricao" rows="4" required placeholder="Ex: 5 Cadeiras Ergonômicas modelo X..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="link_produto">Link do Produto (Opcional):</label>
+            <input type="url" id="link_produto" name="link_produto" placeholder="https://loja.com/produto...">
+        </div>
+
+        <div class="form-group">
+            <label for="urgencia">Grau de Urgência:</label>
+            <select id="urgencia" name="urgencia">
+                <option value="Baixa">🟢 Baixa (Pode esperar)</option>
+                <option value="Media" selected>🟡 Média (Necessário em breve)</option>
+                <option value="Alta">🔴 Alta (Urgente)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="prazo_limite">Data Limite para Entrega:</label>
+            <input type="date" id="prazo_limite" name="prazo_limite" required>
+        </div>
+
+        <div class="form-group">
+            <label for="foto_produto">Foto ou Print do Produto:</label>
+            <input type="file" id="foto_produto" name="foto_produto" accept="image/*">
+            <img id="preview" class="preview-img" alt="Pré-visualização da foto">
+        </div>
+
+        <button type="submit" class="btn-submit">Enviar Pedido ao Financeiro</button>
+    </form>
+</div>
+
+<script src="js/requisicao.js"></script>
+</body>
+</html>

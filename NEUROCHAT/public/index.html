@@ -72,8 +72,6 @@
                     <option value="Recepção 1">Recepção 1</option>
                     <option value="Recepção 2">Recepção 2</option>
                     <option value="Recepção 3">Recepção 3</option>
-                    <option value="ASG - UNIDADE 1">ASG - UNIDADE 1</option>
-                    <option value="ASG - UNIDADE 3">ASG - UNIDADE 3</option>
                 </optgroup>
 
                 <optgroup label="Pedagógico / Clínico">
@@ -97,11 +95,13 @@
     </div>
 
     <script>
-        if (localStorage.getItem('chatUser')) window.location.href = '/chat.html';
+        // --- CORREÇÃO 1: Verifica se já existe 'neurochat_user' ---
+        if (localStorage.getItem('neurochat_user')) window.location.href = '/chat.html';
 
         let isLoginMode = true;
 
         function toggleMode() {
+            // ... (o código da função toggleMode continua igual) ...
             isLoginMode = !isLoginMode;
             const title = document.getElementById('title');
             const btn = document.getElementById('action-btn');
@@ -138,7 +138,9 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    localStorage.setItem('chatUser', JSON.stringify(result));
+                    // --- CORREÇÃO 2: Salva como 'neurochat_user' ---
+                    localStorage.setItem('neurochat_user', JSON.stringify(result));
+                    // -----------------------------------------------
                     window.location.href = '/chat.html';
                 } else {
                     showError(result.message);

@@ -1,5 +1,61 @@
 const currentUser = JSON.parse(localStorage.getItem('agendaUser'));
+const roomConfig = {
+    1: { // Sala de Reuniões
+        duration: 60, // minutos
+        start: "08:00",
+        end: "18:00",
+        lunchStart: "12:00",
+        lunchEnd: "14:00" // Retorna às 14h
+    },
+    2: { // NeuroCopa
+        duration: 40, // minutos
+        start: "08:00",
+        end: "18:00",
+        lunchStart: "12:00",
+        lunchEnd: "14:00"
+    }
+};
 
+// Função auxiliar para somar minutos a um horário "HH:MM"
+function addMinutes(timeStr, minutes) {
+    const [h, m] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(h, m, 0, 0);
+    date.setMinutes(date.getMinutes() + minutes);
+    return date.toTimeString().slice(0, 5); // Retorna "HH:MM"
+}
+
+// Função para gerar slots dinamicamente
+function generateSlots(roomId) {
+    const config = roomConfig[roomId];
+    const slots = [];
+    let currentTime = config.start;
+
+    while (currentTime < config.end) {
+        // Calcula quando este slot terminaria
+        const nextTime = addMinutes(currentTime, config.duration);
+
+        // Verifica se o slot cai no horário de almoço
+        // Regra: O slot deve terminar antes ou às 12:00, OU começar às 14:00 ou depois
+        const isLunchTime = (currentTime >= config.lunchStart && currentTime < config.lunchEnd);
+        const endsInLunch = (nextTime > config.lunchStart && nextTime <= config.lunchEnd);
+
+        if (!isLunchTime && !endsInLunch) {
+            // Se o término ultrapassar o fim do dia, paramos
+            if (nextTime > config.end) break;
+            
+            slots.push(currentTime);
+        }
+
+        // Se estivermos na hora do almoço, saltamos direto para o fim do almoço
+        if (currentTime >= config.lunchStart && currentTime < config.lunchEnd) {
+            currentTime = config.lunchEnd;
+        } else {
+            currentTime = nextTime;
+        }
+    }
+    return slots;
+}
 // INICIALIZAÇÃO
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('login-form')) {
@@ -104,11 +160,8 @@ function renderGrid(bookings) {
     const container = document.getElementById('slots-container');
     container.innerHTML = '';
 
-    // 🕒 HORÁRIOS DEFINIDOS (Sem 12, 13, 14 e 18)
-    const times = [
-        "08:00", "09:00", "10:00", "11:00", // Manhã
-        "14:00", "15:00", "16:00", "17:00"          // Tarde (18h removido)
-    ];
+    // GERA OS HORÁRIOS BASEADO NA SALA ATUAL
+    const times = generateSlots(currentRoom);
 
     times.forEach(time => {
         const booking = bookings.find(b => b.time_str === time);
@@ -231,9 +284,23 @@ async function confirmBooking() {
 }
 
 async function sendBookingData(title, role, materials) {
+    // Pega a duração correta da sala atual
+    const duration = roomConfig[currentRoom].duration;
+    
+    // Cria data de início
     const startISO = `${currentDate}T${selectedTimeSlot}:00`;
-    const [h, m] = selectedTimeSlot.split(':');
-    const endISO = `${currentDate}T${(parseInt(h)+1).toString().padStart(2,'0')}:${m}:00`;
+    
+    // Calcula data de fim usando a função auxiliar que criamos ou lógica de Date
+    // Aqui faremos manual para garantir o formato ISO correto para o MySQL
+    const [h, m] = selectedTimeSlot.split(':').map(Number);
+    const endDateObj = new Date();
+    endDateObj.setHours(h, m + duration, 0, 0); // Soma os 40 ou 60 minutos
+    
+    // Formata para HH:MM para montar a string ISO
+    const endH = endDateObj.getHours().toString().padStart(2, '0');
+    const endM = endDateObj.getMinutes().toString().padStart(2, '0');
+    
+    const endISO = `${currentDate}T${endH}:${endM}:00`;
 
     try {
         const res = await fetch(`api/bookings`, {

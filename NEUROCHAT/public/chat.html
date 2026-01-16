@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuroChat</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -14,63 +14,92 @@
         <img class="modal-zoom-img" id="img-zoom-target" onclick="event.stopPropagation()">
     </div>
 
-   <div id="updates-modal" class="modal-overlay">
-        <div class="modal" style="width: 600px; max-height: 85vh;">
+    <div id="updates-modal" class="modal-overlay">
+        <div class="modal" style="width: 650px; max-height: 85vh;">
             <div style="text-align: center; border-bottom: 1px solid #eee; padding-bottom: 15px;">
-                <h2 style="color: #0d47a1; margin: 0;">📚 Manual & Funcionalidades</h2>
-                <p style="color: #666; margin-top: 5px;">Aprenda a usar todo o potencial do NeuroChat</p>
+                <h2 style="color: #0d47a1; margin: 0;">📚 Manual & Novidades</h2>
+                <p style="color: #666; margin-top: 5px;">Guia completo de uso do NeuroChat</p>
+            </div>
+            <div class="manual-content" style="overflow-y: auto; padding: 15px; margin-top: 5px; line-height: 1.6; text-align: left;">
+                
+                <h4 style="color: #1976d2; margin-bottom: 5px;">📸 Envio de Imagens Rápido</h4>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">
+                    Você não precisa clicar no botão de anexo (+) para enviar prints.<br>
+                    <b>Computador:</b> Tire o print (PrtScn), clique na caixa de texto e aperte <b>Ctrl + V</b>.<br>
+                    <b>Celular:</b> Copie a imagem da galeria e use "Colar" na caixa de texto.
+                </p>
+
+                <h4 style="color: #1976d2; margin-bottom: 5px;">✍️ Formatação de Texto</h4>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">
+                    <b>Negrito:</b> Coloque asteriscos em volta da palavra (Ex: *Importante* vira <b>Importante</b>).<br>
+                    <b>Quebrar Linha:</b> Use <b>Shift + Enter</b> para pular linha sem enviar.
+                </p>
+
+                <h4 style="color: #1976d2; margin-bottom: 5px;">🔔 Notificações</h4>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">
+                    <b>Mensagens Não Lidas:</b> Um contador vermelho aparecerá na lista de contatos/grupos quando houver novidades.<br>
+                    <b>Aviso Sonoro:</b> O sistema emite um som discreto ao receber mensagens se você estiver em outra aba.
+                </p>
+
+                <h4 style="color: #1976d2; margin-bottom: 5px;">🚀 Conversas e Organização</h4>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">
+                    <b>Topo Automático:</b> Quem manda mensagem sobe para o primeiro lugar da lista.<br>
+                    <b>Destaque:</b> Conversas com mensagens não lidas ficam em verde e no topo.<br>
+                    <b>Marcar não lida:</b> Clique no ícone de carta (✉️) no topo do chat para lembrar de responder depois.
+                </p>
+
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+
+                <h3 style="color: #d32f2f; margin-bottom: 10px;">🆕 Novas Funcionalidades</h3>
+
+                <h4 style="color: #333; margin-bottom: 5px;">😀 Reações e Menu de Mensagem</h4>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">
+                    Passe o mouse sobre qualquer mensagem (ou toque nela no celular) e clique na <b>setinha (⌄)</b> que aparece.<br>
+                    Um menu se abrirá com opções para:
+                    <br>• <b>Reagir:</b> 👍 ❤️ 😂 😮 😢 (As reações se acumulam!)
+                    <br>• <b>Responder:</b> Cita a mensagem específica.
+                    <br>• <b>Fixar:</b> Prende a mensagem no topo da conversa (útil para avisos).
+                </p>
+
+                <h4 style="color: #333; margin-bottom: 5px;">🛡️ Segurança e Bloqueios (Admin)</h4>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">
+                    Administradores podem configurar <b>Restrições de Setor</b>. Se um usuário estiver bloqueado de falar com o "Financeiro", o sistema impedirá o envio da mensagem e avisará o remetente na hora.
+                </p>
+
+                <h4 style="color: #333; margin-bottom: 5px;">🔍 Outros Recursos</h4>
+                <p style="font-size: 0.9rem;">
+                    <b>Histórico:</b> O chat carrega as últimas 30 mensagens. Role para cima para ver mais.<br>
+                    <b>Busca:</b> Use a lupa no menu lateral para filtrar contatos ou a lupa no topo do chat para buscar mensagens.<br>
+                    <b>Zoom:</b> Clique na foto de perfil ou em imagens enviadas para ampliar.
+                </p>
+            </div>
+            <div class="modal-actions" style="justify-content: center; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                <button class="btn-create" onclick="document.getElementById('updates-modal').style.display='none'" style="width: 100%;">Entendi, vamos conversar!</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-control-modal" class="modal-overlay">
+        <div class="modal" style="width: 500px;">
+            <div style="text-align: center; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                <h3 style="margin: 0; color: #666; font-size: 0.9rem;">⚙️ Central de Controle</h3>
+                <h2 id="admin-target-name" style="margin: 5px 0; color: #0d47a1;">Usuário</h2>
+                <input type="hidden" id="admin-target-id">
             </div>
             
-            <div class="manual-content" style="overflow-y: auto; padding: 10px; margin-top: 10px;">
-                
-                <div class="manual-section">
-                    <h3 style="background: #e3f2fd; color: #0d47a1; padding: 8px; border-radius: 5px;">📸 Envio de Imagens Rápido</h3>
-                    <p>Você não precisa clicar no botão de anexo (+) para enviar prints.</p>
-                    <ul>
-                        <li><strong>Computador:</strong> Tire o print (PrtScn), clique na caixa de texto ("Digite sua mensagem...") e aperte <code>Ctrl + V</code>. A imagem será enviada automaticamente!</li>
-                        <li><strong>Celular:</strong> Se copiar uma imagem da galeria, basta "Colar" na caixa de texto.</li>
-                    </ul>
-                </div>
-
-                <div class="manual-section" style="margin-top: 15px;">
-                    <h3 style="background: #fff3e0; color: #e65100; padding: 8px; border-radius: 5px;">✍️ Formatação de Texto</h3>
-                    <p>Deixe suas mensagens mais organizadas:</p>
-                    <ul>
-                        <li><strong>Negrito:</strong> Coloque asteriscos em volta da palavra. <br>Ex: Digite <code>*Importante*</code> para aparecer <strong>Importante</strong>.</li>
-                        <li><strong>Quebrar Linha:</strong> No computador, use <code>Shift + Enter</code> para pular para a linha de baixo sem enviar a mensagem.</li>
-                    </ul>
-                </div>
-
-                <div class="manual-section" style="margin-top: 15px;">
-                    <h3 style="background: #e8f5e9; color: #2e7d32; padding: 8px; border-radius: 5px;">✅ Confirmação de Leitura</h3>
-                    <ul>
-                        <li><span style="color:#aaa">✔✔</span> (Cinza): Mensagem entregue.</li>
-                        <li><span style="color:#29b6f6">✔✔</span> (Azul): O colega já <strong>leu</strong> sua mensagem (funciona em tempo real!).</li>
-                    </ul>
-                </div>
-
-                <div class="manual-section" style="margin-top: 15px;">
-                    <h3 style="background: #f3e5f5; color: #7b1fa2; padding: 8px; border-radius: 5px;">🔍 Outros Recursos</h3>
-                    <ul>
-                        <li><strong>Histórico:</strong> O chat carrega as últimas 30 mensagens. Role para cima e clique no botão de recarregar para ver as antigas.</li>
-                        <li><strong>Busca:</strong> Use a lupa no topo para procurar palavras em conversas antigas.</li>
-                        <li><strong>Zoom:</strong> Clique na foto do perfil de alguém ou numa imagem enviada para ver em tela cheia.</li>
-                    </ul>
-                </div>
-                <div class="manual-section" style="margin-bottom: 20px;">
-                    <h3 style="background: #e0f2f1; color: #00695c; padding: 10px; border-radius: 8px; font-size: 1rem; margin-bottom: 10px;">
-                    🚀 Conversas Recentes no Topo
-                    </h3>
-                        <p style="font-size: 0.95rem; color: #030303; margin-bottom: 5px;">Chega de rolar a lista procurando quem chamou!</p>
-                        <ul style="color: #050505; font-size: 0.9rem;">
-                        <li><strong>Automático:</strong> Assim que alguém manda mensagem (ou você responde), o contato sobe para o <strong>primeiro lugar</strong> da lista.</li>
-                        <li><strong>Destaque:</strong> Quem tem mensagens não lidas fica sempre em cima para você não perder nada.</li>
-                    </ul>
-                </div>
-
+            <div style="margin-top: 15px;">
+                <h4 style="margin-bottom: 10px; color: #d32f2f;">🚫 Restrições de Setor</h4>
+                <p style="font-size: 0.85rem; color: #666;">Marque os setores que este usuário NÃO pode contatar:</p>
+                <div id="admin-sector-list" style="max-height: 150px; overflow-y: auto; background: #fff3e0; padding: 10px; border: 1px solid #ffe0b2; border-radius: 5px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;"></div>
             </div>
-            <div class="modal-actions" style="justify-content: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
-                <button class="btn-create" onclick="document.getElementById('updates-modal').style.display='none'" style="width: 100%;">Entendi, vamos lá!</button>
+
+            <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn-create" style="background: #00796b;" onclick="openFullAudit()">📄 Abrir Histórico Completo</button>
+                <button id="btn-admin-promote" class="admin-action-btn" onclick="toggleAdminRole()" style="background: #1976d2;">👑 Alternar Super Admin</button>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 15px;">
+                <button class="btn-cancel" onclick="document.getElementById('admin-control-modal').style.display='none'">Fechar</button>
             </div>
         </div>
     </div>
@@ -80,15 +109,18 @@
             <h3>Editar Meu Perfil</h3>
             <label>Nome:</label>
             <input type="text" id="profile-username" placeholder="Seu nome">
+            
             <label>Departamento:</label>
             <select id="profile-department">
-                <option value="" disabled selected>Selecione...</option>
+                <option value="" disabled selected>Selecione o Departamento</option>
+                
                 <optgroup label="Diretoria / Estratégico">
                     <option value="Diretoria Geral">Diretoria Geral</option>
                     <option value="Diretoria Financeira e Controle Interno">Diretoria Financeira e Controle Interno</option>
                     <option value="Diretoria Pedagógica">Diretoria Pedagógica</option>
                     <option value="Marketing">Marketing</option>
                 </optgroup>
+
                 <optgroup label="Coordenações">
                     <option value="Coordenação ABA">Coordenação ABA</option>
                     <option value="Coordenação Agendamento/Recepção">Coordenação Agendamento/Recepção</option>
@@ -97,35 +129,41 @@
                     <option value="Coordenação de RH">Coordenação de RH</option>
                     <option value="Coordenação TCC/AVN">Coordenação TCC/AVN</option>
                 </optgroup>
+
                 <optgroup label="Administrativo & Financeiro">
                     <option value="Faturamento - Unidade 1">Faturamento - Unidade 1</option>
                     <option value="Faturamento - Unidade 3">Faturamento - Unidade 3</option>
                     <option value="Financeiro">Financeiro</option>
                     <option value="RH">RH</option>
                 </optgroup>
+
                 <optgroup label="Operacional / Atendimento">
                     <option value="Relacionamento e Comercial">Relacionamento e Comercial</option>
                     <option value="Assessoria">Assessoria</option>
                     <option value="Recepção 1">Recepção 1</option>
                     <option value="Recepção 2">Recepção 2</option>
                     <option value="Recepção 3">Recepção 3</option>
-                    <option value="ASG - UNIDADE 1">ASG - UNIDADE 1</option>
-                    <option value="ASG - UNIDADE 3">ASG - UNIDADE 3</option>
-                    
                 </optgroup>
+
                 <optgroup label="Pedagógico / Clínico">
                     <option value="ABA">ABA</option>
                     <option value="Apoio AVN - Unidade 3">Apoio AVN - Unidade 3</option>
                     <option value="Apoio Pedagógico">Apoio Pedagógico</option>
                 </optgroup>
+
                 <optgroup label="Equipe Terapêutica">
                     <option value="Terapeutas - Unidade 1">Terapeutas - Unidade 1</option>
                     <option value="Terapeutas - Unidade 2">Terapeutas - Unidade 2</option>
                     <option value="Terapeutas - Unidade 3">Terapeutas - Unidade 3</option>
                 </optgroup>
             </select>
-            <label>Nova Foto:</label><input type="file" id="profile-photo-input" accept="image/*">
-            <label>Alterar Senha:</label><input type="password" id="profile-password" placeholder="Nova senha">
+            
+            <label>Nova Foto:</label>
+            <input type="file" id="profile-photo-input" accept="image/*">
+            
+            <label>Alterar Senha:</label>
+            <input type="password" id="profile-password" placeholder="Nova senha">
+            
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="document.getElementById('profile-modal').style.display='none'">Cancelar</button>
                 <button class="btn-create" onclick="saveProfile()">Salvar</button>
@@ -133,136 +171,115 @@
         </div>
     </div>
 
-    <div id="audit-modal" class="modal-overlay">
-        <div class="modal" style="width: 500px; max-height: 90vh;">
-            <h3>🕵️ Auditoria de Conversas</h3>
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <div style="flex:1"><label>Funcionário A:</label><select id="audit-user-a"></select></div>
-                <div style="flex:1"><label>Funcionário B:</label><select id="audit-user-b"></select></div>
-            </div>
-            <button class="btn-create" onclick="loadAuditHistory()" style="width:100%">Pesquisar Conversa</button>
-            <div id="audit-results" style="flex-grow:1; overflow-y:auto; background:#f5f5f5; padding:10px; border-radius:5px; border:1px solid #ddd; min-height:200px; margin-top:15px;"></div>
-            <div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById('audit-modal').style.display='none'">Fechar</button></div>
-        </div>
-    </div>
-
-    <div id="group-modal" class="modal-overlay">
-        <div class="modal">
-            <h3>Novo Grupo</h3>
-            <input type="text" id="new-group-name" placeholder="Nome do Grupo">
-            <label style="display:flex; align-items:center; cursor:pointer; background:#f9f9f9; padding:10px; border-radius:5px; margin-bottom: 10px;">
-                <input type="checkbox" id="is-broadcast" style="width:auto; margin-right:10px;"> Grupo de Transmissão
-            </label>
-            <label>Selecionar Membros:</label>
-            <label style="font-weight: bold; margin-bottom: 5px; display: block; font-size: 0.9rem;">
-                <input type="checkbox" id="select-all-users" style="width:auto; margin-right: 5px;" onchange="toggleAll(this)"> Selecionar Todos
-            </label>
-            <div class="user-select-list" id="modal-users-list"></div>
-            <div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById('group-modal').style.display='none'">Cancelar</button><button class="btn-create" onclick="createGroup()">Criar</button></div>
-        </div>
-    </div>
-
-    <div id="settings-modal" class="modal-overlay">
-        <div class="modal">
-            <h3 id="settings-title">Membros do Grupo</h3>
-            <div class="user-select-list" id="settings-members-list"></div>
-            <div id="add-member-area" style="display:none; border-top:1px solid #ccc; padding-top:10px;"><label>Adicionar Membro:</label><select id="add-member-select" style="width:100%; padding:8px; margin-bottom:5px;"></select><button class="btn-create" style="width:100%" onclick="addNewMember()">Adicionar</button></div>
-            <div class="modal-actions" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-                <button id="btn-leave" class="btn-leave-group" onclick="leaveGroup()" style="display:none">Sair do Grupo</button>
-                <button id="btn-delete" class="btn-delete-group" onclick="deleteGroup()" style="display:none">EXCLUIR GRUPO</button>
-                <button class="btn-cancel" onclick="document.getElementById('settings-modal').style.display='none'">Fechar</button>
-            </div>
-        </div>
-    </div>
-
     <aside class="sidebar">
+        <a href="http://192.168.10.133" class="btn-voltar-portal">⬅️ Voltar ao Portal</a>
+        
         <div class="user-info">
-            <img id="my-avatar-img" src="/avatar.png" class="my-avatar" onerror="this.src='/avatar.png'" onclick="window.openImageZoom(this.src)">
-            <div class="user-details"><h3 id="user-name">...</h3><span id="user-dept">...</span><br><button class="edit-profile-btn" onclick="openProfileModal()">Editar Perfil</button></div>
+            <img id="my-avatar-img" src="/avatar.png" class="my-avatar" onclick="window.openImageZoom(this.src)">
+            <div class="user-details">
+                <h3 id="user-name">...</h3>
+                <span id="user-dept">...</span>
+                <button class="edit-profile-btn" onclick="openProfileModal()">✏️ Editar Perfil</button>
+            </div>
         </div>
 
-        <div style="margin-bottom: 15px; padding: 0 5px;">
-            <input type="text" placeholder="🔍 Buscar funcionário..." onkeyup="filterContacts(this.value)" style="width: 100%; padding: 10px; border-radius: 20px; border: 1px solid #ccc; font-size: 0.9rem;">
+        <div class="sidebar-tabs">
+            <button id="tab-users" class="tab-btn active" onclick="switchTab('users')">
+                Usuários <span id="badge-users" class="tab-badge" style="display:none">0</span>
+            </button>
+            <button id="tab-groups" class="tab-btn" onclick="switchTab('groups')">
+                Grupos <span id="badge-groups" class="tab-badge" style="display:none">0</span>
+            </button>
+        </div>
+
+        <div style="padding: 0 5px; margin-bottom: 10px;">
+            <input type="text" id="contact-search" placeholder="🔍 Buscar..." onkeyup="filterContacts(this.value)" style="width: 100%; padding: 10px; border-radius: 20px; border: 1px solid #ccc;">
         </div>
 
         <div class="menu-section">
-            <h4>GRUPOS <button id="btn-new-group" class="new-group-btn" onclick="openModalCreate()">+</button></h4><ul class="contact-list" id="groups-list"></ul><br>
-            <h4>FUNCIONÁRIOS</h4><ul class="contact-list" id="users-list"></ul>
+            <div id="groups-container" style="display: none;">
+                <button class="new-group-btn" onclick="openModalCreate()">+ Criar Novo Grupo</button>
+                <ul class="contact-list" id="groups-list"></ul>
+            </div>
+            <ul class="contact-list" id="users-list"></ul>
         </div>
-        
-        <button id="btn-audit" class="audit-btn" style="display:none; margin-bottom: 10px;" onclick="openAuditModal()">🕵️ Auditoria</button>
+
         <button class="logout-btn" onclick="logout()">Sair</button>
     </aside>
 
     <main class="main-area">
         <div id="welcome-screen">
-            <div class="welcome-box">
-                <h2 style="color: #0d47a1; font-size: 2rem; margin-bottom: 10px;">NeuroChat</h2>
-                <p style="color: #555; margin-bottom: 20px;">Bem-vindo à central de comunicação interna.</p>
-                <div style="background: #e8eaf6; padding: 20px; border-radius: 10px; text-align: left; border-left: 5px solid #1a237e;">
-                    <h4 style="color: #0d47a1; margin: 0 0 10px 0;">📌 Avisos Importantes</h4>
-                    <p style="margin: 0; font-weight: bold; color: #333;">Olá pessoal!</p>
-                    <p style="margin: 10px 0; font-size: 0.9rem; color: #555;">Seguem as instruções para o uso do Neurochat:</p>
-                    <ul style="margin: 0; padding-left: 20px; color: #555; font-size: 0.9rem;">
+            <div class="welcome-box" style="background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 500px; width: 90%;">
+                <h1 style="color: #0d47a1; margin: 0; font-size: 2.5rem;">NeuroChat</h1>
+                <p style="color: #666; margin-top: 10px; margin-bottom: 30px;">Bem-vindo à central de comunicação interna.</p>
+
+                <div style="background: #e8eaf6; border-left: 5px solid #1a237e; padding: 20px; text-align: left; border-radius: 8px; margin-bottom: 30px;">
+                    <h4 style="color: #0d47a1; margin-top: 0; margin-bottom: 10px;">📌 Avisos Importantes</h4>
+                    <p style="font-weight: bold; margin-bottom: 5px; color: #333;">Olá pessoal!</p>
+                    <p style="font-size: 0.9rem; color: #555; margin-bottom: 10px;">Seguem as instruções para o uso do Neurochat:</p>
+                    <ul style="padding-left: 20px; color: #444; font-size: 0.9rem; line-height: 1.5;">
                         <li>1 - Insira seu nome e primeiro sobrenome.</li>
                         <li>2 - Solicite ao Marketing uma foto institucional para adicionar ao seu perfil.</li>
-                        <li>3 - Foi criado o "MANUAL & NOVIDADES" que trás todas a melhorias do chat.</li>
+                        <li>3 - Foi criado o "MANUAL & NOVIDADES" que traz todas as melhorias do chat.</li>
                     </ul>
                 </div>
-                
-                <button class="btn-news-center" onclick="openUpdatesModal()">📚 Ler Manual & Novidades</button>
 
-                <div style="margin-top: 30px; color: #888; font-size: 0.9rem;">
+                <button class="btn-news-center" onclick="openUpdatesModal()" style="background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; padding: 12px 30px; border-radius: 50px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
+                    📚 Manual & Novidades
+                </button>
+                
+                <p style="margin-top: 30px; font-size: 0.85rem; color: #aaa;">
                     👈 Selecione um colega ou grupo no menu lateral para iniciar.
-                </div>
+                </p>
             </div>
         </div>
 
         <div id="chat-interface">
             <div class="chat-header">
-                <div class="header-left"><img id="chat-header-img" src="/avatar.png" class="header-avatar" style="display:none" onerror="this.src='/avatar.png'"><div class="header-info"><h2 id="chat-title">...</h2><span id="chat-dept" class="header-dept">...</span></div></div>
+                <div class="header-left">
+                    <img id="chat-header-img" src="/avatar.png" class="header-avatar">
+                    <div class="header-info"><h2 id="chat-title">...</h2><span id="chat-dept" class="header-dept">...</span></div>
+                </div>
                 <div class="header-right">
-                    <button id="group-settings-btn" class="icon-btn settings-btn" style="display:none" onclick="openGroupSettings()" title="Gerenciar Grupo">⚙️</button>
-                    
-                    <div class="search-container">
-                        <input type="text" id="chat-search-input" class="search-input-nav" placeholder="Buscar..." onkeyup="searchInChat(this.value)">
-                        <div class="search-actions">
-                            <span id="search-count-display" class="search-count"></span>
-                            <button class="search-btn-nav" onclick="prevSearch()" title="Anterior">▲</button>
-                            <button class="search-btn-nav" onclick="nextSearch()" title="Próximo">▼</button>
-                        </div>
+                    <div class="search-box-chat" style="display:none" id="search-box-chat">
+                        <input type="text" id="chat-search-input" placeholder="Buscar na conversa..." onkeyup="if(event.key==='Enter')window.nextSearch(); else window.searchInChat(this.value)">
+                        <span id="search-count-display"></span>
+                        <button onclick="window.prevSearch()">▲</button>
+                        <button onclick="window.nextSearch()">▼</button>
                     </div>
-
-                    <button class="icon-btn close-chat-btn" onclick="closeChat()" title="Fechar">✕</button>
+                    <button class="icon-btn" onclick="window.toggleChatSearch()" title="Buscar na conversa">🔍</button>
+                    
+                    <button id="btn-mark-unread" class="icon-btn" onclick="markChatUnread()" title="Marcar como não lida" style="display:none">✉️</button>
+                    <button id="group-settings-btn" class="icon-btn settings-btn" onclick="openGroupSettings()" style="display:none">⚙️</button>
+                    <button class="icon-btn close-chat-btn" onclick="closeChat()">✕</button>
                 </div>
             </div>
             
             <div id="pinned-bar" class="pinned-bar" style="display:none"></div>
-
             <ul id="messages"></ul>
 
             <div id="reply-area" class="reply-area" style="display:none">
-                <div class="quoted-msg">
-                    <div class="quoted-user" id="reply-user"></div>
-                    <div class="quoted-text" id="reply-text"></div>
-                </div>
-                <button onclick="cancelReply()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✕</button>
+                <div class="quoted-msg"><div class="quoted-user" id="reply-user"></div><div class="quoted-text" id="reply-text"></div></div>
+                <button onclick="cancelReply()">✕</button>
             </div>
-            
+
             <form id="form" action="">
-                <input type="file" id="file-input" style="display: none;" onchange="uploadFile()">
+                <input type="file" id="file-input" style="display:none" onchange="uploadFile()">
                 <button type="button" class="upload-btn" onclick="document.getElementById('file-input').click()">+</button>
                 <button type="button" id="emoji-btn" class="emoji-btn">😊</button>
-                <textarea id="input" autocomplete="off" placeholder="Digite sua mensagem..." rows="1" oninput="autoResize(this)" onkeydown="checkEnter(event)"></textarea>
+                <textarea id="input" rows="1" placeholder="Digite sua mensagem..." oninput="autoResize(this)" onkeydown="checkEnter(event)"></textarea>
                 <button type="button" onclick="sendMessage()">Enviar</button>
             </form>
-            
-            <div id="broadcast-notice" class="broadcast-notice" style="display:none">📢 Grupo de Transmissão: Apenas administradores podem enviar mensagens.</div>
         </div>
     </main>
+
+    <div id="group-modal" class="modal-overlay"><div class="modal"><h3>Novo Grupo</h3><input id="new-group-name" placeholder="Nome"><label><input type="checkbox" id="is-broadcast"> Transmissão</label><label><input type="checkbox" id="select-all-users" onchange="toggleAll(this)"> Todos</label><div id="modal-users-list" class="user-select-list"></div><div class="modal-actions"><button class="btn-create" onclick="createGroup()">Criar</button><button class="btn-cancel" onclick="document.getElementById('group-modal').style.display='none'">Cancelar</button></div></div></div>
+    <div id="settings-modal" class="modal-overlay"><div class="modal"><h3>Grupo</h3><div id="settings-members-list" class="user-select-list"></div><div id="add-member-area" style="display:none; margin-top:10px;"><select id="add-member-select" style="width:100%; padding:8px;"></select><button class="btn-create" style="width:100%; margin-top:5px;" onclick="addNewMember()">Adicionar</button></div><div class="modal-actions" style="margin-top:10px;"><button id="btn-leave" class="btn-leave-group" onclick="leaveGroup()" style="display:none">Sair</button><button id="btn-delete" class="btn-delete-group" onclick="deleteGroup()" style="display:none">Excluir</button><button class="btn-cancel" onclick="document.getElementById('settings-modal').style.display='none'">Fechar</button></div></div></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@3.0.3/dist/index.min.js"></script>
     <script src="js/chat.js"></script>
+    <script src="js/marketing.js"></script>
+</body>
 </body>
 </html>

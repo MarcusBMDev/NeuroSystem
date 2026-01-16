@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - NeuroCompras</title>
+    <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+
+<div class="login-box">
+    <h2>🔐 NeuroCompras</h2>
+    <p>Use o seu login do NeuroChat</p>
+    
+    <input type="text" id="username" placeholder="Usuário">
+    <input type="password" id="password" placeholder="Senha">
+    
+    <button onclick="fazerLogin()" class="btn-entrar">Acessar Compras</button>
+    
+    <p id="msgErro" class="erro"></p>
+
+    <a href="http://192.168.10.133" class="btn-voltar">⬅ Voltar ao Portal</a>
+</div>
+
+<script>
+    // 1. Função original de Login (Não mudou nada aqui)
+    async function fazerLogin() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const msgErro = document.getElementById('msgErro');
+
+        try {
+            const resposta = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const dados = await resposta.json();
+
+            if (dados.sucesso) {
+                // Guardar dados na sessão
+                localStorage.setItem('usuarioNome', dados.usuario.nome);
+                localStorage.setItem('usuarioId', dados.usuario.id);
+                localStorage.setItem('usuarioSetor', dados.usuario.setor);
+                
+                // Redirecionar
+                window.location.href = '/requisicao.html';
+            } else {
+                msgErro.style.display = 'block';
+                msgErro.innerText = dados.mensagem;
+            }
+        } catch (erro) {
+            console.error(erro);
+            msgErro.innerText = "Erro ao conectar com servidor.";
+            msgErro.style.display = 'block';
+        }
+    }
+
+    // 2. NOVO: Código para reconhecer o "ENTER"
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // Pega os campos de input pelo ID
+        const inputUser = document.getElementById("username");
+        const inputPass = document.getElementById("password");
+
+        // Função que checa se a tecla é Enter
+        function checarEnter(event) {
+            if (event.key === "Enter") {
+                event.preventDefault(); // Evita recarregar a página sem querer
+                fazerLogin(); // Chama a função de login
+            }
+        }
+
+        // Adiciona o evento nos dois campos
+        // (Assim funciona se der Enter tanto no usuário quanto na senha)
+        if (inputUser) inputUser.addEventListener("keypress", checarEnter);
+        if (inputPass) inputPass.addEventListener("keypress", checarEnter);
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Financeiro - NeuroCompras</title>
+    
+    <link rel="stylesheet" href="css/financeiro.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <div class="card header-flex">
+        <div>
+            <h1>📊 Gestão de Compras</h1>
+            <span style="color: #777;">Bem-vindo ao painel administrativo financeiro</span>
+        </div>
+        <div>
+            <a href="requisicao.html" class="btn-voltar">Nova Requisição</a>
+            
+            <a href="http://192.168.10.133" class="btn-voltar" style="background: #333;">Sair para Portal</a>
+        </div>
+    </div>
+
+    <div class="dashboard-row">
+        <div class="card" style="flex: 1;">
+            <h3>🏢 Pedidos por Setor</h3>
+            <div class="chart-container">
+                <canvas id="graficoSetor"></canvas>
+            </div>
+        </div>
+
+        <div class="card" style="flex: 1;">
+            <h3>💰 Gastos no Mês (Total)</h3>
+            <div class="chart-container" style="position: relative;">
+                <canvas id="graficoGastos"></canvas>
+                
+                <div id="totalGastos">R$ 0,00</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="header-flex">
+            <h3>📑 Fila de Aquisições</h3>
+            <button onclick="carregarDados()" style="background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">🔄 Atualizar Lista</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th>Solicitante / Setor</th>
+                    <th>Descrição / Arquivos</th>
+                    <th>Urgência</th>
+                    <th>Prazos</th>
+                    <th style="width: 120px;">Custo (R$)</th>
+                    <th style="width: 150px;">Status</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-corpo">
+                <tr><td colspan="8" style="text-align:center; padding:20px;">Carregando dados...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="js/financeiro.js"></script>
+</body>
+</html>

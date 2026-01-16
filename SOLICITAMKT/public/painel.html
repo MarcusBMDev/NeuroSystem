@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel Marketing | NeuroCenter</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    
+    <div class="painel-header">
+        
+        <div>
+            <a href="http://192.168.10.133" class="btn-back-portal" style="position: static;">
+                <span>⬅</span> Voltar ao Portal
+            </a>
+        </div>
+
+        <div class="header-title">
+            <h1 style="margin:0; font-size: 1.8rem; color: #333;">🎨 Painel de Controle</h1>
+            <p style="margin:0; color:#666; font-size: 0.95rem;">Visão geral das demandas</p>
+        </div>
+
+        <div class="header-actions">
+            <a href="/solicitar.html" class="btn btn-outline">➕ Nova Solicitação</a>
+            <button class="btn" onclick="logout()" style="background:#555">Sair</button>
+        </div>
+    </div>
+
+    <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+        
+       <div class="filter-bar">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <label>De:</label>
+                <input type="date" id="dateStart" style="padding:8px; border:1px solid #ddd; border-radius:5px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <label>Até:</label>
+                <input type="date" id="dateEnd" style="padding:8px; border:1px solid #ddd; border-radius:5px;">
+            </div>
+            <button class="btn" onclick="applyFilter()" style="padding: 8px 20px;">🔍 Filtrar</button>
+            
+            <div style="margin-left: auto; background: #d81b60; color: white; padding: 8px 15px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">
+                Total no Período: <span id="totalDisplay">0</span>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>🏢 Solicitações por Setor</h3>
+                <div class="chart-wrapper"><canvas id="deptChart"></canvas></div>
+            </div>
+
+            <div class="chart-card">
+                <h3>👤 Quem mais solicitou?</h3>
+                <div class="chart-wrapper"><canvas id="userChart"></canvas></div>
+            </div>
+
+            <div class="chart-card">
+                <h3>📊 Tipos de Demanda</h3>
+                <div class="chart-wrapper"><canvas id="typeChart"></canvas></div>
+            </div>
+        </div>
+
+        <h2 style="font-size:1.3rem; color:#333; margin-top: 30px;">📋 Fila de Solicitações</h2>
+        <div id="list" class="card-list">Carregando...</div>
+    </div>
+
+    <script src="js/painel.js"></script>
+</body>
+</html>

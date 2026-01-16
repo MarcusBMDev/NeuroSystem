@@ -1,848 +1,920 @@
-// public/js/chat.js - V53 - Full Restoration + Fixes
+// public/js/chat.js - V115 - Fix filterContacts Order & Ghost Notif
 var socket = io();
 
 // 1. SESSÃO
-const userSession = localStorage.getItem('chatUser');
+const userSession = localStorage.getItem('neurochat_user');
 if (!userSession) window.location.href = '/';
 let currentUser = JSON.parse(userSession);
 
-// Configs
-function getAvatarUrl(photoName) { return (photoName && photoName !== 'NULL') ? `/uploads/${photoName}` : '/avatar.png'; }
+let allUsers=[], allGroups=[], onlineIds=[], currentChatId=null, currentChatType=null, replyingTo=null;
+let activeTab='users', chatOffset=0, isUploading=false, pinnedMessagesList=[], pinnedIndex=0;
+let originalTitle=document.title, blinkInterval=null, unreadCountGlobal=0, searchResults=[], searchIndex=-1;
+
 const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-// Estado
-let allUsers = [], allGroups = [], onlineIds = [];
-let currentChatId = null, currentChatType = null;
-let pinnedMessagesList = [], pinnedIndex = 0, replyingTo = null;
-let originalTitle = document.title, blinkInterval = null, unreadCountGlobal = 0;
-let isUploading = false;
+// 2. HELPERS & UTILS
+window.getAvatarUrl = (p) => (p && p !== 'NULL' && p !== '') ? `/uploads/${p}` : '/avatar.png';
 
-// Variáveis de Pesquisa e Paginação
-let chatOffset = 0; 
-let searchResults = [];
-let searchIndex = -1;
+window.formatMessage = (t) => {
+    if (!t) return '';
+    let safe = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    safe = safe.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="chat-link">$1</a>');
+    safe = safe.replace(/\*(.*?)\*/g, '<b>$1</b>');
+    return safe.replace(/\n/g, '<br>');
+};
 
-// 2. FUNÇÕES GLOBAIS
+window.getFancyDate = (s) => { if(!s)return""; const d=new Date(s),n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate()),m=new Date(d.getFullYear(),d.getMonth(),d.getDate()),diff=Math.floor((t-m)/(1000*60*60*24));return diff===0?"HOJE":diff===1?"ONTEM":d.toLocaleDateString('pt-BR'); };
+window.autoResize = (el) => { el.style.height = '45px'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; };
+window.checkEnter = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendMessage(); } window.autoResize(e.target); };
 
-window.loadData = async function() {
+window.scrollToBottom = () => {
+    const container = document.getElementById('messages');
+    if (container) container.scrollTop = container.scrollHeight;
+};
+
+window.updateMyInfo = () => {
+    if(!currentUser) return;
+    document.getElementById('user-name').textContent = currentUser.username;
+    document.getElementById('user-dept').textContent = currentUser.department;
+    document.getElementById('my-avatar-img').src = getAvatarUrl(currentUser.photo);
+};
+
+window.updateDateSeparators = () => {
+    document.querySelectorAll('.date-separator').forEach(el => el.remove());
+    const msgs = document.querySelectorAll('.msg-container');
+    let last = null;
+    msgs.forEach(msg => {
+        const r = msg.getAttribute('data-date');
+        if(!r) return;
+        const d = new Date(r).toLocaleDateString('pt-BR');
+        if (d !== last) {
+            const sep = document.createElement('div');
+            sep.className = 'date-separator';
+            sep.innerHTML = `<span class="date-pill">${window.getFancyDate(r)}</span>`;
+            msg.parentNode.insertBefore(sep, msg);
+            last = d;
+        }
+    });
+};
+
+// MOVIDO PARA CIMA (Correção do Erro)
+window.filterContacts = (t) => {
+    const term = (t||'').toLowerCase();
+    const listId = activeTab==='users'?'users-list':'groups-list';
+    document.querySelectorAll(`#${listId} li`).forEach(l => {
+        const name = l.getAttribute('data-search-name');
+        if(name && name.includes(term)) l.style.display='flex'; else l.style.display='none';
+    });
+};
+
+// 3. UI & LISTAS
+window.loadData = async () => {
     try {
         const res = await fetch(`/data-sync/${currentUser.id}`);
         const data = await res.json();
-        if(data.error) { alert("Sessão inválida."); window.logout(); return; }
+        if(data.error === 'BLOCKED') { alert("Conta bloqueada."); window.logout(); return; }
+        if(data.error) { console.error("Erro:", data.error); return; }
+
         if(data.me) { 
             currentUser = {...currentUser, ...data.me}; 
             localStorage.setItem('chatUser', JSON.stringify(currentUser)); 
             window.updateMyInfo(); 
+            const b = document.querySelector('.new-group-btn');
+            if(b) b.style.display = currentUser.is_super_admin ? 'block' : 'none';
         }
-        allUsers = (data.users || []).map(u => ({
-            ...u, 
-            last_activity: u.last_interaction // A data real do banco!
-        })); 
-        allGroups = data.groups || [];
+        allUsers = (data.users||[]).map(u => ({...u, last_activity: u.last_interaction })); 
+        allGroups = data.groups||[];
         window.renderLists();
         allGroups.forEach(g => socket.emit('join group room', g.id));
-    } catch(e) { console.error("Erro loadData", e); }
+    } catch(e) { console.error(e); }
 };
 
-window.renderLists = function() {
-    // --- 1. ORDENAÇÃO DE USUÁRIOS (CRONOLÓGICA) ---
-    allUsers.sort((a, b) => {
-        // 1. Mensagens NÃO LIDAS continuam no topo absoluto para chamar atenção
-        if (b.unread > 0 && a.unread === 0) return 1;
-        if (a.unread > 0 && b.unread === 0) return -1;
+window.switchTab = (tab) => {
+    activeTab = tab;
+    document.getElementById('tab-users').classList.toggle('active', tab==='users');
+    document.getElementById('tab-groups').classList.toggle('active', tab==='groups');
+    document.getElementById('users-list').style.display = tab==='users'?'block':'none';
+    const gc = document.getElementById('groups-container');
+    if(gc) gc.style.display = tab==='groups'?'block':'none';
+    else document.getElementById('groups-list').style.display = tab==='groups'?'block':'none';
+    const s = document.getElementById('contact-search');
+    if(s) window.filterContacts(s.value);
+};
 
-        // 2. Data da Última Mensagem (O que você pediu)
-        const dateA = a.last_activity ? new Date(a.last_activity).getTime() : 0;
-        const dateB = b.last_activity ? new Date(b.last_activity).getTime() : 0;
-
-        // Se um deles tiver data (já conversaram), o mais recente ganha
-        if (dateB !== dateA) {
-            return dateB - dateA; 
-        }
-
-        // 3. Só usa ordem alfabética se NUNCA conversaram (ambos com data 0)
-        // Isso mantém o fim da lista organizado, mas não atrapalha as conversas.
+window.renderLists = () => {
+    // 1. Users - Ordenação Robusta
+    allUsers.sort((a,b) => {
+        if ((b.unread||0) > 0 && (a.unread||0) === 0) return 1; 
+        if ((a.unread||0) > 0 && (b.unread||0) === 0) return -1;
+        const dA = a.last_activity ? new Date(a.last_activity).getTime() : 0; 
+        const dB = b.last_activity ? new Date(b.last_activity).getTime() : 0;
+        if (dB !== dA) return dB - dA;
         return a.username.localeCompare(b.username);
     });
 
     const ulUsers = document.getElementById('users-list');
-    if(ulUsers) {
-        ulUsers.innerHTML = '';
-        allUsers.forEach(u => {
-            if(u.id == currentUser.id) return; 
-            
-            const isOnline = onlineIds.includes(u.id);
-            const badge = u.unread > 0 ? 'block' : 'none';
-            
-            // Botões de Admin
-            let adminActions = ''; 
-            if (currentUser.is_super_admin) { 
-                const icon = u.is_super_admin ? '👑' : '☆'; 
-                const style = u.is_super_admin ? 'color:gold;' : 'color:#ccc;';
-                const btnSuper = `<button onclick="event.stopPropagation(); toggleSuper(${u.id})" style="background:none;border:none;cursor:pointer;font-size:1.2rem;${style}" title="Admin">${icon}</button>`;
-                const btnDelete = `<button onclick="event.stopPropagation(); deleteUserBtn(${u.id}, '${u.username}')" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:red;margin-left:5px;" title="Excluir">🗑️</button>`;
-                adminActions = `<div style="display:flex;">${btnSuper}${btnDelete}</div>`; 
-            }
-
-            const li = document.createElement('li');
-            if(u.unread > 0) li.style.backgroundColor = '#e8f5e9';
-
-            li.innerHTML = `
-                <div class="contact-left">
-                    <div class="avatar-wrapper">
-                        <img src="${getAvatarUrl(u.photo)}" class="list-avatar" onclick="event.stopPropagation(); window.openImageZoom(this.src)">
-                        <div class="${isOnline?'status-dot online':'status-dot'}"></div>
-                    </div>
-                    <div class="contact-info">
-                        <span class="contact-name" style="${u.unread > 0 ? 'font-weight:bold;color:#2e7d32;' : ''}">${u.username}</span>
-                        <span class="contact-dept">${u.department||''}</span>
-                    </div>
-                </div>
-                ${adminActions} 
-                <div class="unread-badge" style="display:${badge}">${u.unread}</div>
-            `;
-            li.onclick = () => window.openChat('private', u.id, u.username, li);
-            ulUsers.appendChild(li);
-        });
-    }
-
-    // --- 2. ORDENAÇÃO DE GRUPOS (IGUAL) ---
-    const ulGroups = document.getElementById('groups-list');
-    if(ulGroups) {
-        allGroups.sort((a, b) => {
-            if (b.unread > 0 && a.unread === 0) return 1;
-            if (a.unread > 0 && b.unread === 0) return -1;
-            
-            // Ordena grupos por atividade também
-            const dA = a.last_activity ? new Date(a.last_activity).getTime() : 0;
-            const dB = b.last_activity ? new Date(b.last_activity).getTime() : 0;
-            if (dB !== dA) return dB - dA;
-
-            return a.name.localeCompare(b.name);
-        });
-
-        ulGroups.innerHTML = '';
-        allGroups.forEach(g => {
-            const badge = g.unread > 0 ? 'block' : 'none';
-            const icon = g.is_broadcast ? '📢' : '#';
-            const li = document.createElement('li');
-            if(g.unread > 0) li.style.backgroundColor = '#e8f5e9';
-
-            li.innerHTML = `<div style="display:flex;align-items:center;"><b style="font-size:1.2rem;margin-right:10px;color:#555;">${icon}</b><span style="${g.unread > 0 ? 'font-weight:bold;color:#2e7d32;' : ''}">${g.name}</span></div><div class="unread-badge" style="display:${badge}">${g.unread}</div>`;
-            li.onclick = () => window.openChat('group', g.id, g.name, li);
-            ulGroups.appendChild(li);
-        });
-    }
-};
-
-window.updateMyInfo = function() {
-    document.getElementById('user-name').textContent = currentUser.username;
-    document.getElementById('user-dept').textContent = currentUser.department;
-    document.getElementById('my-avatar-img').src = getAvatarUrl(currentUser.photo);
-    const b1 = document.getElementById('btn-audit'), b2 = document.getElementById('btn-new-group');
-    if(b1) b1.style.display = currentUser.is_super_admin ? 'block' : 'none';
-    if(b2) b2.style.display = currentUser.is_super_admin ? 'inline-block' : 'none';
-};
-
-// --- PAGINAÇÃO ---
-window.loadChatHistory = async function(isLoadMore = false) {
-    if (!currentChatId) return;
+    ulUsers.innerHTML = ''; 
+    let uUnread = 0;
     
-    if (!isLoadMore) {
-        chatOffset = 0;
-        document.getElementById('messages').innerHTML = '';
-    } else {
-        chatOffset += 30;
-    }
+    // Deduplicação
+    const uniqueUsers = Array.from(new Set(allUsers.map(a => a.id))).map(id => allUsers.find(a => a.id === id));
 
-    try {
-        const res = await fetch(`/history/${currentUser.id}/${currentChatId}/${currentChatType}?offset=${chatOffset}`);
-        const newMessages = await res.json();
+    uniqueUsers.forEach(u => {
+        if(u.id === currentUser.id) return;
+        if(u.unread > 0) uUnread += u.unread;
+        const isOnline = onlineIds.includes(u.id);
+        const badge = u.unread > 0 ? 'block' : 'none';
+        let adminBtn = currentUser.is_super_admin ? `<button onclick="event.stopPropagation(); window.openAdminControl(${u.id})" style="background:none;border:none;cursor:pointer;color:#999;">⚙️</button>` : '';
         
-        const container = document.getElementById('messages');
-        const oldBtn = document.getElementById('btn-load-more');
-        if(oldBtn) oldBtn.remove();
-
-        if (newMessages.length === 0 && isLoadMore) {
-            return;
-        }
-
-        const oldHeight = container.scrollHeight;
+        const photoUrl = getAvatarUrl(u.photo);
+        const li = document.createElement('li');
+        li.setAttribute('data-search-name', (u.username||'').toLowerCase());
+        if(u.unread > 0) li.style.background = '#e8f5e9'; 
         
-        newMessages.forEach(m => {
-            if (isLoadMore) {
-                // Tratado abaixo
-            } else {
-                window.addMessageToScreen({ ...m, userId: m.user_id, msgType: m.msg_type, fileName: m.file_name, raw_time: m.timestamp }, false);
-            }
-        });
+        li.innerHTML = `
+        <div class="contact-left">
+            <div class="avatar-wrapper">
+                <img src="${photoUrl}" class="list-avatar" onclick="event.stopPropagation(); window.openImageZoom('${photoUrl}')">
+                <div class="${isOnline?'status-dot online':'status-dot'}"></div>
+            </div>
+            <div class="contact-info">
+                <span class="contact-name" style="${u.unread?'font-weight:bold;color:#2e7d32':''}">${u.username} ${u.is_super_admin?'👑':''}</span>
+                <span class="contact-dept">${u.department||''}</span>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;">
+            ${adminBtn}
+            <div class="unread-badge" style="display:${badge}">${u.unread}</div>
+        </div>`;
         
-        if (isLoadMore) {
-            for (let i = newMessages.length - 1; i >= 0; i--) {
-                const m = newMessages[i];
-                window.addMessageToScreen({ ...m, userId: m.user_id, msgType: m.msg_type, fileName: m.file_name, raw_time: m.timestamp }, true);
-            }
-        }
+        li.onclick = () => window.openChat('private', u.id, u.username, li);
+        ulUsers.appendChild(li);
+    });
 
-        if (newMessages.length >= 30) {
-            const btn = document.createElement('button');
-            btn.id = 'btn-load-more';
-            btn.className = 'load-more-btn';
-            btn.textContent = '🔄 Carregar mensagens anteriores';
-            btn.onclick = () => window.loadChatHistory(true);
-            container.insertBefore(btn, container.firstChild);
-        }
+    // 2. Groups
+    const ulGroups = document.getElementById('groups-list');
+    ulGroups.innerHTML = ''; 
+    let gUnread = 0;
+    
+    allGroups.sort((a,b) => {
+        const dA = a.last_activity ? new Date(a.last_activity).getTime() : 0; 
+        const dB = b.last_activity ? new Date(b.last_activity).getTime() : 0;
+        return dB - dA;
+    });
 
-        if (!isLoadMore) {
-            container.scrollTop = container.scrollHeight;
-        } else {
-            container.scrollTop = container.scrollHeight - oldHeight;
-            // Atualiza busca se existir
-            const searchInput = document.getElementById('chat-search-input');
-            if(searchInput && searchInput.value.trim() !== '') {
-                window.searchInChat(searchInput.value);
-            }
-        }
+    const uniqueGroups = Array.from(new Set(allGroups.map(a => a.id))).map(id => allGroups.find(a => a.id === id));
 
-    } catch(e) { console.error("Erro histórico", e); }
+    uniqueGroups.forEach(g => {
+        if(g.unread > 0) gUnread += g.unread;
+        const badge = g.unread > 0 ? 'block' : 'none';
+        const li = document.createElement('li');
+        li.setAttribute('data-search-name', (g.name||'').toLowerCase());
+        if(g.unread > 0) li.style.backgroundColor = '#e8f5e9';
+        li.innerHTML = `<div style="display:flex;align-items:center;"><b style="font-size:1.2rem;margin-right:10px;color:#555;">${g.is_broadcast?'📢':'#'}</b><span style="${g.unread?'font-weight:bold;color:#2e7d32':''}">${g.name}</span></div><div class="unread-badge" style="display:${badge}">${g.unread}</div>`;
+        li.onclick = () => window.openChat('group', g.id, g.name, li);
+        ulGroups.appendChild(li);
+    });
+
+    const bu = document.getElementById('badge-users'); if(bu) { bu.textContent = uUnread; bu.style.display = uUnread?'inline-block':'none'; }
+    const bg = document.getElementById('badge-groups'); if(bg) { bg.textContent = gUnread; bg.style.display = gUnread?'inline-block':'none'; }
+    const s = document.getElementById('contact-search'); if(s && s.value) window.filterContacts(s.value);
 };
 
-window.openChat = async function(type, id, name, el) {
+// 4. CHAT
+window.openChat = async (type, id, name, el) => {
     document.body.classList.add('mobile-active');
     document.getElementById('welcome-screen').style.display = 'none';
     document.getElementById('chat-interface').style.display = 'flex';
     document.getElementById('chat-title').textContent = name;
     
-    const searchInput = document.getElementById('chat-search-input');
-    if(searchInput) searchInput.value = '';
+    document.getElementById('btn-mark-unread').style.display = (type==='private')?'block':'none';
+    document.getElementById('group-settings-btn').style.display = (type==='group')?'block':'none';
+    
+    const sb = document.getElementById('search-box-chat'); if(sb) sb.style.display='none';
     window.searchInChat('');
 
     currentChatType = type; currentChatId = id; pinnedMessagesList = [];
-    document.getElementById('messages').innerHTML = ''; 
-    document.getElementById('pinned-bar').style.display = 'none';
-    window.cancelReply();
+    document.getElementById('messages').innerHTML = ''; window.cancelReply();
     
     document.querySelectorAll('li').forEach(x => x.classList.remove('active'));
     if(el) el.classList.add('active');
     
     const imgH = document.getElementById('chat-header-img'); 
-    const btnG = document.getElementById('group-settings-btn'); 
+    const deptSpan = document.getElementById('chat-dept');
     const form = document.getElementById('form'); 
     const note = document.getElementById('broadcast-notice');
-    const deptSpan = document.getElementById('chat-dept');
 
     if(type === 'group') {
-        imgH.style.display = 'none'; btnG.style.display = 'block';
-        if(deptSpan) deptSpan.textContent = "Grupo";
-        const g = allGroups.find(x => x.id == id);
-        if(g) { g.unread = 0; window.renderLists(); }
-        if(g && g.is_broadcast && !g.is_admin && !currentUser.is_super_admin) { form.style.display = 'none'; note.style.display = 'block'; } else { form.style.display = 'flex'; note.style.display = 'none'; }
+        if(imgH) imgH.style.display='none'; if(deptSpan) deptSpan.textContent="Grupo";
+        fetch('/group/mark-read', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupId: id, userId: currentUser.id }) });
+        const g = allGroups.find(x => x.id == id); if(g) { g.unread=0; window.renderLists(); }
+        if(g && g.is_broadcast && !g.is_admin && !currentUser.is_super_admin) { if(form) form.style.display='none'; if(note) note.style.display='block'; } 
+        else { if(form) form.style.display='flex'; if(note) note.style.display='none'; }
     } else {
-        imgH.style.display = 'block'; btnG.style.display = 'none'; form.style.display = 'flex'; note.style.display = 'none';
-        const u = allUsers.find(x => x.id == id); 
-        if(u) { imgH.src = getAvatarUrl(u.photo); if(deptSpan) deptSpan.textContent = u.department || ''; }
-        window.markAsRead(id); const myU = allUsers.find(x=>x.id==id); if(myU) { myU.unread=0; window.renderLists(); }
+        if(imgH) imgH.style.display='block'; if(form) form.style.display='flex'; if(note) note.style.display='none';
+        const u = allUsers.find(x => x.id == id); if(u) { if(imgH) imgH.src=getAvatarUrl(u.photo); if(deptSpan) deptSpan.textContent=u.department||''; u.unread=0; window.renderLists(); window.markAsRead(id); }
     }
     
+    chatOffset = 0;
     await window.loadChatHistory(false);
     window.loadPinnedMessages(id, type);
+    window.scrollToBottom();
+    setTimeout(window.scrollToBottom, 100);
+    setTimeout(window.scrollToBottom, 300);
 };
 
-window.addMessageToScreen = function(data, prepend = false) {
-    if (document.getElementById(`msg-${data.id}`)) return;
-    
-    // --- FIX 1: DEFINIÇÃO SEGURA DO NOME (Para o botão Responder funcionar sempre) ---
-    const displayName = data.user || data.username || 'Desconhecido';
-    
+window.loadChatHistory = async (isLoadMore=false) => {
+    if(!currentChatId) return;
+    if(isLoadMore) chatOffset+=30; else chatOffset=0;
+    try {
+        const res = await fetch(`/history/${currentUser.id}/${currentChatId}/${currentChatType}?offset=${chatOffset}`);
+        const msgs = await res.json();
+        const container = document.getElementById('messages');
+        if(!container) return;
+
+        const oldBtn = document.getElementById('btn-load-more');
+        if(oldBtn) oldBtn.remove();
+        if(msgs.length===0 && isLoadMore) return;
+        
+        const oldScroll = container.scrollHeight;
+        const render = (m, top) => window.addMessageToScreen({ ...m, userId: m.user_id, msgType: m.msg_type, fileName: m.file_name, raw_time: m.timestamp, reactions: m.reactions||[], is_read: m.is_read }, top);
+        
+        if(!isLoadMore) msgs.forEach(m => render(m, false)); else for(let i=msgs.length-1; i>=0; i--) render(msgs[i], true);
+
+        if(msgs.length>=30) {
+            const btn = document.createElement('button');
+            btn.id='btn-load-more'; btn.className='load-more-btn'; btn.textContent='🔄 Mais';
+            btn.onclick = () => window.loadChatHistory(true);
+            container.insertBefore(btn, container.firstChild);
+        }
+        
+        if(!isLoadMore) {
+            window.scrollToBottom();
+            setTimeout(window.scrollToBottom, 200); 
+        } else {
+            container.scrollTop = container.scrollHeight - oldScroll;
+        }
+    } catch(e) { console.error(e); }
+};
+
+window.addMessageToScreen = (data, prepend=false) => {
+    if(document.getElementById(`msg-${data.id}`)) return;
+    if (data.msgType === 'system') {
+        const div = document.createElement('div');
+        div.className = 'system-msg-container';
+        div.id = `msg-${data.id}`;
+        div.innerHTML = `<span class="system-msg-pill">${data.text}</span>`;
+        
+        const container = document.getElementById('messages'); 
+        if(prepend) { 
+            const btn = document.getElementById('btn-load-more'); 
+            if(btn) container.insertBefore(div, btn.nextSibling); 
+            else container.insertBefore(div, container.firstChild); 
+        } else { 
+            container.appendChild(div); 
+            container.scrollTop = container.scrollHeight; 
+        }
+        return; // Para por aqui, não renderiza balão normal
+    }
     const div = document.createElement('div');
     const isMine = data.userId == currentUser.id;
     div.className = isMine ? 'msg-container mine' : 'msg-container other';
     div.id = `msg-${data.id}`;
-    
-    // --- FIX 2: DATA PARA O SEPARADOR (Estilo WhatsApp) ---
     if(data.raw_time) div.setAttribute('data-date', data.raw_time);
-    // -----------------------------------------------------
 
-    // Mantém o menu de opções no mobile (clique na mensagem)
-    div.onclick = function(e) {
-        if (e.target.closest('.msg-btn') || e.target.tagName === 'IMG') return; 
-        document.querySelectorAll('.msg-container.show-menu').forEach(el => {
-            if (el !== div) el.classList.remove('show-menu');
+    let editedHtml = data.is_edited ? `<small class="edited-label" style="font-size:0.7rem; color:#999; margin-left:5px;">Editada ${new Date(data.raw_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</small>` : '';
+    let content = `<span id="msg-text-${data.id}" class="msg-text">${formatMessage(data.text)}</span>${editedHtml}`;
+    
+    if(data.reply_text) {
+        content = `<div class="reply-container" onclick="window.scrollToMsg(${data.reply_to_id})"><div class="reply-author">${data.reply_user}</div><div class="reply-preview">${formatMessage(data.reply_text).substring(0,60)}...</div></div>` + content;
+    }
+
+    if(data.fileName) {
+        const ext = data.fileName.split('.').pop().toLowerCase();
+        const isImg = ['jpg','jpeg','png','gif','webp'].includes(ext);
+        const url = `/uploads/${data.fileName}`;
+        if(isImg) {
+            content = `<div class="image-wrapper"><img src="${url}" class="chat-image-preview" onclick="event.stopPropagation(); window.openImageZoom('${url}')" onload="window.scrollToBottom()"><a href="${url}" download="${data.fileName}" class="download-btn-overlay">⬇️ Baixar</a></div>`;
+            if(data.text && data.text!==data.fileName) content += `<div class="image-caption"><span id="msg-text-${data.id}">${formatMessage(data.text)}</span>${editedHtml}</div>`;
+        } else {
+            content = `<a href="${url}" target="_blank" class="chat-file-link">📎 ${data.fileName}</a>`;
+        }
+    }
+    if(data.is_deleted) content = `<span class="deleted">🚫 Apagada</span>`;
+    
+    let reactionsHtml = `<div class="reactions-bar" id="reacts-${data.id}">`;
+    if(data.reactions && data.reactions.length > 0) {
+        const counts = {}; 
+        const names = {};
+        
+        data.reactions.forEach(r => { 
+            counts[r.r] = (counts[r.r] || 0) + 1; 
+            const u = allUsers.find(x => x.id == r.u);
+            const name = u ? u.username : 'Alguém';
+            if(!names[r.r]) names[r.r] = [];
+            names[r.r].push(name);
         });
-        this.classList.toggle('show-menu');
-    };
-    
-    const avatar = isMine ? '' : `<img src="${getAvatarUrl(data.photo)}" class="chat-msg-avatar" onclick="window.openImageZoom(this.src)">`;
-    let content = '';
-    
-    // Renderiza a mensagem citada (se houver)
-    if (data.reply_text && !data.is_deleted) { 
-        const replyContent = (data.reply_type === 'file' || data.reply_type === 'file') ? '📎 Anexo' : formatMessage(data.reply_text);
-        content += `
-            <div class="quoted-msg" onclick="event.stopPropagation(); scrollToMsg(${data.reply_to_id})">
-                <div class="quoted-user">${data.reply_user || 'Usuário'}</div>
-                <div class="quoted-text">${replyContent}</div>
-            </div>`; 
-    }
-    
-    const finalFileName = data.fileName || data.file_name;
-    
-    // Lógica de Arquivos vs Texto
-    if (data.is_deleted) {
-        content += `<div class="deleted-content">🚫 Mensagem apagada</div>`;
-    } else if (data.msgType === 'file' || data.msg_type === 'file') {
-        const ext = (finalFileName||'').split('.').pop().toLowerCase();
-        const path = `/uploads/${finalFileName}`;
-        
-        // Renderiza a Imagem/Vídeo/Arquivo
-        if(['jpg','jpeg','png','gif'].includes(ext)) { 
-            content += `<a href="javascript:void(0)" onclick="event.stopPropagation(); window.openImageZoom('${path}')"><img src="${path}" class="chat-image" style="max-width:250px;border-radius:10px;cursor:pointer;"></a>`; 
-        }
-        else if (['mp4','webm'].includes(ext)) { 
-            content += `<video src="${path}" controls class="chat-video" style="max-width:300px;border-radius:10px;" onclick="event.stopPropagation()"></video>`; 
-        }
-        else { 
-            content += `<a href="${path}" target="_blank" class="chat-file-link" style="display:block;padding:10px;background:#f0f0f0;border-radius:5px;text-decoration:none;color:#333;" onclick="event.stopPropagation()">📄 Baixar: ${finalFileName}</a>`; 
-        }
 
-        // Legenda do arquivo
-        if (data.text && data.text !== finalFileName && data.text !== data.originalName) {
-            content += `<div class="file-caption">${formatMessage(data.text)}</div>`;
+        for (const [emoji, count] of Object.entries(counts)) { 
+            const txt = count > 1 ? `${emoji} ${count}` : emoji; 
+            const people = names[emoji].join(', ');
+            reactionsHtml += `<span class="reaction-bubble" title="${people}">${txt}</span>`; 
         }
-
-    } else { 
-        // Texto normal
-        content += `<span id="msg-text-${data.id}">${formatMessage(data.text)}</span>`; 
     }
-    
-    // Rodapé (Hora e Ticks)
-    let infoHtml = `<small>${data.time}</small>`;
-    if (data.is_edited) infoHtml += `<span class="edited-tag" id="edit-tag-${data.id}">(editado)</span>`;
-    if (isMine) {
-        const tickClass = data.is_read ? 'read-ticks read' : 'read-ticks';
-        infoHtml += `<span class="${tickClass}" id="tick-${data.id}">✔✔</span>`;
+    reactionsHtml += `</div>`;
+
+    let menuBtn = '';
+    if (!data.is_deleted) menuBtn = `<button class="msg-menu-btn" onclick="toggleMsgMenu(${data.id}, this)">⌄</button>`;
+
+    const safeUser = (data.user||data.username||"").replace(/'/g, "\\'");
+    const safeText = (data.text||"").replace(/'/g, "\\'").replace(/\n/g, " ");
+
+    let menuHtml = `
+    <div class="msg-dropdown" id="menu-${data.id}" style="display:none;">
+        <div class="reaction-row">
+            <span onclick="sendReaction(${data.id},'👍')">👍</span><span onclick="sendReaction(${data.id},'❤️')">❤️</span><span onclick="sendReaction(${data.id},'😂')">😂</span><span onclick="sendReaction(${data.id},'😮')">😮</span><span onclick="sendReaction(${data.id},'😢')">😢</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" onclick="replyMessage(${data.id}, '${safeUser}', '${safeText.substring(0,30)}')">↩️ Responder</div>
+        ${(isMine) ? `<div class="menu-item" onclick="editMessage(${data.id}, '${safeText}')">✏️ Editar</div>` : ''}
+        ${(currentUser.is_super_admin || isMine) ? `<div class="menu-item" onclick="deleteMessage(${data.id})">🗑️ Apagar</div>` : ''}
+        <div class="menu-item" onclick="pinMessage(${data.id})">📌 Fixar</div>
+    </div>`;
+
+    let statusHtml = '';
+    if(isMine) {
+        const statusClass = data.is_read ? 'read' : '';
+        statusHtml = `<span class="msg-status read-ticks ${statusClass}">✓✓</span>`; 
     }
 
-    const header = `<div class="msg-header"><span>${displayName}</span> <div class="msg-info-right">${infoHtml}</div></div>`;
-    
-    // Botões de Ação (Responder, Fixar, Apagar)
-    let actions = '';
-    if (!data.is_deleted) {
-        // --- FIX 3: Sanitização do texto para o botão de responder não quebrar ---
-        let rawText = (data.msgType === 'file' || data.msg_type === 'file') ? '📎 Arquivo' : (data.text || '');
-        const safeTxt = rawText.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' '); 
-        // ------------------------------------------------------------------------
-        
-        let canPin = (currentChatType === 'private') || currentUser.is_super_admin;
-        if(currentChatType === 'group') { const g = allGroups.find(x=>x.id==currentChatId); if(g && (g.is_admin || currentUser.is_super_admin)) canPin = true; }
-        
-        // Regra de tempo para apagar (10 minutos) ou Admin total
-        let canDel = currentUser.is_super_admin || (isMine && (new Date() - new Date(data.raw_time))/60000 < 10);
-        
-        actions = `<div class="msg-actions">
-            <button class="msg-btn reply" onclick="event.stopPropagation(); replyMessage(${data.id}, '${displayName}', '${safeTxt}')" title="Responder">↩️</button>
-            ${canPin ? `<button class="msg-btn pin" onclick="event.stopPropagation(); pinMessage(${data.id})" title="Fixar">📌</button>` : ''}
-            ${(canDel && isMine && (!data.msgType || data.msgType === 'text')) ? `<button class="msg-btn edit" onclick="event.stopPropagation(); editMessage(${data.id}, '${safeTxt}')" title="Editar">✏️</button>` : ''}
-            ${canDel ? `<button class="msg-btn delete" onclick="event.stopPropagation(); deleteMessage(${data.id})" title="Apagar">🗑️</button>` : ''}
-        </div>`;
+    let avatarHtml = '';
+    if(!isMine) {
+        let photoUrl = '/avatar.png';
+        const sender = allUsers.find(u => u.id == data.userId);
+        if(sender) photoUrl = getAvatarUrl(sender.photo);
+        else if(data.user_photo) photoUrl = getAvatarUrl(data.user_photo);
+        avatarHtml = `<img src="${photoUrl}" class="chat-msg-avatar" onclick="event.stopPropagation(); window.openImageZoom('${photoUrl}')" title="${data.user||''}">`;
     }
-    
-    div.innerHTML = isMine 
-        ? `${actions}<div class="message-bubble" id="msg-bubble-${data.id}">${header}${content}</div>` 
-        : `${avatar}<div class="message-bubble" id="msg-bubble-${data.id}">${header}${content}</div>${actions}`;
+
+    if(isMine) {
+        div.innerHTML = `${menuBtn}<div class="message-bubble" id="msg-bubble-${data.id}"><div class="msg-header"><b>Você</b> <small>${data.time}</small></div>${content}${reactionsHtml}<div style="text-align:right; margin-top:-5px;">${statusHtml}</div></div>${menuHtml}`;
+    } else {
+        div.innerHTML = `${avatarHtml}<div class="message-bubble" id="msg-bubble-${data.id}"><div class="msg-header"><b>${data.user||data.username}</b> <small>${data.time}</small></div>${content}${reactionsHtml}</div>${menuBtn}${menuHtml}`;
+    }
         
     const container = document.getElementById('messages'); 
-    
-    if (prepend) {
-        const loadBtn = document.getElementById('btn-load-more');
-        if (loadBtn && loadBtn.nextSibling) {
-            container.insertBefore(div, loadBtn.nextSibling);
-        } else {
-            container.insertBefore(div, container.firstChild);
-        }
-    } else {
-        container.appendChild(div); 
-        const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
-        if (isMine || isAtBottom) {
-            container.scrollTop = container.scrollHeight;
-        }
-    }
-
-    // --- FIX 4: Atualiza os separadores de data ao final ---
+    if(prepend) { const btn = document.getElementById('btn-load-more'); if(btn) container.insertBefore(div, btn.nextSibling); else container.insertBefore(div, container.firstChild); } 
+    else { container.appendChild(div); if(isMine) container.scrollTop = container.scrollHeight; }
     setTimeout(() => window.updateDateSeparators(), 10);
 };
 
-window.searchInChat = function(term) {
-    document.querySelectorAll('.msg-container').forEach(el => {
-        el.querySelector('.message-bubble').style.background = ''; 
-    });
-    
-    if (!term || term.trim() === '') {
-        searchResults = [];
-        searchIndex = -1;
-        const countDisplay = document.getElementById('search-count-display');
-        if(countDisplay) countDisplay.textContent = '';
-        return;
-    }
-
-    searchResults = [];
-    const t = term.toLowerCase();
-    const msgs = document.querySelectorAll('.msg-container');
-    
-    msgs.forEach(msg => {
-        const bubble = msg.querySelector('.message-bubble');
-        if (bubble && bubble.textContent.toLowerCase().includes(t)) {
-            searchResults.push(msg);
+window.toggleMsgMenu = (id, btnElement) => {
+    const menu = document.getElementById(`menu-${id}`);
+    if(!menu) return;
+    const isVisible = menu.style.display === 'block';
+    document.querySelectorAll('.msg-dropdown').forEach(m => m.style.display='none');
+    if(!isVisible) {
+        menu.style.display = 'block';
+        if(btnElement) {
+            const rect = btnElement.getBoundingClientRect();
+            if(window.innerHeight - rect.bottom < 200) menu.classList.add('upwards'); else menu.classList.remove('upwards');
         }
-    });
-
-    if (searchResults.length > 0) {
-        searchIndex = searchResults.length - 1; 
-        updateSearchUI();
-        scrollToSearchResult();
-    } else {
-        searchIndex = -1;
-        const countDisplay = document.getElementById('search-count-display');
-        if(countDisplay) countDisplay.textContent = '0/0';
+        setTimeout(() => { document.addEventListener('click', function close(e) { if(!e.target.closest(`#menu-${id}`) && !e.target.closest(`.msg-menu-btn`)) { menu.style.display='none'; document.removeEventListener('click', close); } }); }, 10);
     }
 };
 
-window.nextSearch = function() {
-    if (searchResults.length === 0) return;
-    searchIndex++;
-    if (searchIndex >= searchResults.length) searchIndex = 0;
-    updateSearchUI();
-    scrollToSearchResult();
-};
-
-window.prevSearch = function() {
-    if (searchResults.length === 0) return;
-    searchIndex--;
-    if (searchIndex < 0) searchIndex = searchResults.length - 1;
-    updateSearchUI();
-    scrollToSearchResult();
-};
-
-function updateSearchUI() {
-    const total = searchResults.length;
-    const current = searchIndex + 1;
-    const countDisplay = document.getElementById('search-count-display');
-    if(countDisplay) countDisplay.textContent = `${current}/${total}`;
-}
-
-function scrollToSearchResult() {
-    const el = searchResults[searchIndex];
-    if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const bubble = el.querySelector('.message-bubble');
-        document.querySelectorAll('.message-bubble').forEach(b => b.style.background = '');
-        bubble.style.background = '#fff59d'; 
-    }
-}
-
-window.openUpdatesModal = function() {
-    const modal = document.getElementById('updates-modal');
-    if(modal) modal.style.display = 'flex';
-};
-
-// --- FORMATADOR DE TEXTO ---
-function formatMessage(text) {
-    if (!text) return '';
-    let safe = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    safe = safe.replace(/\*(.*?)\*/g, '<b>$1</b>');
-    safe = safe.replace(/\n/g, '<br>');
-    return safe;
-}
-
-window.autoResize = function(el) {
-    el.style.height = '45px';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-};
-
-window.checkEnter = function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        window.sendMessage();
-    }
-    window.autoResize(e.target);
-};
-
-window.filterContacts = function(searchTerm) {
-    const term = searchTerm.toLowerCase();
-    const items = document.querySelectorAll('#users-list li');
-    items.forEach(item => {
-        const name = item.querySelector('.contact-info span').textContent.toLowerCase();
-        if (name.includes(term)) item.style.display = 'flex';
-        else item.style.display = 'none';
-    });
-};
-
-window.openImageZoom = function(src) {
-    const modal = document.getElementById('image-zoom-modal');
-    const target = document.getElementById('img-zoom-target');
-    if (modal && target) {
-        target.src = src;
-        modal.style.display = 'flex';
-    }
-};
-window.closeImageZoom = function() { 
-    const modal = document.getElementById('image-zoom-modal');
-    if(modal) modal.style.display = 'none'; 
-};
-
-window.closeChat = function() {
-    document.body.classList.remove('mobile-active');
-    document.getElementById('chat-interface').style.display = 'none';
-    document.getElementById('welcome-screen').style.display = 'flex';
-    currentChatId = null; currentChatType = null;
-    document.querySelectorAll('li').forEach(x => x.classList.remove('active'));
-    try { notificationSound.pause(); notificationSound.currentTime = 0; } catch(e){}
-};
-
-window.sendMessage = function() {
+window.sendMessage = () => {
     const input = document.getElementById('input');
-    const text = input.value;
-    if (text && currentChatId) {
-        socket.emit('chat message', { userId: currentUser.id, msg: text, targetId: currentChatId, targetType: currentChatType, replyToId: replyingTo ? replyingTo.id : null });
-        
-        // --- ATUALIZA A LISTA IMEDIATAMENTE AO ENVIAR ---
-        if (currentChatType === 'private') {
-            const u = allUsers.find(x => x.id == currentChatId);
-            if(u) {
-                u.last_activity = new Date(); // Atualiza data
-                window.renderLists(); // Reordena lista
-            }
-        }
-        // ------------------------------------------------
-
-        input.value = ''; 
-        input.style.height = '45px'; 
-        window.cancelReply(); 
-        input.focus();
+    if(input.value.trim() && currentChatId) {
+        socket.emit('chat message', { 
+            userId: currentUser.id, 
+            msg: input.value, 
+            targetId: currentChatId, 
+            targetType: currentChatType, 
+            replyToId: replyingTo ? replyingTo.id : null 
+        });
+        if(currentChatType === 'private') { const u = allUsers.find(x => x.id == currentChatId); if(u) { u.last_activity = new Date(); window.renderLists(); } }
+        input.value = ''; window.cancelReply();
     }
 };
 
-/* Substitua a função window.uploadFile inteira por esta: */
-/* Substitua toda a função window.uploadFile por esta: */
-window.uploadFile = async function(fileFromPaste = null) {
-    if(isUploading) return;
-    
-    // 1. Captura o arquivo (do colar ou do botão)
-    let file;
-    if (fileFromPaste && fileFromPaste instanceof File) {
-        file = fileFromPaste;
-    } else {
-        const input = document.getElementById('file-input');
-        if(!input || !input.files.length) return;
-        file = input.files[0];
-    }
-    if(!file || !currentChatId) return;
+// 5. SOCKET LISTENERS
+socket.on('error message', (msg) => { try { notificationSound.play().catch(e => {}) } catch(e){} alert(msg); if(currentChatId) window.loadChatHistory(false); });
 
-    // 2. CAPTURA A LEGENDA (O que está digitado no input de texto)
-    const textInput = document.getElementById('input');
-    const caption = textInput.value.trim(); // Pega o texto e remove espaços extras
-
-    isUploading = true; 
-    document.body.style.cursor = 'wait'; 
-    
-    try {
-        const fd = new FormData(); 
-        fd.append('file', file);
-        
-        const res = await fetch('/upload', { method:'POST', body:fd });
-        const data = await res.json();
-        
-        if(data.success) {
-            // 3. ENVIA COM LEGENDA
-            // Se tiver legenda (caption), usa ela. Se não, usa o nome do arquivo original.
-            const msgContent = caption.length > 0 ? caption : data.originalName;
-
-            socket.emit('chat message', { 
-                userId: currentUser.id, 
-                msg: msgContent, // Aqui vai a legenda!
-                targetId: currentChatId, 
-                targetType: currentChatType, 
-                msgType: 'file', 
-                fileName: data.filename 
-            });
-            
-            // 4. LIMPA O CAMPO DE TEXTO APÓS ENVIAR
-            textInput.value = '';
-            textInput.style.height = '45px'; // Reseta altura se tiver crescido
-        }
-    } catch(e) { 
-        console.error(e); 
-        alert("Erro ao enviar arquivo."); 
-    } finally { 
-        document.body.style.cursor = 'default'; 
-        const fileInput = document.getElementById('file-input');
-        if(fileInput) { fileInput.value = ''; fileInput.disabled = false; }
-        isUploading = false; 
-    }
-};
-
-// UTILITÁRIOS
-window.markAsRead = async function(sid) { await fetch('/mark-read', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({myId:currentUser.id, senderId:sid}) }); };
-window.pinMessage = async function(mid) { await fetch('/message/pin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({messageId:mid, targetId:currentChatId, targetType:currentChatType, userId:currentUser.id, action:'pin'}) }); };
-window.unpinMessage = async function(mid) { await fetch('/message/pin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({messageId:mid, targetId:currentChatId, targetType:currentChatType, userId:currentUser.id, action:'unpin'}) }); };
-window.deleteMessage = async function(mid) { if(confirm('Excluir?')) await fetch('/message/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({messageId:mid}) }); };
-window.editMessage = function(id, txt) { const n=prompt('Editar:',txt); if(n&&n!==txt) fetch('/message/edit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({messageId:id, userId:currentUser.id, newText:n}) }); };
-window.replyMessage = function(id, user, text) { replyingTo = {id, user, text}; document.getElementById('reply-area').style.display = 'flex'; document.getElementById('reply-user').textContent = user; document.getElementById('reply-text').textContent = text; document.getElementById('input').focus(); };
-window.cancelReply = function() { replyingTo = null; document.getElementById('reply-area').style.display='none'; };
-window.scrollToMsg = function(id) { const el = document.getElementById(`msg-${id}`); if(el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.style.background='#fff9c4'; setTimeout(()=>el.style.background='', 1500); } };
-window.logout = function() { localStorage.removeItem('chatUser'); window.location.href='/'; };
-window.stopBlinking = function() { clearInterval(blinkInterval); blinkInterval=null; unreadCountGlobal=0; document.title=originalTitle; };
-// Substitua a função window.notifyUser por esta:
-window.notifyUser = function(data, title) {
-    // 1. Tenta tocar o som (para quem tem)
-    try { notificationSound.play(); } catch(e){}
-
-    // 2. Se a aba estiver escondida/minimizada
-    if(document.hidden) {
-        unreadCountGlobal++;
-        window.startBlinking();
-
-        // --- NOVO: NOTIFICAÇÃO VISUAL DO WINDOWS ---
-        if ("Notification" in window && Notification.permission === "granted") {
-            const notificationTitle = title || "NeuroChat";
-            const notificationBody = data.targetType === 'group' 
-                ? `Nova mensagem no grupo ${title}` 
-                : `Mensagem de ${data.user || data.username}`;
-
-            const notif = new Notification(notificationTitle, {
-                body: notificationBody,
-                icon: '/avatar.png', // Ou o ícone da sua empresa
-                tag: 'neurochat-msg', // Evita spam de muitas janelas, substitui a anterior
-                silent: true // Já tocamos o som via JS
-            });
-
-            // Ao clicar na notificação, foca na janela do chat
-            notif.onclick = function() {
-                window.focus();
-                this.close();
-            };
-        }
-        // ------------------------------------------
-    }
-};
-window.startBlinking = function() { if(!blinkInterval) blinkInterval=setInterval(()=>{ document.title = document.title===originalTitle ? `(${unreadCountGlobal}) Nova Mensagem!` : originalTitle; }, 1000); };
-window.loadPinnedMessages = async function(tid, type) { if(tid != currentChatId) return; const r = await fetch('/chat/get-pinned', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({myId:currentUser.id, targetId:tid, type}) }); const d = await r.json(); pinnedMessagesList = d.pinnedMessages || []; if(pinnedIndex >= pinnedMessagesList.length) pinnedIndex = 0; window.updatePinUI(); };
-window.updatePinUI = function() { const bar = document.getElementById('pinned-bar'); bar.style.display = 'none'; bar.innerHTML = ''; if(pinnedMessagesList.length > 0) { bar.style.display = 'flex'; const msg = pinnedMessagesList[pinnedIndex]; const txt = (msg.msgType === 'file' || msg.msg_type === 'file') ? '📎 Arquivo' : msg.text; const nav = pinnedMessagesList.length > 1 ? `<span onclick="prevPin()" style="cursor:pointer;margin-right:10px;">❮</span> ${pinnedIndex+1}/${pinnedMessagesList.length} <span onclick="nextPin()" style="cursor:pointer;margin-left:10px;">❯</span>` : ''; bar.innerHTML = `<div id="pinned-content" style="flex:1;display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="scrollToMsg(${msg.id})">${nav} <span><b>${msg.username}:</b> ${txt}</span></div><button onclick="event.stopPropagation(); unpinMessage(${msg.id})" style="background:none;border:none;color:#555;font-weight:bold;cursor:pointer;font-size:1.2rem;padding:0 10px;">✕</button>`; } };
-window.nextPin = function() { pinnedIndex = (pinnedIndex+1)%pinnedMessagesList.length; window.updatePinUI(); };
-window.prevPin = function() { pinnedIndex = (pinnedIndex-1+pinnedMessagesList.length)%pinnedMessagesList.length; window.updatePinUI(); };
-window.openAuditModal = function() { const a=document.getElementById('audit-user-a'), b=document.getElementById('audit-user-b'); let o='<option value="">Selecione...</option>'; allUsers.forEach(u=>o+=`<option value="${u.id}">${u.username}</option>`); a.innerHTML=o; b.innerHTML=o; document.getElementById('audit-modal').style.display='flex'; };
-window.loadAuditHistory = async function() { const ua=document.getElementById('audit-user-a').value, ub=document.getElementById('audit-user-b').value; const d=document.getElementById('audit-results'); if(!ua||!ub) return alert('Selecione dois usuários'); d.innerHTML='Carregando...'; const r=await fetch('/audit/get-history',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({adminId:currentUser.id, userA:ua, userB:ub}) }); const j=await r.json(); let h=''; j.rows.forEach(m=>{h+=`<div style="background:#fff;padding:5px;margin:5px;border-radius:5px;"><b>${m.username}</b> (${m.time}): ${m.text}</div>`}); d.innerHTML=h||'Nenhuma conversa encontrada.'; };
-// FUNÇÕES DE PERFIL RESTAURADAS
-window.openProfileModal = function() { 
-    document.getElementById('profile-username').value = currentUser.username; 
-    const deptSelect = document.getElementById('profile-department'); 
-    if(deptSelect) deptSelect.value = currentUser.department || ""; 
-    document.getElementById('profile-password').value = ''; 
-    document.getElementById('profile-photo-input').value = ''; 
-    document.getElementById('profile-modal').style.display = 'flex'; 
-};
-window.saveProfile = async function() { const newName = document.getElementById('profile-username').value.trim(); const newDept = document.getElementById('profile-department').value; const p = document.getElementById('profile-password').value; const f = document.getElementById('profile-photo-input').files[0]; if(!newName) return alert("O nome não pode ficar vazio."); if(!newDept) return alert("Selecione um departamento."); const fd = new FormData(); fd.append('userId', currentUser.id); fd.append('username', newName); fd.append('department', newDept); if(p) fd.append('password', p); if(f) fd.append('photo', f); try { const res = await fetch('/update-profile', { method:'POST', body:fd }); const data = await res.json(); if (data.success) { alert('Perfil atualizado!'); document.getElementById('profile-modal').style.display='none'; } else { alert(data.message || "Erro ao atualizar."); } } catch(e) { console.error(e); alert("Erro de conexão."); } };
-
-// FUNÇÕES DE GRUPO (RESTAURADAS)
-window.openModalCreate = function() { const list = document.getElementById('modal-users-list'); list.innerHTML = ''; const header = document.createElement('div'); header.style.padding = '10px'; header.style.borderBottom = '1px solid #ddd'; header.style.fontWeight = 'bold'; header.innerHTML = `<input type="checkbox" id="master-check" onchange="toggleAll(this)"> Selecionar Todos`; list.appendChild(header); allUsers.forEach(u => { if(u.id !== currentUser.id) { const div = document.createElement('div'); div.className = 'user-checkbox-item'; div.innerHTML = `<input type="checkbox" class="user-sel" value="${u.id}"> ${u.username}`; list.appendChild(div); } }); document.getElementById('group-modal').style.display = 'flex'; };
-window.toggleAll = function(source) { document.querySelectorAll('.user-sel').forEach(c => c.checked = source.checked); };
-window.createGroup = async function() { const name = document.getElementById('new-group-name').value; const isB = document.getElementById('is-broadcast').checked; const members = Array.from(document.querySelectorAll('.user-sel:checked')).map(x => x.value); if(!name || members.length === 0) return alert('Preencha o nome e selecione membros.'); await fetch('/create-group', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, creatorId: currentUser.id, members, isBroadcast: isB }) }); document.getElementById('group-modal').style.display = 'none'; };
-window.toggleSuper = async function(targetUserId) { if(!confirm("Alterar privilégio de Admin?")) return; await fetch('/toggle-super-admin', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ requesterId: currentUser.id, targetUserId }) }); };
-window.openGroupSettings = function() { document.getElementById('settings-modal').style.display = 'flex'; window.loadGroupSettings(); };
-window.loadGroupSettings = async function() { const list = document.getElementById('settings-members-list'); list.innerHTML = 'Carregando...'; const res = await fetch(`/group-details/${currentChatId}`); const mems = await res.json(); const meIn = mems.find(m => m.id == currentUser.id); const isAdmin = (meIn && meIn.is_admin) || currentUser.is_super_admin; const btnLeave = document.getElementById('btn-leave'); const btnDel = document.getElementById('btn-delete'); const addArea = document.getElementById('add-member-area'); if(btnLeave) btnLeave.style.display = isAdmin ? 'none' : 'block'; if(btnDel) btnDel.style.display = isAdmin ? 'block' : 'none'; if(addArea) addArea.style.display = isAdmin ? 'block' : 'none'; list.innerHTML = ''; mems.forEach(m => { const badge = m.is_admin ? '⭐' : ''; let acts = ''; if(isAdmin && m.id !== currentUser.id) acts = `<button class="btn-remove" onclick="removeMember(${m.id})">Remover</button> <button class="btn-promote" onclick="promoteMember(${m.id})">Admin</button>`; list.innerHTML += `<div class="member-item"><span>${badge} ${m.username}</span><div>${acts}</div></div>`; }); if(isAdmin) { const sel = document.getElementById('add-member-select'); sel.innerHTML = ''; allUsers.filter(u => !mems.find(m => m.id == u.id)).forEach(u => sel.innerHTML += `<option value="${u.id}">${u.username}</option>`); } };
-window.addMember = async function() { const uid = document.getElementById('add-member-select').value; if(uid) { await fetch('/group/add-member', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:currentChatId, userId:uid}) }); window.loadGroupSettings(); } };
-window.addNewMember = function() { window.addMember(); };
-window.removeMember = async function(uid) { if(confirm('Remover?')) await fetch('/group/remove-member', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:currentChatId, userId:uid}) }); window.loadGroupSettings(); };
-window.promoteMember = async function(uid) { if(confirm('Tornar admin?')) await fetch('/group/promote', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:currentChatId, userId:uid}) }); window.loadGroupSettings(); };
-window.leaveGroup = async function() { if(confirm('Sair?')) { await fetch('/group/leave', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:currentChatId, userId:currentUser.id}) }); document.getElementById('settings-modal').style.display='none'; window.closeChat(); } };
-window.deleteGroup = async function() { if(confirm('Excluir?')) { await fetch('/group/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:currentChatId}) }); document.getElementById('settings-modal').style.display='none'; window.closeChat(); } };
-
-// LISTENERS
-socket.on('update online list', (ids) => { onlineIds = ids; window.renderLists(); });
-socket.on('refresh data', () => { window.loadData(); });
 socket.on('chat message', (data) => {
-    data.fileName = data.fileName || data.file_name; 
-    data.msgType = data.msgType || data.msg_type;
-    const isMine = data.userId == currentUser.id;
+        // LÓGICA DE VISIBILIDADE:
+        // A mensagem deve aparecer na tela SE:
+        // 1. É um GRUPO e eu estou com esse grupo aberto.
+        // 2. É PRIVADO e eu estou falando com quem enviou.
+        // 3. É PRIVADO e EU enviei (de outra aba/celular), independente de para quem foi.
 
-    // --- LÓGICA DE ATUALIZAÇÃO DA ORDEM ---
-    if (data.targetType === 'group') {
-        const g = allGroups.find(x => x.id == data.targetId);
-        if (g) {
-            // Se estou no chat, mostro msg. Se não, aumento contador.
-            if (currentChatType === 'group' && currentChatId == data.targetId) {
-                window.addMessageToScreen(data);
-            } else {
-                g.unread++;
-                if(!isMine) window.notifyUser(data, g.name);
+        let isChatOpen = false;
+
+        if (currentChatType === 'group' && data.targetType === 'group') {
+            // Se estou no grupo certo
+            if (currentChatId == data.targetId) isChatOpen = true;
+        } 
+        else if (currentChatType === 'private' && data.targetType === 'private') {
+            // Se recebi de quem estou falando (data.userId) 
+            // OU se eu mandei (data.userId == eu) e estou no chat com o destino (data.targetId)
+            if (data.userId == currentChatId || (data.userId == currentUser.id && data.targetId == currentChatId)) {
+                isChatOpen = true;
             }
-            window.renderLists(); // Reordena a lista (Grupo sobe)
         }
-    } else {
-        // Chat Privado
-        // Se EU mandei, atualizo quem recebeu (para subir na minha lista)
-        // Se EU recebi, atualizo quem mandou (para subir na minha lista)
-        const interactionUserId = isMine ? data.targetId : data.userId;
-        const u = allUsers.find(x => x.id == interactionUserId);
-        
-        if (u) {
-            u.last_activity = new Date(); // Atualiza horário da última conversa
+
+        if (isChatOpen) {
+            // Mostra a mensagem
+            addMessageToScreen(data);
+            scrollToBottom();
             
-            // Se estou vendo o chat dessa pessoa
-            if ((currentChatType === 'private' && currentChatId == data.userId) || (isMine && currentChatId == data.targetId)) {
-                window.addMessageToScreen(data);
-                if(!isMine) window.markAsRead(data.userId);
+            // Marca como lido se não fui eu que mandei
+            if (data.userId !== currentUser.id && data.targetType === 'private') {
+                fetch('/mark-read', { 
+                    method:'POST', 
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ myId: currentUser.id, targetId: data.userId })
+                });
+            }
+        } else {
+            // Notifica
+            try { notificationSound.play().catch(()=>{}) } catch(e){}
+            
+            // Atualiza contadores na lista lateral
+            if (data.targetType === 'group') {
+                const g = allGroups.find(x => x.id == data.targetId);
+                if (g) { g.unread = (g.unread||0)+1; g.last_activity = new Date(); }
             } else {
-                // Se não estou vendo, é não lida
-                if(!isMine && data.targetId == currentUser.id) {
-                    u.unread++;
-                    window.renderLists(); // Reordena (Sobe para o topo)
-                    window.notifyUser(data);
+                // No privado, quem mandou foi 'data.userId', então procuro ele na minha lista
+                const senderId = data.userId;
+                // Se FUI EU que mandei (de outra aba), não notifica a mim mesmo
+                if (senderId !== currentUser.id) {
+                    const u = allUsers.find(x => x.id == senderId);
+                    if (u) { u.unread = (u.unread||0)+1; u.last_interaction = new Date(); }
                 }
             }
-            // Garante reordenação mesmo se já estiver lido (para ficar em Recentes)
-            window.renderLists(); 
+            renderLists();
+        }
+    });
+
+socket.on('update online list', (ids) => { onlineIds = ids; window.renderLists(); });
+socket.on('refresh data', () => window.loadData());
+
+socket.on('message updated', (d) => { 
+    const e = document.getElementById(`msg-text-${d.messageId}`); 
+    if(e) {
+        // Atualiza o texto
+        e.innerHTML = formatMessage(d.newText);
+        
+        // Verifica se já tem a etiqueta de "Editada"
+        const parent = e.parentNode; // .message-bubble ou .image-caption
+        const existingLabel = parent.querySelector('.edited-label');
+        
+        if (d.isEdited) {
+            const timeString = d.editedTime || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const labelText = `Editada às ${timeString}`;
+
+            if (!existingLabel) {
+                const label = document.createElement('small');
+                label.className = 'edited-label';
+                label.style.cssText = "font-size:0.65rem; color:#757575; font-style:italic; margin-left:5px; display:block; text-align:right;";
+                label.textContent = labelText;
+                // Insere logo após o texto
+                e.insertAdjacentElement('afterend', label);
+            } else {
+                existingLabel.textContent = labelText;
+            }
+        }
+    } 
+});
+
+socket.on('message pinned', (data) => {
+        // Se a mensagem fixada pertence ao chat que estou vendo agora
+        if (data.targetId == currentChatId && data.targetType == currentChatType) {
+            const el = document.getElementById(`msg-${data.messageId}`);
+            if (el) {
+                if (data.action === 'pin') el.classList.add('pinned-message');
+                else el.classList.remove('pinned-message');
+            }
+        }
+    });
+socket.on('message deleted', (d) => { const b = document.getElementById(`msg-bubble-${d.messageId}`); if(b) { const h = b.querySelector('.msg-header').outerHTML; b.innerHTML = `${h}<div class="deleted-content" style="color:#aaa;font-style:italic">🚫 Mensagem apagada</div>`; const c = document.getElementById(`msg-${d.messageId}`); if(c) { const a = c.querySelector('.msg-actions'); if(a) a.remove(); } } window.loadPinnedMessages(currentChatId, currentChatType); });
+socket.on('read confirmation', (d) => { if(currentChatType === 'private' && currentChatId == d.readerId) document.querySelectorAll('.read-ticks').forEach(e => e.classList.add('read')); });
+
+socket.on('message reaction', (data) => {
+    const bubble = document.getElementById(`msg-bubble-${data.messageId}`);
+    if (bubble) {
+        let bar = document.getElementById(`reacts-${data.messageId}`);
+        if (!bar) { bar = document.createElement('div'); bar.className = 'reactions-bar'; bar.id = `reacts-${data.messageId}`; bubble.appendChild(bar); }
+        let existingBubble = null;
+        Array.from(bar.children).forEach(child => { if(child.textContent.includes(data.reaction)) existingBubble = child; });
+
+        const u = allUsers.find(x => x.id == data.userId);
+        const newName = u ? u.username : 'Alguém';
+
+        if(data.action === 'add') {
+            if(existingBubble) {
+                const parts = existingBubble.textContent.split(' ');
+                let count = 1; if(parts.length > 1) count = parseInt(parts[1]) || 1;
+                count++; existingBubble.textContent = `${data.reaction} ${count}`;
+                let currentTitle = existingBubble.getAttribute('title') || "";
+                existingBubble.setAttribute('title', currentTitle + ", " + newName);
+            } else {
+                const span = document.createElement('span'); 
+                span.className = 'reaction-bubble'; 
+                span.textContent = data.reaction; 
+                span.setAttribute('title', newName);
+                bar.appendChild(span);
+            }
+        } else {
+            if(existingBubble) {
+                const parts = existingBubble.textContent.split(' ');
+                let count = 1; if(parts.length > 1) count = parseInt(parts[1]) || 1;
+                if(count > 1) { count--; existingBubble.textContent = (count > 1) ? `${data.reaction} ${count}` : data.reaction; } else { existingBubble.remove(); }
+            }
         }
     }
 });
-socket.on('message updated', (data) => { 
-    const el = document.getElementById(`msg-text-${data.messageId}`); 
-    if(el) { el.innerHTML = formatMessage(data.newText); }
-});
-socket.on('message pinned', (data) => { setTimeout(() => { if(currentChatId) window.loadPinnedMessages(currentChatId, currentChatType); }, 200); });
-socket.on('message deleted', (data) => { const b = document.getElementById(`msg-bubble-${data.messageId}`); if(b) { const h = b.querySelector('.msg-header').outerHTML; b.innerHTML = `${h}<div class="deleted-content" style="color:#aaa;font-style:italic">🚫 Mensagem apagada</div>`; const c = document.getElementById(`msg-${data.messageId}`); if(c) { const a = c.querySelector('.msg-actions'); if(a) a.remove(); } } window.loadPinnedMessages(currentChatId, currentChatType); });
-socket.on('read confirmation', (data) => { if(currentChatType === 'private' && currentChatId == data.readerId) { document.querySelectorAll('.read-ticks').forEach(el => el.classList.add('read')); } });
 
-// INIT
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("Chat V53 - Full Restoration + Fixes");
-    socket.emit('i am online', currentUser.id);
-    window.loadData();
-    if ("Notification" in window && Notification.permission !== "granted") Notification.requestPermission();
-    const fileInput = document.getElementById('file-input');
-    if(fileInput) fileInput.onchange = () => window.uploadFile();
+socket.on('refresh group members', () => {
+        // Se a janelinha de configurações estiver aberta neste grupo, recarrega a lista
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal.style.display === 'flex' && currentChatType === 'group') {
+            window.loadGroupSettings();
+        }
+    });
 
-    // EMOJI CONFIG
-    if(window.EmojiButton) {
-        const picker = new EmojiButton({ 
-            // Alteramos de 'auto' para 'bottom-start' ou removemos a posição JS 
-            // para deixar o CSS mandar, mas 'auto' com o CSS fixed acima funciona bem.
-            position: 'auto', 
-            rootElement: document.body,
-            theme: 'light', 
-            autoHide: false, 
-            zIndex: 999999
-        });
-        const trigger = document.getElementById('emoji-btn');
-        const input = document.getElementById('input');
+    socket.on('group deleted', () => {
+        if (currentChatType === 'group') {
+            alert('Este grupo foi excluído.');
+            window.closeChat();
+            window.loadData(); // Recarrega a lista lateral
+        }
+    });
+
+    socket.on('you were added', () => {
+        // Recarrega a lista do servidor (vai trazer o grupo novo)
+        // O loadData já cuida de entrar na sala do socket automaticamente
+        window.loadData();
         
-        picker.on('emoji', selection => { 
-            const char = (selection && selection.emoji) ? selection.emoji : selection;
-            input.value += char; 
-            input.focus(); 
-        });
-        
-        if(trigger) {
-            trigger.addEventListener('click', () => picker.togglePicker(trigger));
+        // Toca um som ou notificação leve se quiser
+        try { notificationSound.play().catch(()=>{}) } catch(e){}
+    });
+
+    socket.on('you were removed', (data) => {
+        // Se eu estiver com esse chat aberto, fecha na cara!
+        if (currentChatType === 'group' && currentChatId == data.groupId) {
+            alert('Você foi removido deste grupo.');
+            window.closeChat();
+        }
+        // Atualiza a lista lateral para o grupo sumir
+        window.loadData();
+    });
+
+// OUTROS
+window.uploadFile=async function(f=null){if(isUploading)return;let file=f instanceof File?f:document.getElementById('file-input').files[0];if(!file||!currentChatId)return;const caption=document.getElementById('input').value.trim();isUploading=true;document.body.style.cursor='wait';try{const fd=new FormData();fd.append('file',file);const r=await fetch('/upload',{method:'POST',body:fd});const d=await r.json();if(d.success){socket.emit('chat message',{userId:currentUser.id,msg:caption.length>0?caption:d.originalName,targetId:currentChatId,targetType:currentChatType,msgType:'file',fileName:d.filename});document.getElementById('input').value=''}}catch(e){alert("Erro upload")}finally{document.body.style.cursor='default';document.getElementById('file-input').value='';isUploading=false}};
+window.openAdminControl=async function(tid){
+    const m=document.getElementById('admin-control-modal');
+    if(!m)return;
+    document.getElementById('admin-target-name').textContent="Carregando...";
+    m.style.display='flex';
+    
+    let btnDel = document.getElementById('btn-admin-delete-user');
+    if(!btnDel) {
+        const container = m.querySelector('.modal');
+        btnDel = document.createElement('button');
+        btnDel.id = 'btn-admin-delete-user';
+        btnDel.style.cssText = "background: #d32f2f; color: white; width: 100%; padding: 10px; border: none; border-radius: 5px; margin-top: 10px; cursor: pointer;";
+        btnDel.textContent = "🗑️ Excluir Usuário Permanentemente";
+        const actions = m.querySelector('.modal-actions');
+        container.insertBefore(btnDel, actions);
+    }
+    btnDel.onclick = () => window.deleteUser(tid);
+
+    const r=await fetch('/admin/user-control-data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminId:currentUser.id,targetUserId:tid})});
+    const d=await r.json();
+    if(d.success){
+        document.getElementById('admin-target-name').textContent=d.user.username;
+        document.getElementById('admin-target-id').value=d.user.id;
+        const b=document.getElementById('btn-admin-promote');
+        if(b)b.textContent=d.user.is_super_admin?"🔽 Remover Admin":"👑 Tornar Admin";
+        const l=document.getElementById('admin-sector-list');
+        l.innerHTML="";
+        (d.availableSectors||[]).sort().forEach(s=>{l.innerHTML+=`<div><input type="checkbox" ${d.restrictedList.includes(s)?'checked':''} onchange="toggleRestriction('${s}',this.checked)"> ${s}</div>`})
+    }
+};
+window.deleteUser = async function(tid) {
+    if(confirm("ATENÇÃO: Isso apagará o usuário e todas as mensagens dele. Tem certeza?")) {
+        const reason = prompt("Digite 'DELETAR' para confirmar:");
+        if(reason === 'DELETAR') {
+            await fetch('/admin/delete-user', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({adminId:currentUser.id, targetUserId:tid})});
+            document.getElementById('admin-control-modal').style.display='none';
+            alert("Usuário excluído.");
+            window.loadData();
         }
     }
+};
+window.toggleRestriction=async function(d,c){await fetch('/admin/toggle-restriction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminId:currentUser.id,targetUserId:document.getElementById('admin-target-id').value,department:d,action:c?'add':'remove'})})};
+window.toggleAdminRole=async function(){if(confirm("Mudar Admin?"))await fetch('/admin/toggle-admin-role',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminId:currentUser.id,targetUserId:document.getElementById('admin-target-id').value})});window.openAdminControl(document.getElementById('admin-target-id').value)};
+window.openFullAudit=function(){window.open(`/audit.html?target=${document.getElementById('admin-target-id').value}`,'_blank')};
+window.notifyUser=(d)=>{try{notificationSound.play().catch(()=>{})}catch(e){}if(document.hidden){unreadCountGlobal++;if(!blinkInterval)blinkInterval=setInterval(()=>{document.title=document.title===originalTitle?`(${unreadCountGlobal}) Nova Msg!`:originalTitle},1000);if("Notification"in window&&Notification.permission==="granted"){new Notification("NeuroChat",{body:d.targetType==='group'?'Grupo':d.user,icon:'/avatar.png',silent:true}).onclick=function(){window.focus();this.close()}}}};
+window.markAsRead=async(sid)=>{await fetch('/mark-read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({myId:currentUser.id,senderId:sid})})};
+// --- CORREÇÃO: Atualiza a lista ANTES de perder a referência do ID ---
+window.markChatUnread = async () => {
+    // 1. Salva o ID e Tipo antes de fechar a janela
+    const targetId = currentChatId;
+    const targetType = currentChatType;
 
-    // Paste
-    const inputEl = document.getElementById('input');
-    if(inputEl) {
-        inputEl.addEventListener('paste', (event) => {
-            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
-            for (let index in items) {
-                const item = items[index];
-                if (item.kind === 'file') {
-                    const file = item.getAsFile();
-                    window.uploadFile(file);
-                }
+    if (targetId && targetType === 'private') {
+        try {
+            // 2. Manda para o servidor
+            await fetch('/chat/mark-unread', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ myId: currentUser.id, targetId: targetId })
+            });
+
+            // 3. Fecha a janela de chat
+            window.closeChat();
+
+            // 4. Atualiza a lista VISUALMENTE agora (sem esperar reload)
+            const u = allUsers.find(x => x.id == targetId);
+            if (u) {
+                // Soma 1 ou define como 1 se estiver zerado
+                u.unread = (u.unread || 0) + 1; 
+                // Força o usuário a ir para o topo da lista
+                u.last_activity = new Date(); 
+                window.renderLists();
+            }
+
+        } catch (e) {
+            console.error(e);
+        }
+    }
+};
+window.sendReaction = async (mid, r) => {
+    document.getElementById(`menu-${mid}`).style.display='none';
+    await fetch('/message/react', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+            messageId: mid,
+            userId: currentUser.id,
+            reaction: r,
+            targetId: currentChatId,   // <--- IMPORTANTE
+            targetType: currentChatType // <--- IMPORTANTE
+        })
+    });
+};
+window.replyMessage=(id,user,text)=>{replyingTo={id,user,text};document.getElementById('reply-area').style.display='flex';document.getElementById('reply-user').textContent=user;document.getElementById('reply-text').textContent=text;document.getElementById('input').focus()};
+window.cancelReply=()=>{replyingTo=null;document.getElementById('reply-area').style.display='none'};window.closeChat=()=>{document.body.classList.remove('mobile-active');document.getElementById('welcome-screen').style.display='flex';document.getElementById('chat-interface').style.display='none';currentChatId=null};window.logout=()=>{localStorage.removeItem('chatUser');location.href='/'};window.stopBlinking=()=>{clearInterval(blinkInterval);blinkInterval=null;unreadCountGlobal=0;document.title=originalTitle};document.addEventListener('visibilitychange',()=>{if(!document.hidden)window.stopBlinking()});
+window.loadPinnedMessages=async function(tid,type){if(tid!=currentChatId)return;try{const r=await fetch('/chat/get-pinned',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({myId:currentUser.id,targetId:tid,type})});const d=await r.json();pinnedMessagesList=d.pinnedMessages||[];if(pinnedIndex>=pinnedMessagesList.length)pinnedIndex=0;window.updatePinUI()}catch(e){}};
+window.updatePinUI=function(){const b=document.getElementById('pinned-bar');b.style.display='none';b.innerHTML='';if(pinnedMessagesList.length>0){b.style.display='flex';const m=pinnedMessagesList[pinnedIndex];const t=(m.msgType==='file')?'📎':m.text;const n=pinnedMessagesList.length>1?`<span onclick="prevPin()" style="cursor:pointer;margin-right:10px;">❮</span> ${pinnedIndex+1}/${pinnedMessagesList.length} <span onclick="nextPin()" style="cursor:pointer;margin-left:10px;">❯</span>`:'';b.innerHTML=`<div style="flex:1;cursor:pointer;" onclick="scrollToMsg(${m.id})">${n} <b>${m.username}:</b> ${t}</div><button onclick="event.stopPropagation(); unpinMessage(${m.id})">✕</button>`}};window.nextPin=()=>{pinnedIndex=(pinnedIndex+1)%pinnedMessagesList.length;window.updatePinUI()};window.prevPin=()=>{pinnedIndex=(pinnedIndex-1+pinnedMessagesList.length)%pinnedMessagesList.length;window.updatePinUI()};
+window.pinMessage = async (mid) => {
+    await fetch('/message/pin', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+            messageId: mid,
+            targetId: currentChatId,
+            targetType: currentChatType,
+            userId: currentUser.id,
+            action: 'pin'
+        })
+    });
+};
+window.unpinMessage=async(mid)=>{await fetch('/message/pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messageId:mid,targetId:currentChatId,targetType:currentChatType,userId:currentUser.id,action:'unpin'})})};
+window.deleteMessage=async(mid)=>{if(confirm('Excluir?'))await fetch('/message/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messageId:mid})})};
+window.editMessage = (id, txt) => {
+    const n = prompt('Editar mensagem:', txt);
+    if (n && n !== txt) {
+        fetch('/message/edit', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ 
+                messageId: id, 
+                userId: currentUser.id, 
+                newText: n 
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(!data.success) {
+                alert("❌ Erro: " + (data.message || "Não foi possível editar."));
             }
         });
     }
-});
-
-window.deleteUserBtn = async function(targetId, targetName) {
-    if(!confirm(`⚠️ ATENÇÃO ⚠️\n\nTem certeza que deseja EXCLUIR DEFINITIVAMENTE o usuário:\n"${targetName}"?\n\nEssa ação não pode ser desfeita.`)) {
-        return;
+};
+// Exemplo de como usar a rota de admin
+window.viewAdminHistory = async (targetUserId) => {
+    const res = await fetch('/admin/history', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ adminId: currentUser.id, targetUserId: targetUserId })
+    });
+    const data = await res.json();
+    if(data.success) {
+        console.log("Histórico:", data.messages);
+        alert("Histórico carregado no Console do Navegador (F12)!");
+    } else {
+        alert("Erro ao carregar histórico: " + data.message);
     }
+};
+window.toggleChatSearch = function() { const box = document.getElementById('search-box-chat'); if(box.style.display === 'none') { box.style.display = 'flex'; document.getElementById('chat-search-input').focus(); } else { box.style.display = 'none'; window.searchInChat(''); } };
+window.searchInChat = function(t) { document.querySelectorAll('.msg-container').forEach(e => e.querySelector('.message-bubble').style.background = ''); if (!t || !t.trim()) { searchResults = []; searchIndex = -1; document.getElementById('search-count-display').textContent = ''; return; } searchResults = []; const term = t.toLowerCase(); document.querySelectorAll('.msg-container').forEach(m => { if (m.querySelector('.message-bubble').textContent.toLowerCase().includes(term)) searchResults.push(m); }); if (searchResults.length > 0) { searchIndex = searchResults.length - 1; updateSearchUI(); scrollToSearchResult(); } else { searchIndex = -1; document.getElementById('search-count-display').textContent = '0/0'; } };
+window.updateSearchUI = function() { document.getElementById('search-count-display').textContent = `${searchIndex + 1}/${searchResults.length}`; };
+window.scrollToSearchResult = function() { const el = searchResults[searchIndex]; if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.querySelector('.message-bubble').style.background = '#fff59d'; } };
+window.nextSearch = function() { if (searchResults.length === 0) return; searchIndex++; if (searchIndex >= searchResults.length) searchIndex = 0; updateSearchUI(); scrollToSearchResult(); };
+window.prevSearch = function() { if (searchResults.length === 0) return; searchIndex--; if (searchIndex < 0) searchIndex = searchResults.length - 1; updateSearchUI(); scrollToSearchResult(); };
+window.openProfileModal = function() { document.getElementById('profile-username').value = currentUser.username; const s = document.getElementById('profile-department'); if(s) s.value = currentUser.department || ""; document.getElementById('profile-password').value = ''; document.getElementById('profile-photo-input').value = ''; document.getElementById('profile-modal').style.display = 'flex'; };
+window.saveProfile = async function() {
+    const n = document.getElementById('profile-username').value.trim();
+    const d = document.getElementById('profile-department').value;
+    const p = document.getElementById('profile-password').value;
+    const f = document.getElementById('profile-photo-input').files[0];
+
+    if (!n) return alert("Nome não pode ser vazio.");
+    if (!d) return alert("Selecione um departamento.");
+
+    const fd = new FormData();
+    fd.append('userId', currentUser.id);
+    fd.append('username', n);
+    fd.append('department', d);
+    if (p) fd.append('password', p);
+    if (f) fd.append('photo', f); 
+
+    const btn = document.querySelector('#profile-modal .btn-create');
+    btn.textContent = "Salvando...";
+    btn.disabled = true;
 
     try {
-        const res = await fetch('/admin/delete-user', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                adminId: currentUser.id, 
-                targetUserId: targetId 
-            })
-        });
-        
+        const res = await fetch('/update-profile', { method: 'POST', body: fd });
         const data = await res.json();
-        
-        if(data.success) {
-            alert("Usuário excluído com sucesso.");
-            // O socket.on('refresh data') vai atualizar a lista automaticamente
+        if (data.success) {
+            alert('✅ Perfil atualizado com sucesso!');
+            currentUser.username = n;
+            currentUser.department = d;
+            if (data.photo) currentUser.photo = data.photo; 
+            localStorage.setItem('chatUser', JSON.stringify(currentUser));
+            window.updateMyInfo();
+            document.getElementById('profile-modal').style.display = 'none';
         } else {
-            alert("Erro: " + data.message);
+            alert("❌ Erro: " + (data.message || "Falha ao atualizar."));
         }
+    } catch (e) { console.error(e); alert("❌ Erro de conexão."); } finally { btn.textContent = "Salvar"; btn.disabled = false; }
+};
+window.openUpdatesModal = function() { document.getElementById('updates-modal').style.display = 'flex'; };
+window.openImageZoom = function(src) { document.getElementById('img-zoom-target').src = src; document.getElementById('image-zoom-modal').style.display = 'flex'; };
+window.closeImageZoom = function() { document.getElementById('image-zoom-modal').style.display = 'none'; };
+window.openModalCreate = function() { const l = document.getElementById('modal-users-list'); l.innerHTML = ''; const h = document.createElement('div'); h.innerHTML = `<input type="checkbox" onchange="toggleAll(this)"> Selecionar Todos`; l.appendChild(h); allUsers.forEach(u => { if(u.id !== currentUser.id) { l.innerHTML += `<div class="user-checkbox-item"><input type="checkbox" class="user-sel" value="${u.id}"> ${u.username}</div>`; } }); document.getElementById('group-modal').style.display = 'flex'; };
+window.toggleAll = function(s) { document.querySelectorAll('.user-sel').forEach(c => c.checked = s.checked); };
+window.createGroup = async function() { const n = document.getElementById('new-group-name').value; const ib = document.getElementById('is-broadcast').checked; const m = Array.from(document.querySelectorAll('.user-sel:checked')).map(x => x.value); if(!n || m.length === 0) return alert('Preencha tudo.'); await fetch('/create-group', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name:n, creatorId:currentUser.id, members:m, isBroadcast:ib }) }); document.getElementById('group-modal').style.display = 'none'; };
+window.openGroupSettings = function() { document.getElementById('settings-modal').style.display = 'flex'; window.loadGroupSettings(); };
+// --- FUNÇÃO ATUALIZADA: LISTA DE MEMBROS BONITA (V116) ---
+window.loadGroupSettings = async function() {
+    const l = document.getElementById('settings-members-list');
+    l.innerHTML = '<div style="padding:20px;text-align:center;color:#888;">Carregando membros...</div>';
+    
+    try {
+        const r = await fetch(`/group-details/${currentChatId}`);
+        const m = await r.json();
+        
+        // Verifica se EU sou admin ou Super Admin
+        const me = m.find(x => x.id == currentUser.id);
+        const amIAdmin = (me && me.is_admin) || currentUser.is_super_admin;
+
+        // Botões gerais do grupo
+        const bl = document.getElementById('btn-leave');
+        const bd = document.getElementById('btn-delete');
+        const addArea = document.getElementById('add-member-area');
+
+        if(bl) bl.style.display = amIAdmin ? 'none' : 'inline-block'; // Se sou admin, não "saio", eu deleto ou passo o bastão (simplificado)
+        if(bd) bd.style.display = amIAdmin ? 'inline-block' : 'none';
+        if(addArea) addArea.style.display = amIAdmin ? 'block' : 'none';
+
+        l.innerHTML = '';
+        
+        if(m.length === 0) {
+            l.innerHTML = '<div style="padding:15px;">Nenhum membro encontrado.</div>';
+            return;
+        }
+
+        m.forEach(x => {
+            const isMe = x.id === currentUser.id;
+            const photo = getAvatarUrl(x.photo);
+            const adminBadge = x.is_admin ? `<span class="admin-badge">ADM</span>` : '';
+            
+            let actionsHtml = '';
+            
+            // Só mostro botões de ação se EU for admin e o alvo não for eu mesmo
+            if (amIAdmin && !isMe) {
+                // Botão de Promover/Rebaixar (Visualmente muda a cor da coroa)
+                const crownColor = x.is_admin ? 'is-admin' : '';
+                const crownTitle = x.is_admin ? 'Remover Admin' : 'Tornar Admin';
+                
+                // Botão Remover
+                actionsHtml = `
+                    <div class="member-actions">
+                        <button class="action-icon-btn promote ${crownColor}" onclick="promoteMember(${x.id})" title="${crownTitle}">👑</button>
+                        <button class="action-icon-btn remove" onclick="removeMember(${x.id})" title="Remover do Grupo">🚫</button>
+                    </div>
+                `;
+            }
+
+            l.innerHTML += `
+            <div class="member-item">
+                <div class="member-info">
+                    <img src="${photo}" class="member-avatar">
+                    <div>
+                        <div class="member-name">${x.username} ${isMe ? '(Você)' : ''}</div>
+                        ${adminBadge}
+                    </div>
+                </div>
+                ${actionsHtml}
+            </div>`;
+        });
+
+        // Preenche o Select de Adicionar novos membros (filtra quem já está)
+        if(amIAdmin) {
+            const s = document.getElementById('add-member-select');
+            s.innerHTML = '<option value="">Selecione para adicionar...</option>';
+            // Pega todos os usuários globais e tira quem já está no grupo
+            const existingIds = m.map(y => y.id);
+            const available = allUsers.filter(u => !existingIds.includes(u.id));
+            
+            available.sort((a,b) => a.username.localeCompare(b.username));
+            
+            available.forEach(u => {
+                s.innerHTML += `<option value="${u.id}">${u.username} - ${u.department}</option>`;
+            });
+        }
+
     } catch(e) {
         console.error(e);
-        alert("Erro de conexão ao tentar excluir.");
+        l.innerHTML = '<div style="color:red;padding:10px;">Erro ao carregar membros.</div>';
     }
 };
-
-// --- CORREÇÃO FINAL: SEPARADORES DE DATA AGRUPADOS ---
-
-// 1. Calcula o texto bonito (Hoje, Ontem ou Data)
-window.getFancyDate = function(isoDateStr) {
-    if (!isoDateStr) return "";
-    const d = new Date(isoDateStr);
-    const now = new Date();
-    
-    // Zera as horas para comparar apenas os dias (Meia-noite)
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const msgDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    
-    // Calcula a diferença em dias
-    const diffTime = today - msgDate;
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "HOJE";
-    if (diffDays === 1) return "ONTEM";
-    
-    // Se for mais antigo, retorna DD/MM/AAAA
-    return d.toLocaleDateString('pt-BR');
+window.addNewMember = async function() { 
+    const u = document.getElementById('add-member-select').value; 
+    if(u) { 
+        // Incluímos adminId: currentUser.id
+        await fetch('/group/add-member', { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({groupId:currentChatId, userId:u, adminId: currentUser.id}) 
+        }); 
+        window.loadGroupSettings(); 
+    } 
 };
 
-// 2. Varre o chat e agrupa mensagens do mesmo dia
-window.updateDateSeparators = function() {
-    // Remove separadores antigos para não duplicar
-    document.querySelectorAll('.date-separator').forEach(el => el.remove());
-
-    const messages = document.querySelectorAll('.msg-container');
-    let lastDateKey = null; // Variável para guardar o dia da mensagem anterior
-
-    messages.forEach(msg => {
-        const rawDate = msg.getAttribute('data-date'); 
-        if (!rawDate) return;
-
-        // CRUCIAL: Criamos uma chave que só muda se o DIA mudar
-        // Exemplo: "05/12/2025". Ignora se é 10:00 ou 10:05.
-        const d = new Date(rawDate);
-        const dateKey = d.toLocaleDateString('pt-BR'); 
-
-        // Se a chave mudou em relação à mensagem anterior, desenha o separador
-        if (dateKey !== lastDateKey) {
-            const sep = document.createElement('div');
-            sep.className = 'date-separator';
-            sep.innerHTML = `<span class="date-pill">${window.getFancyDate(rawDate)}</span>`;
-            
-            // Insere ANTES da mensagem atual
-            msg.parentNode.insertBefore(sep, msg);
-            
-            // Atualiza a chave para não desenhar de novo nas próximas mensagens desse dia
-            lastDateKey = dateKey;
-        }
-    });
+window.removeMember = async function(u) { 
+    if(confirm('Remover?')) 
+        await fetch('/group/remove-member', { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({groupId:currentChatId, userId:u, adminId: currentUser.id}) 
+        }); 
+    window.loadGroupSettings(); 
 };
+window.promoteMember = async function(u) { if(confirm('Admin?')) await fetch('/group/promote', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:currentChatId, userId:u}) }); window.loadGroupSettings(); };
+window.leaveGroup = async function() { if(confirm('Sair?')) { await fetch('/group/leave', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:currentChatId, userId:currentUser.id}) }); document.getElementById('settings-modal').style.display='none'; window.closeChat(); } };
+window.deleteGroup = async function() { if(confirm('Excluir?')) { await fetch('/group/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:currentChatId}) }); document.getElementById('settings-modal').style.display='none'; window.closeChat(); } };
+window.scrollToMsg = function(id) { const el = document.getElementById(`msg-${id}`); if(el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.style.background='#fff9c4'; setTimeout(()=>el.style.background='', 1500); } };
+
+// INIT
+document.addEventListener('DOMContentLoaded',()=>{
+    console.log("Chat V115 - Fix Order & filterContacts Error");
+    socket.emit('i am online',currentUser.id);
+    window.loadData();
+    window.switchTab('users');
+    
+    if ("Notification" in window && Notification.permission !== "granted") Notification.requestPermission();
+    
+    const f=document.getElementById('file-input');if(f)f.onchange=()=>window.uploadFile();
+    const i=document.getElementById('input');if(i)i.addEventListener('paste',e=>{const it=(e.clipboardData||e.originalEvent.clipboardData).items;for(let x in it)if(it[x].kind==='file')window.uploadFile(it[x].getAsFile())});
+    if(window.EmojiButton){
+        const p=new EmojiButton({position:'top-start',rootElement:document.body,theme:'light',autoHide:false,zIndex:999999});
+        const t=document.getElementById('emoji-btn');
+        p.on('emoji',s=>{i.value+=(s.emoji||s);i.focus()});
+        if(t)t.addEventListener('click',()=>p.togglePicker(t))
+    }
+
+    // Função para sair do sistema (chamada pelo botão no HTML)
+function logout() {
+    // 1. Pergunta de segurança (Opcional, mas boa prática)
+    if (confirm("Tens a certeza que queres sair?")) {
+        
+        // 2. Limpar os dados guardados no navegador
+        // Remove o nome do utilizador ou token de sessão
+        localStorage.removeItem('usuarioNome'); 
+        localStorage.removeItem('usuarioSala');
+        
+        // Se usares sessionStorage também:
+        sessionStorage.clear();
+
+        // 3. Redirecionar para a página de login
+        // Ajusta o caminho conforme as tuas pastas. 
+        // Se o login for a raiz, usa apenas '/'
+        window.location.href = '/index.html'; 
+    }
+}
+});

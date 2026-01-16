@@ -17,22 +17,17 @@
 
         body {
             font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(135deg, #141E30 0%, #243B55 100%); /* Mesmo fundo do Portal */
+            background: linear-gradient(135deg, #141E30 0%, #243B55 100%);
             margin: 0;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             color: var(--text-dark);
-            position: relative; /* Necessário para o botão voltar fixo */
-            /* Se tiver a imagem, ela aparece por cima do degradê com transparência */
-            background-image: url('bg-helpdesk.jpg');
-            background-size: cover;
-            background-position: center;
-            background-blend-mode: overlay;
+            position: relative;
         }
 
-        /* --- NOVO: BOTÃO VOLTAR AO PORTAL --- */
+        /* BOTÃO VOLTAR */
         .btn-voltar-portal {
             position: absolute;
             top: 25px;
@@ -65,45 +60,25 @@
             gap: 40px;
             width: 90%;
             max-width: 1100px;
-            margin: 80px 0 40px 0; /* Aumentei a margem superior para não bater no botão */
+            margin: 80px 0 40px 0;
         }
 
-        /* Cartões com efeito Glass (Vidro) */
         .card {
             background: var(--glass-bg);
             border-radius: 20px;
             padding: 40px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-            backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.5);
-            animation: fadeIn 0.8s ease;
         }
 
-        /* Cabeçalho bonito */
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        header h1 {
-            margin: 0;
-            color: var(--secondary);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 1.8rem;
-        }
-        header p {
-            color: #666;
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
+        h1 { color: var(--secondary); margin-bottom: 5px; margin-top: 0; }
+        p { color: #666; margin-top: 0; }
 
-        /* Formulários */
-        .form-group { margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
         
         label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
             font-weight: 600;
             color: var(--secondary);
             font-size: 0.9rem;
@@ -111,26 +86,23 @@
 
         input, select, textarea {
             width: 100%;
-            padding: 12px 15px;
+            padding: 12px;
             border: 2px solid #e0e0e0;
-            border-radius: 10px;
+            border-radius: 8px;
             background: var(--input-bg);
+            box-sizing: border-box;
             font-family: inherit;
             font-size: 0.95rem;
-            transition: all 0.3s;
-            box-sizing: border-box;
         }
-
+        
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: var(--accent);
             background: #fff;
-            box-shadow: 0 0 0 4px rgba(0, 210, 255, 0.1);
         }
 
-        textarea { resize: vertical; min-height: 100px; }
+        textarea { resize: vertical; min-height: 80px; }
 
-        /* Botão Moderno */
         .btn-submit {
             background: linear-gradient(45deg, var(--primary), var(--secondary));
             color: white;
@@ -141,21 +113,16 @@
             font-weight: 600;
             font-size: 1rem;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            margin-top: 10px;
+            transition: transform 0.2s;
         }
 
-        .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 92, 151, 0.4);
-        }
+        .btn-submit:hover { transform: translateY(-2px); }
 
-        /* Fila de Espera */
         .fila-lista {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
             max-height: 500px;
             overflow-y: auto;
             padding-right: 5px;
@@ -167,36 +134,15 @@
             padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            transition: transform 0.2s;
         }
-        
-        .chamado-item:hover { transform: translateX(5px); }
 
-        .chamado-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 0.85rem;
-            color: #888;
-        }
-        
-        .chamado-titulo { font-weight: 700; color: var(--text-dark); font-size: 1rem; }
-        .chamado-desc { font-size: 0.9rem; color: #555; margin-top: 5px; }
-
-        /* Cores de Urgência */
-        .borda-baixa { border-left-color: #28a745; }
-        .borda-media { border-left-color: #17a2b8; }
-        .borda-alta { border-left-color: #fd7e14; }
+        .borda-baixa { border-left-color: #007bff; }
+        .borda-media { border-left-color: #28a745; }
+        .borda-alta { border-left-color: #ffc107; }
         .borda-critica { border-left-color: #dc3545; }
+        .borda-analise { border-left-color: #6f42c1; }
 
-        .empty-state { text-align: center; color: #999; margin-top: 50px; }
-        .empty-icon { font-size: 3rem; margin-bottom: 10px; opacity: 0.3; }
-
-        @media (max-width: 768px) {
-            .container { grid-template-columns: 1fr; }
-        }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -207,12 +153,19 @@
 
     <div class="container">
         <div class="card">
-            <header>
-                <h1>HelpDesk 🛠️</h1>
-                <p>Suporte Técnico NeuroCenter</p>
-            </header>
-
+            <h1>HelpDesk & Projetos 🚀</h1>
+            <p>Suporte Técnico e Desenvolvimento</p>
+            <br>
             <form id="formChamado">
+                
+                <div class="form-group">
+                    <label>O que você precisa?</label>
+                    <select id="tipo" onchange="mudarFormulario()" style="background:#e3f2fd; font-weight:bold; border-color:#90caf9;">
+                        <option value="suporte">🛠️ Suporte Técnico (Computador/Internet)</option>
+                        <option value="projeto">💡 Novo Projeto / Sistema (Criação)</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label>Solicitante (Nome):</label>
                     <input type="text" id="solicitante" placeholder="Ex: Maria (Recepção)" required>
@@ -221,90 +174,52 @@
                 <div class="form-group">
                     <label>Setor:</label>
                     <select id="setor" required>
-                        <option value="">Selecione seu Departamento...</option>
-                        
-                        <optgroup label="Diretoria / Estratégico">
-                            <option value="Diretoria Geral">Diretoria Geral</option>
-                            <option value="Diretoria Financeira e Controle Interno">Diretoria Financeira e Controle Interno</option>
-                            <option value="Diretoria Pedagógica">Diretoria Pedagógica</option>
-                            <option value="Marketing">Marketing</option>
-                        </optgroup>
-
-                        <optgroup label="Coordenações">
-                            <option value="Coordenação ABA">Coordenação ABA</option>
-                            <option value="Coordenação Agendamento/Recepção">Coordenação Agendamento/Recepção</option>
-                            <option value="Coordenação Faturamento">Coordenação Faturamento</option>
-                            <option value="Coordenação Operacional">Coordenação Operacional</option>
-                            <option value="Coordenação de RH">Coordenação de RH</option>
-                            <option value="Coordenação TCC/AVN">Coordenação TCC/AVN</option>
-                        </optgroup>
-
-                        <optgroup label="Administrativo & Financeiro">
-                            <option value="Faturamento - Unidade 1">Faturamento - Unidade 1</option>
-                            <option value="Faturamento - Unidade 3">Faturamento - Unidade 3</option>
+                        <option value="">Selecione...</option>
+                        <optgroup label="Geral">
+                            <option value="Recepção">Recepção</option>
+                            <option value="Administrativo">Administrativo</option>
                             <option value="Financeiro">Financeiro</option>
+                            <option value="Diretoria">Diretoria</option>
                             <option value="RH">RH</option>
                         </optgroup>
-
-                        <optgroup label="Operacional / Atendimento">
-                            <option value="Relacionamento e Comercial">Relacionamento e Comercial</option>
-                            <option value="Assessoria">Assessoria</option>
-                            <option value="Recepção 1">Recepção 1</option>
-                            <option value="Recepção 2">Recepção 2</option>
-                            <option value="Recepção 3">Recepção 3</option>
-                            <option value="ASG - UNIDADE 1">ASG - UNIDADE 1</option>
-                            <option value="ASG - UNIDADE 3">ASG - UNIDADE 3</option>
-                        </optgroup>
-
-                        <optgroup label="Pedagógico / Clínico">
+                        <optgroup label="Clínico">
+                            <option value="Terapeutas">Terapeutas</option>
+                            <option value="Coordenação">Coordenação</option>
                             <option value="ABA">ABA</option>
-                            <option value="Apoio AVN - Unidade 3">Apoio AVN - Unidade 3</option>
-                            <option value="Apoio Pedagógico">Apoio Pedagógico</option>
-                        </optgroup>
-
-                        <optgroup label="Equipe Terapêutica">
-                            <option value="Terapeutas - Unidade 1">Terapeutas - Unidade 1</option>
-                            <option value="Terapeutas - Unidade 2">Terapeutas - Unidade 2</option>
-                            <option value="Terapeutas - Unidade 3">Terapeutas - Unidade 3</option>
                         </optgroup>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Urgência:</label>
                     <select id="urgencia">
-                        <option value="baixa">🟢 Baixa (Pode esperar)</option>
-                        <option value="media">🔵 Média (Atrapalha um pouco)</option>
-                        <option value="alta">🟠 Alta (Setor parado)</option>
-                        <option value="critica">🔴 Crítica (Empresa parada)</option>
+                        <option value="critica">🔴 Imediato (Parou tudo)</option>
+                        <option value="alta">🟡 Alta (Até 60 min)</option>
+                        <option value="media">🟢 Normal (Até 2 horas)</option>
+                        <option value="baixa">🔵 Baixa/Agendado (Até 4 horas)</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Descrição do Problema:</label>
-                    <textarea id="descricao" placeholder="Descreva o que está acontecendo..." required></textarea>
+                    <label>Descrição Detalhada:</label>
+                    <textarea id="descricao" required placeholder="Descreva o problema ou o sistema que deseja criar..."></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label>Testes Realizados (Opcional):</label>
-                    <input type="text" id="testes" placeholder="Ex: Reiniciei o PC, verifiquei cabos...">
+                    <label id="lblTestes">Testes Realizados:</label>
+                    <input type="text" id="testes" placeholder="Reiniciei, verifiquei cabos...">
                 </div>
 
-                <button type="submit" class="btn-submit">Abrir Chamado</button>
+                <button type="submit" class="btn-submit">Enviar Solicitação</button>
             </form>
         </div>
 
         <div class="card">
-            <header>
-                <h1>Fila de Espera ⏳</h1>
-                <p>Acompanhe sua solicitação em tempo real</p>
-            </header>
-            
+            <h1>Acompanhamento ⏳</h1>
+            <p>Fila em tempo real</p>
+            <br>
             <div id="fila" class="fila-lista">
-                <div class="empty-state">
-                    <div class="empty-icon">✅</div>
-                    <p>Nenhum chamado pendente.<br>Tudo funcionando!</p>
-                </div>
+                <p style="text-align:center; color:#999;">Carregando...</p>
             </div>
         </div>
     </div>
@@ -312,83 +227,97 @@
     <script>
         const API_URL = '/api/chamados';
 
-        // CARREGAR FILA
+        function mudarFormulario() {
+            const tipo = document.getElementById('tipo').value;
+            const lblTestes = document.getElementById('lblTestes');
+            const inputTestes = document.getElementById('testes');
+
+            if (tipo === 'projeto') {
+                lblTestes.innerText = "Justificativa do Projeto:";
+                inputTestes.placeholder = "Por que precisamos desse sistema?";
+            } else {
+                lblTestes.innerText = "Testes Realizados:";
+                inputTestes.placeholder = "Reiniciei, verifiquei...";
+            }
+        }
+
         async function carregarFila() {
             try {
                 const res = await fetch(API_URL);
                 const dados = await res.json();
-                
-                // Filtra apenas o que não foi concluído
-                const pendentes = dados.filter(c => c.status !== 'concluido');
-                const divFila = document.getElementById('fila');
+                const pendentes = dados.filter(c => c.status !== 'concluido' && c.status !== 'rejeitado');
+                const div = document.getElementById('fila');
                 
                 if (pendentes.length === 0) {
-                    divFila.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-icon">✅</div>
-                            <p>Nenhum chamado pendente.<br>Tudo funcionando!</p>
-                        </div>`;
+                    div.innerHTML = `<div style="text-align:center; padding:20px; color:#999;">
+                        <span style="font-size:2rem;">✅</span><br>Tudo tranquilo!
+                    </div>`;
                     return;
                 }
 
-                divFila.innerHTML = '';
+                div.innerHTML = '';
                 pendentes.forEach(c => {
-                    const cor = `borda-${c.urgencia}`;
-                    const statusText = c.status === 'andamento' ? '⚡ EM ATENDIMENTO' : 'Aguardando';
-                    const statusColor = c.status === 'andamento' ? '#fd7e14' : '#888';
+                    let cor = `borda-${c.urgencia}`;
+                    let statusText = 'Aguardando';
+                    let statusColor = '#888';
+                    
+                    if(c.status === 'analise') { 
+                        cor = 'borda-analise'; 
+                        statusText = '🧐 Em Análise'; 
+                        statusColor = '#6f42c1';
+                    }
+                    if(c.status === 'andamento') { 
+                        statusText = '⚡ Em Atendimento'; 
+                        statusColor = '#fd7e14';
+                    }
 
-                    divFila.innerHTML += `
+                    div.innerHTML += `
                         <div class="chamado-item ${cor}">
-                            <div class="chamado-header">
-                                <span>#${c.id} - ${c.setor}</span>
+                            <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:#666; margin-bottom:5px;">
+                                <strong>#${c.id} - ${c.setor}</strong>
                                 <span style="color:${statusColor}; font-weight:bold;">${statusText}</span>
                             </div>
-                            <div class="chamado-titulo">${c.solicitante}</div>
-                            <div class="chamado-desc">${c.descricao}</div>
-                        </div>
-                    `;
+                            <div style="font-weight:bold; color:#333;">${c.solicitante}</div>
+                            <div style="font-size:0.9rem; color:#555; margin-top:5px;">${c.descricao}</div>
+                        </div>`;
                 });
-            } catch (error) {
-                console.error("Erro ao carregar fila:", error);
-            }
+            } catch (e) { console.error("Erro fila:", e); }
         }
 
-        // ENVIAR CHAMADO
         document.getElementById('formChamado').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const btn = document.querySelector('.btn-submit');
             const textoOriginal = btn.innerText;
+            
+            btn.disabled = true; 
             btn.innerText = "Enviando...";
-            btn.disabled = true;
-
-            const payload = {
-                solicitante: document.getElementById('solicitante').value,
-                setor: document.getElementById('setor').value,
-                urgencia: document.getElementById('urgencia').value,
-                descricao: document.getElementById('descricao').value,
-                testes_realizados: document.getElementById('testes').value
-            };
 
             try {
                 await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        tipo: document.getElementById('tipo').value,
+                        solicitante: document.getElementById('solicitante').value,
+                        setor: document.getElementById('setor').value,
+                        urgencia: document.getElementById('urgencia').value,
+                        descricao: document.getElementById('descricao').value,
+                        testes_realizados: document.getElementById('testes').value
+                    })
                 });
                 
                 document.getElementById('formChamado').reset();
-                alert('Chamado aberto com sucesso!');
+                mudarFormulario();
+                alert('Solicitação enviada com sucesso!');
                 carregarFila();
             } catch (error) {
-                alert('Erro ao abrir chamado.');
+                alert('Erro ao enviar. Tente novamente.');
             } finally {
+                btn.disabled = false; 
                 btn.innerText = textoOriginal;
-                btn.disabled = false;
             }
         });
 
-        // Atualiza a fila a cada 5 segundos
         setInterval(carregarFila, 5000);
         carregarFila();
     </script>
