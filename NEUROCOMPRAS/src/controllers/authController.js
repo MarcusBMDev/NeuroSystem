@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const accessRules = require('../config/accessRules');
 
 exports.login = (req, res) => {
     const { username, password } = req.body;
@@ -25,5 +26,18 @@ exports.login = (req, res) => {
         } else {
             res.status(401).json({ sucesso: false, mensagem: 'Usuário ou senha incorretos' });
         }
+    });
+};
+
+exports.verificarPermissoes = (req, res) => {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    if (!id) return res.json({ podeSolicitar: false, acessoPainel: false, acessoEstoque: false });
+
+    res.json({
+        podeSolicitar: accessRules.SOLICITACAO.includes(userId),
+        acessoPainel: accessRules.PAINEL.includes(userId),
+        acessoEstoque: accessRules.ESTOQUE.includes(userId)
     });
 };

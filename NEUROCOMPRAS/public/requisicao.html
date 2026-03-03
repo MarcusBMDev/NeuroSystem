@@ -11,8 +11,12 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px; background: #fff; border-radius: 8px;">
     <a href="http://192.168.10.133" style="text-decoration: none; color: #555;">⬅ Voltar ao Portal</a>
     
-    <button id="btn-admin" onclick="window.location.href='/financeiro.html'" style="display: none; background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+    <button id="btn-admin" onclick="window.location.href='/financeiro.html'" style="display: none; background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
         🔒 Painel Financeiro
+    </button>
+
+    <button id="btn-estoque" onclick="window.location.href='/estoque.html'" style="display: none; background: #e67e22; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+        📦 Estoque
     </button>
     
     <button onclick="sair()" style="background: none; border: 1px solid #ccc; padding: 5px 10px; cursor: pointer;">Sair</button>
@@ -42,8 +46,13 @@
         </div>
 
         <div class="form-group">
-            <label for="link_produto">Link do Produto (Opcional):</label>
-            <input type="url" id="link_produto" name="link_produto" placeholder="https://loja.com/produto...">
+            <label>Links do Produto:</label>
+            <div id="container-links">
+                <div class="input-group-link" style="display: flex; gap: 10px; margin-bottom: 5px;">
+                    <input type="url" name="link_produto" placeholder="https://loja.com/produto..." style="flex: 1;">
+                </div>
+            </div>
+            <button type="button" onclick="adicionarLink()" style="background: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px;">+ Adicionar outro Link</button>
         </div>
 
         <div class="form-group">
@@ -61,9 +70,9 @@
         </div>
 
         <div class="form-group">
-            <label for="foto_produto">Foto ou Print do Produto:</label>
-            <input type="file" id="foto_produto" name="foto_produto" accept="image/*">
-            <img id="preview" class="preview-img" alt="Pré-visualização da foto">
+            <label for="foto_produto">Fotos ou Prints do Produto (Pode selecionar várias):</label>
+            <input type="file" id="foto_produto" name="foto_produto" accept="image/*" multiple onchange="previewImagens()">
+            <div id="preview-container" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
         </div>
 
         <button type="submit" class="btn-submit">Enviar Pedido ao Financeiro</button>

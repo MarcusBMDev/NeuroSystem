@@ -1,0 +1,71 @@
+<%- include('partials/header') %>
+
+    <div class="details-header">
+        <h2>Detalhes da Solicitação #<%= reclamacao.id %></h2>
+        <span class="badge <%= reclamacao.status.toLowerCase().replace(' ', '-') %>"><%= reclamacao.status %></span>
+    </div>
+
+    <div class="card">
+        <% if (isAdmin) { %>
+            <p><strong>Solicitante (Usuário):</strong> <%= reclamacao.autor || 'Sistema' %></p>
+        <% } %>
+        <p><strong>Unidade:</strong> <%= reclamacao.unidade %></p>
+        <p><strong>Tipo:</strong> <span class="badge" style="background: #e2e8f0; color: #475569;"><%= reclamacao.tipo_solicitante || 'Paciente' %></span></p>
+        <p><strong>Paciente/Responsável:</strong> <%= reclamacao.paciente || '-' %></p>
+        <p><strong>Data:</strong> <%= new Date(reclamacao.data_reclamacao).toLocaleString() %></p>
+        <hr>
+        <h3>Relato:</h3>
+        <p class="relato-text"><%= reclamacao.relato %></p>
+    </div>
+
+    <% if (reclamacao.setor_responsavel) { %>
+        <div class="card info">
+            <h3>Encaminhamento</h3>
+            <p><strong>Setor Responsável:</strong> <%= reclamacao.setor_responsavel %></p>
+            <p><strong>Prazo de Resposta:</strong> <%= new Date(reclamacao.prazo_resposta).toLocaleDateString() %></p>
+            <% if (reclamacao.resposta_setor) { %>
+                <hr>
+                <h3>Resposta do Setor:</h3>
+                <p><%= reclamacao.resposta_setor %></p>
+            <% } %>
+        </div>
+    <% } %>
+
+    <div class="actions-panel">
+        <h3>Ações de Gestão</h3>
+        
+        <!-- Encaminhar (Apenas Admin) -->
+        <% if (isAdmin && (reclamacao.status === 'Nova' || reclamacao.status === 'Em Análise')) { %>
+            <form action="/encaminhar/<%= reclamacao.id %>" method="POST" class="inline-form" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <input type="text" name="setor" placeholder="Setor Responsável (ex: RH)" required style="flex:1;">
+                
+                <select name="destinatario_id" required style="flex:1;">
+                    <option value="">Selecione quem será notificado...</option>
+                    <% if (typeof users !== 'undefined') { %>
+                        <% users.forEach(u => { %>
+                            <option value="<%= u.id %>"><%= u.username %> <%= u.department ? '(' + u.department + ')' : '' %></option>
+                        <% }) %>
+                    <% } %>
+                </select>
+
+                <button type="submit" class="btn-warning">Encaminhar & Notificar</button>
+            </form>
+        <% } %>
+
+        <!-- Responder (Admin OU Responsável) -->
+        <% if ((isAdmin || isResponsible) && reclamacao.status === 'Encaminhada') { %>
+            <form action="/responder/<%= reclamacao.id %>" method="POST" class="mt-2">
+                <textarea name="resposta" placeholder="Resposta do setor..." required></textarea>
+                <button type="submit" class="btn-success">Registrar Resposta</button>
+            </form>
+        <% } %>
+
+        <!-- Finalizar (Apenas Admin) -->
+        <% if (isAdmin && reclamacao.status === 'Respondida') { %>
+            <a href="/finalizar/<%= reclamacao.id %>" class="btn-danger">Finalizar Solicitação</a>
+        <% } %>
+    </div>
+    
+    <a href="/" class="btn-secondary mt-2">Voltar</a>
+
+<%- include('partials/footer') %>

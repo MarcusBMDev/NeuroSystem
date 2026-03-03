@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Estoque - NeuroCompras</title>
+    <link rel="stylesheet" href="css/financeiro.css"> <!-- Reutilizando estilos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .estoque-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .action-bar { display: flex; gap: 10px; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .badge-low { background: #e74c3c; color: white; }
+        .badge-ok { background: #2ecc71; color: white; }
+        
+        /* Modal Style Override */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 500px; max-width: 90%; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .input-group input, .input-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <div class="card header-flex">
+        <div>
+            <h1>📦 Controle de Estoque</h1>
+            <span style="color: #777;">Gestão de Entrada e Saída de Mercadorias</span>
+        </div>
+        <div>
+            <span id="userDisplay">Olá, Usuário</span>
+            <a href="financeiro.html" class="btn-voltar">⬅ Voltar ao Painel</a>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card">
+        <div class="estoque-header">
+            <h3>Produtos em Estoque</h3>
+            <div class="action-bar">
+                <button onclick="openModal('modalProduto')" class="btn-voltar" style="background:#f39c12;">+ Novo Produto</button>
+                <button onclick="openModal('modalEntrada')" class="btn-voltar" style="background:#27ae60;">📥 Registrar Entrada</button>
+                <button onclick="openModal('modalSaida')" class="btn-voltar" style="background:#c0392b;">📤 Registrar Saída</button>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Produto</th>
+                    <th>Quantidade</th>
+                    <th>Unidade</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaProdutos">
+                <tr><td colspan="5" style="text-align:center;">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card" style="margin-top: 20px; display: flex; flex-direction: column; align-items: center;">
+        <h3>📊 Consumo por Setor</h3>
+        <div style="height: 250px; width: 100%; max-width: 500px;">
+            <canvas id="graficoSetores"></canvas>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+        <h3>Últimas Movimentações</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Obs / NFE</th>
+                    <th>Usuário</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaMovimentacoes">
+                <!-- JS preenche -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MODAL NOVO PRODUTO -->
+    <div id="modalProduto" class="modal">
+        <div class="modal-content">
+            <h3>Cadastrar Novo Produto</h3>
+            <div class="input-group">
+                <label>Nome do Produto</label>
+                <input type="text" id="prodNome">
+            </div>
+            <div class="input-group">
+                <label>Código (Opcional)</label>
+                <input type="text" id="prodCodigo">
+            </div>
+            <div class="input-group">
+                <label>Unidade (ex: cx, un, kg)</label>
+                <input type="text" id="prodUnidade" value="un">
+            </div>
+            <div class="input-group">
+                <label>Estoque Mínimo</label>
+                <input type="number" id="prodMinimo" value="5">
+            </div>
+            <button onclick="salvarProduto()" class="btn-voltar" style="background:#27ae60;">Salvar</button>
+            <button onclick="closeModal('modalProduto')" class="btn-voltar" style="background:#7f8c8d;">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- MODAL ENTRADA -->
+    <div id="modalEntrada" class="modal">
+        <div class="modal-content">
+            <h3>📥 Registrar Entrada (Nota Fiscal)</h3>
+            <div class="input-group">
+                <label>Número NFE</label>
+                <input type="text" id="entNfeNumero">
+            </div>
+            <div class="input-group">
+                <label>Data de Emissão</label>
+                <input type="date" id="entNfeData">
+            </div>
+            <hr>
+            <div class="input-group">
+                <label>Produto</label>
+                <select id="entProduto"></select>
+            </div>
+            <div class="input-group">
+                <label>Quantidade</label>
+                <input type="number" id="entQtd" min="1">
+            </div>
+            <!-- Simples para V1: 1 produto por vez ou adicionar lógica de lista -->
+            <button onclick="registrarEntrada()" class="btn-voltar" style="background:#27ae60;">Confirmar Entrada</button>
+            <button onclick="closeModal('modalEntrada')" class="btn-voltar" style="background:#7f8c8d;">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- MODAL SAIDA -->
+    <div id="modalSaida" class="modal">
+        <div class="modal-content">
+            <h3>📤 Registrar Saída</h3>
+            <div class="input-group">
+                <label>Produto</label>
+                <select id="saiProduto"></select>
+            </div>
+            <div class="input-group">
+                <label>Quantidade</label>
+                <input type="number" id="saiQtd" min="1">
+            </div>
+            <div class="input-group">
+                <label>Setor de Destino</label>
+                <select id="saiSetor">
+                    <option value="">Selecione...</option>
+                    <option value="Administrativo">Administrativo</option>
+                    <option value="Comercial">Comercial</option>
+                    <option value="Diretoria">Diretoria</option>
+                    <option value="Financeiro">Financeiro</option>
+                    <option value="Limpeza/Copa">Limpeza/Copa</option>
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Recepção">Recepção</option>
+                    <option value="RH">RH</option>
+                    <option value="T.I.">T.I.</option>
+                    <option value="Técnico/Clínico">Técnico/Clínico</option>
+                    <option value="Outros">Outros</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Observação</label>
+                <input type="text" id="saiObs">
+            </div>
+            <button onclick="registrarSaida()" class="btn-voltar" style="background:#c0392b;">Confirmar Saída</button>
+            <button onclick="closeModal('modalSaida')" class="btn-voltar" style="background:#7f8c8d;">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR MOVIMENTACAO -->
+    <div id="modalEditarMov" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Editar Movimentação</h3>
+            <input type="hidden" id="editMovId">
+            <input type="hidden" id="editMovTipo">
+            
+            <div id="camposEntradaEdit" style="display:none;">
+                <div class="input-group">
+                    <label>Número NFE</label>
+                    <input type="text" id="editNfeNumero">
+                </div>
+                <div class="input-group">
+                    <label>Data NFE</label>
+                    <input type="date" id="editNfeData">
+                </div>
+            </div>
+
+            <div id="camposSaidaEdit" style="display:none;">
+                <div class="input-group">
+                    <label>Setor</label>
+                    <select id="editSetor">
+                        <option value="Administrativo">Administrativo</option>
+                        <option value="Comercial">Comercial</option>
+                        <option value="Diretoria">Diretoria</option>
+                        <option value="Financeiro">Financeiro</option>
+                        <option value="Limpeza/Copa">Limpeza/Copa</option>
+                        <option value="Manutenção">Manutenção</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Recepção">Recepção</option>
+                        <option value="RH">RH</option>
+                        <option value="T.I.">T.I.</option>
+                        <option value="Técnico/Clínico">Técnico/Clínico</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Observação</label>
+                <input type="text" id="editObs">
+            </div>
+
+            <button onclick="salvarEdicaoMov()" class="btn-voltar" style="background:#27ae60;">Salvar Alterações</button>
+            <button onclick="closeModal('modalEditarMov')" class="btn-voltar" style="background:#7f8c8d;">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- MODAL ACERTO DE ESTOQUE -->
+    <div id="modalAcerto" class="modal">
+        <div class="modal-content">
+            <h3>⚙️ Acerto de Estoque</h3>
+            <p id="acertoProdutoNome" style="font-weight:bold;"></p>
+            <input type="hidden" id="acertoProdutoId">
+            
+            <div class="input-group">
+                <label>Quantidade Real em Prateleira</label>
+                <input type="number" id="acertoQtd" min="0">
+            </div>
+            <div class="input-group">
+                <label>Motivo do Ajuste (Opcional)</label>
+                <input type="text" id="acertoObs" placeholder="Ex: Quebra, Erro de contagem...">
+            </div>
+
+            <button onclick="salvarAjuste()" class="btn-voltar" style="background:#27ae60;">Confirmar Acerto</button>
+            <button onclick="closeModal('modalAcerto')" class="btn-voltar" style="background:#7f8c8d;">Cancelar</button>
+        </div>
+    </div>
+
+    <script>
+        // --- PROTEÇÃO DE ROTA ---
+        (async function checkAuth() {
+            const uId = localStorage.getItem('usuarioId');
+            if(!uId) { window.location.href = 'index.html'; return; }
+            
+            try {
+                // Verificar permissões atualizadas
+                const resp = await fetch(`/api/auth/permissoes/${uId}`);
+                const data = await resp.json();
+                
+                // Se não tem permissão de estoque, redireciona
+                if(!data.acessoEstoque) {
+                   alert('⛔ Acesso Negado ao Controle de Estoque.');
+                   window.location.href = 'requisicao.html';
+                }
+            } catch(e) {
+                console.error(e);
+                window.location.href = 'requisicao.html';
+            }
+        })();
+
+        const API_URL = '/api/estoque';
+        const usuarioId = localStorage.getItem('usuarioId');
+        const usuarioNome = localStorage.getItem('usuarioNome');
+
+        if(!usuarioId) window.location.href = 'index.html';
+        document.getElementById('userDisplay').innerText = `Logado: ${usuarioNome}`;
+
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        async function carregarDados() {
+            // Produtos
+            const resProd = await fetch(`${API_URL}/produtos`);
+            const produtos = await resProd.json();
+            
+            // Preenche Tabela
+            const tbody = document.getElementById('tabelaProdutos');
+            tbody.innerHTML = '';
+            
+            // Preenche Selects
+            const selectEnt = document.getElementById('entProduto');
+            const selectSai = document.getElementById('saiProduto');
+            selectEnt.innerHTML = ''; selectSai.innerHTML = '';
+
+            produtos.forEach(p => {
+                // Tabela
+                const status = p.quantidade <= p.minimo ? `<span class="badge badge-low">Baixo</span>` : `<span class="badge badge-ok">OK</span>`;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.codigo || '-'}</td>
+                        <td>${p.nome}</td>
+                        <td><strong>${p.quantidade}</strong> ${p.unidade}</td>
+                        <td>${p.unidade}</td>
+                        <td>${status}</td>
+                        <td>
+                            <button data-id="${p.id}" data-nome="${p.nome}" onclick="handleDelete(this)" class="btn-voltar" style="background:#e74c3c; padding: 5px 10px; margin: 0;">🗑️</button>
+                            <button onclick="openModalAcerto('${p.id}', '${p.nome}', ${p.quantidade})" class="btn-voltar" style="background:#3498db; padding: 5px 10px; margin: 0;">⚙️ Acerto</button>
+                        </td>
+                    </tr>
+                `;
+                // Selects
+                const opt = `<option value="${p.id}">${p.nome}</option>`;
+                selectEnt.innerHTML += opt;
+                selectSai.innerHTML += opt;
+            });
+
+            // Movimentações
+            const resMov = await fetch(`${API_URL}/movimentacoes`);
+            const movs = await resMov.json();
+            const tbMov = document.getElementById('tabelaMovimentacoes');
+            tbMov.innerHTML = '';
+            movs.forEach(m => {
+                const tipoIcon = m.tipo === 'entrada' ? '📥' : '📤';
+                let obsDisplay = m.observacao || '-';
+                
+                if (m.tipo === 'entrada') {
+                    obsDisplay = `NFE: ${m.nfe_numero || 'N/A'}`;
+                } else if (m.tipo === 'saida' && m.setor) {
+                    obsDisplay = `[${m.setor}] ${m.observacao || ''}`;
+                }
+
+                tbMov.innerHTML += `
+                    <tr>
+                        <td>${new Date(m.data_movimentacao).toLocaleDateString()} ${new Date(m.data_movimentacao).toLocaleTimeString()}</td>
+                        <td>${tipoIcon} ${m.tipo.toUpperCase()}</td>
+                        <td>${obsDisplay}</td>
+                        <td>${m.username || 'Sistema'}</td>
+                        <td>
+                            <button onclick="openEditMov('${m.id}', '${m.tipo}', '${m.nfe_numero || ''}', '${m.nfe_data || ''}', '${m.setor || ''}', '${m.observacao || ''}')" class="btn-voltar" style="background:#f39c12; padding: 5px 10px; margin: 0;">✏️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Carregar Gráfico de Setores
+            carregarGraficoSetores();
+        }
+
+        let chartSetores = null;
+        async function carregarGraficoSetores() {
+            const resp = await fetch(`${API_URL}/relatorio-setores`);
+            const dados = await resp.json();
+
+            const ctx = document.getElementById('graficoSetores').getContext('2d');
+            if (chartSetores) chartSetores.destroy();
+
+            chartSetores = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: dados.map(d => d.setor),
+                    datasets: [{
+                        data: dados.map(d => d.total_itens),
+                        backgroundColor: [
+                            '#3498db', '#e74c3c', '#9b59b6', '#2ecc71', '#f1c40f', '#34495e', '#e67e22', '#1abc9c'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' }
+                    }
+                }
+            });
+        }
+
+        function openEditMov(id, tipo, nfe, dataNfe, setor, obs) {
+            document.getElementById('editMovId').value = id;
+            document.getElementById('editMovTipo').value = tipo;
+            document.getElementById('editObs').value = obs;
+
+            document.getElementById('camposEntradaEdit').style.display = tipo === 'entrada' ? 'block' : 'none';
+            document.getElementById('camposSaidaEdit').style.display = tipo === 'saida' ? 'block' : 'none';
+
+            if (tipo === 'entrada') {
+                document.getElementById('editNfeNumero').value = nfe;
+                if (dataNfe) {
+                    const d = new Date(dataNfe);
+                    document.getElementById('editNfeData').value = d.toISOString().split('T')[0];
+                }
+            } else {
+                document.getElementById('editSetor').value = setor;
+            }
+
+            openModal('modalEditarMov');
+        }
+
+        async function salvarEdicaoMov() {
+            const id = document.getElementById('editMovId').value;
+            const tipo = document.getElementById('editMovTipo').value;
+            const observacao = document.getElementById('editObs').value;
+            
+            const payload = { 
+                usuario_id: usuarioId,
+                observacao 
+            };
+
+            if (tipo === 'entrada') {
+                payload.nfe_numero = document.getElementById('editNfeNumero').value;
+                payload.nfe_data = document.getElementById('editNfeData').value;
+            } else {
+                payload.setor = document.getElementById('editSetor').value;
+            }
+
+            const resp = await fetch(`${API_URL}/movimentacao/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await resp.json();
+            if (data.success) {
+                alert('Movimentação atualizada com sucesso!');
+                closeModal('modalEditarMov');
+                carregarDados();
+            } else {
+                alert('Erro ao atualizar: ' + data.error);
+            }
+        }
+
+        function openModalAcerto(id, nome, qtd) {
+            document.getElementById('acertoProdutoId').value = id;
+            document.getElementById('acertoProdutoNome').innerText = `Produto: ${nome}`;
+            document.getElementById('acertoQtd').value = qtd;
+            document.getElementById('acertoObs').value = '';
+            openModal('modalAcerto');
+        }
+
+        async function salvarAjuste() {
+            const id = document.getElementById('acertoProdutoId').value;
+            const novaQtd = document.getElementById('acertoQtd').value;
+            const obs = document.getElementById('acertoObs').value;
+
+            if (novaQtd === '' || novaQtd < 0) return alert('Informe uma quantidade válida.');
+
+            const resp = await fetch(`${API_URL}/ajuste`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    produto_id: id,
+                    nova_quantidade: parseFloat(novaQtd),
+                    usuario_id: usuarioId,
+                    observacao: obs
+                })
+            });
+
+            const data = await resp.json();
+            if (data.success) {
+                alert(data.message);
+                closeModal('modalAcerto');
+                carregarDados();
+            } else {
+                alert('Erro ao realizar acerto: ' + data.error);
+            }
+        }
+
+        async function salvarProduto() {
+            const nome = document.getElementById('prodNome').value;
+            const codigo = document.getElementById('prodCodigo').value;
+            const unidade = document.getElementById('prodUnidade').value;
+            const minimo = document.getElementById('prodMinimo').value;
+
+            await fetch(`${API_URL}/produto`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ nome, codigo, unidade, minimo, usuario_id: usuarioId })
+            });
+            closeModal('modalProduto');
+            carregarDados();
+        }
+
+        async function registrarEntrada() {
+            const nfe_numero = document.getElementById('entNfeNumero').value;
+            const nfe_data = document.getElementById('entNfeData').value;
+            const produto_id = document.getElementById('entProduto').value;
+            const quantidade = document.getElementById('entQtd').value;
+
+            if(!nfe_numero || !nfe_data || !quantidade) return alert('Preencha os dados da NFE e quantidade');
+
+            await fetch(`${API_URL}/entrada`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    nfe_numero, nfe_data, usuario_id: usuarioId, observacao: 'Entrada NFE',
+                    itens: [{ produto_id, quantidade }]
+                })
+            });
+            closeModal('modalEntrada');
+            carregarDados();
+        }
+
+        async function registrarSaida() {
+            const produto_id = document.getElementById('saiProduto').value;
+            const quantidade = document.getElementById('saiQtd').value;
+            const setor = document.getElementById('saiSetor').value;
+            const obs = document.getElementById('saiObs').value;
+
+            if(!quantidade) return alert('Preencha a quantidade');
+            if(!setor) return alert('Selecione o Setor de Destino');
+
+            await fetch(`${API_URL}/saida`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    usuario_id: usuarioId, observacao: obs, setor: setor,
+                    itens: [{ produto_id, quantidade }]
+                })
+            });
+            closeModal('modalSaida');
+            carregarDados();
+        }
+
+        async function handleDelete(btn) {
+            const id = btn.getAttribute('data-id');
+            const nome = btn.getAttribute('data-nome');
+            if (!confirm(`Tem certeza que deseja remover o produto "${nome}"? \n\nEle será ocultado da lista, mas todo o histórico de movimentações será preservado.`)) return;
+
+            try {
+                const resp = await fetch(`${API_URL}/produto/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'x-usuario-id': usuarioId }
+                });
+                
+                const contentType = resp.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const data = await resp.json();
+                    if (data.success) {
+                        alert('Produto excluído com sucesso!');
+                        carregarDados();
+                    } else {
+                        alert('Erro ao excluir: ' + (data.error || 'Erro desconhecido'));
+                    }
+                } else {
+                    const text = await resp.text();
+                    console.error('Resposta não-JSON do servidor:', text);
+                    alert('Erro no servidor (não JSON). Verifique o console.');
+                }
+            } catch (e) {
+                console.error('Erro na requisição:', e);
+                alert('Erro na comunicação com o servidor: ' + e.message);
+            }
+        }
+
+        carregarDados();
+    </script>
+</body>
+</html>

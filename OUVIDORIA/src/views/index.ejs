@@ -1,0 +1,122 @@
+<%- include('partials/header') %>
+    
+    <h2>Painel de Solicitações</h2>
+    
+    <% if (isAdmin) { %>
+        <!-- TABLE VIEW FOR ADMINS -->
+         <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Unidade</th>
+                        <th>Solicitante</th>
+                        <th>Tipo</th>
+                        <th>Paciente/Resp.</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (reclamacoes.length > 0) { %>
+                        <% reclamacoes.forEach(r => { %>
+                            <tr>
+                                <td>#<%= r.id %></td>
+                                <td><%= r.unidade %></td>
+                                <td><%= r.autor || 'Sistema' %></td>
+                                <td><span class="badge" style="background: #e2e8f0; color: #475569;"><%= r.tipo_solicitante || 'Paciente' %></span></td>
+                                <td><%= r.paciente || '-' %></td>
+                                <td><span class="badge <%= r.status.toLowerCase().replace(' ', '-') %>"><%= r.status %></span></td>
+                                <td><%= new Date(r.data_reclamacao).toLocaleDateString() %></td>
+                                <td>
+                                    <a href="/detalhes/<%= r.id %>" class="btn-small">Ver Detalhes</a>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: var(--text-muted);">
+                                Nenhuma solicitação encontrada.
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+
+    <% } else { %>
+        <!-- CARD VIEW WITH STEPPER FOR USERS -->
+        <div class="user-solicitations">
+            <% if (reclamacoes.length > 0) { %>
+                <% reclamacoes.forEach(r => { 
+                     // Status Logic
+                     // If status is 'Nova' or 'Encaminhada', we use Yellow for current/past.
+                     // If status is 'Respondida' or 'Finalizada', we use Green.
+                     
+                     let steps = ['Nova', 'Encaminhada', 'Respondida', 'Finalizada'];
+                     let currentStatus = r.status === 'Em Análise' ? 'Nova' : r.status;
+                     let authIndex = steps.indexOf(currentStatus);
+                     if (authIndex === -1) authIndex = 0;
+                %>
+                    <div class="flow-card">
+                        <div class="flow-header">
+                            <h3>Solicitação #<%= r.id %></h3>
+                            <div class="flow-meta">
+                                <%= new Date(r.data_reclamacao).toLocaleDateString() %> | <%= r.unidade %>
+                            </div>
+                        </div>
+
+                        <div class="vertical-steps">
+                            <!-- RECEBIDA -->
+                            <% 
+                                let s0Class = 'gray'; // Default future
+                                if (authIndex > 0) s0Class = 'yellow'; // Past (Completed)
+                                if (authIndex === 0) s0Class = 'yellow'; // Current Active (Yellow for start)
+                                // If widely completed (like Finalized), maybe make early steps green too? 
+                                // The image implies gradients. let's stick to Yellow for first 2, Green for last 2.
+                                if (authIndex >= 2) s0Class = 'green'; // Turn green if later stages reached? 
+                                // Actually image uses Yellow for Pending stages and Green for done.
+                                // Recebida = Yellow
+                            %>
+                            <div class="v-step">
+                                <div class="v-bubble <%= authIndex >= 0 ? (authIndex >= 2 ? 'green' : 'yellow') : 'gray' %>">
+                                    <i>✓</i> Recebida
+                                </div>
+                            </div>
+
+                            <!-- ENCAMINHADA -->
+                            <div class="v-step">
+                                <div class="v-bubble <%= authIndex >= 1 ? (authIndex >= 2 ? 'green' : 'yellow') : 'gray' %>">
+                                    <i>✓</i> Encaminhada
+                                </div>
+                            </div>
+
+                            <!-- RESPONDIDA (Green starts here usually) -->
+                            <div class="v-step">
+                                <div class="v-bubble <%= authIndex >= 2 ? 'green' : 'gray' %>">
+                                    <i>✓</i> Respondida
+                                </div>
+                            </div>
+                            
+                            <!-- FINALIZADA -->
+                             <% if (authIndex >= 3) { %>
+                                <div class="v-step">
+                                    <div class="v-bubble green">
+                                        <i>✓</i> Finalizada
+                                    </div>
+                                </div>
+                             <% } %>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div class="card" style="text-align: center; padding: 3rem;">
+                    <p style="color: var(--text-muted); font-size: 1.1rem;">Você ainda não fez nenhuma solicitação.</p>
+                    <a href="/nova" class="btn-primary" style="margin-top: 1rem;">Criar Nova Solicitação</a>
+                </div>
+            <% } %>
+        </div>
+    <% } %>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,40 @@
+<div id="gestao" class="tab-content active">
+    <h2>Mural de Informativos e Modelos</h2>
+    <div class="card-grid">
+        <% arquivos.filter(a => a.categoria == 'informativo' || a.categoria == 'modelo').forEach(function(arq) { %>
+        <div class="doc-card" style="padding: 10px;">
+            <% 
+               const ext = arq.caminho_arquivo ? arq.caminho_arquivo.split('.').pop().toLowerCase() : '';
+            %>
+            
+            <h3><%= arq.titulo %></h3>
+
+            <% if(arq.conteudo_texto) { %>
+                <div style="text-align:left; padding: 10px; background:#f9f9f9; border-radius:4px; margin-top:10px; font-size:0.95rem; white-space: pre-wrap; color:#444;">
+                    <%= arq.conteudo_texto %>
+                </div>
+            <% } %>
+
+            <% if(arq.caminho_arquivo) { %>
+                <% if(['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) { %>
+                    <img src="<%= arq.caminho_arquivo %>" style="width: 100%; height: auto; border: 1px solid #eee; border-radius: 4px; margin-top: 10px;">
+                <% } else if(ext === 'pdf') { %>
+                    <embed src="<%= arq.caminho_arquivo %>" type="application/pdf" style="width: 100%; height: 600px; border: 1px solid #eee; border-radius: 4px; margin-top: 10px;">
+                    <div style="text-align:right; margin-top:5px;">
+                        <a href="<%= arq.caminho_arquivo %>" target="_blank" style="font-size:0.8rem; color:#2980b9;">🔍 Expandir PDF</a>
+                    </div>
+                <% } else { %>
+                    <div style="text-align:center; padding: 20px;">
+                        <span style="font-size: 2rem;">📎</span>
+                        <br>
+                        <a href="<%= arq.caminho_arquivo %>" target="_blank" class="btn" style="margin-top:10px;">Baixar Arquivo</a>
+                    </div>
+                <% } %>
+            <% } %>
+        </div>
+        <% }); %>
+        <% if(arquivos.filter(a => a.categoria == 'informativo' || a.categoria == 'modelo').length === 0) { %>
+            <p style="color:#777;">Nenhum informativo publicado no momento.</p>
+        <% } %>
+    </div>
+</div>

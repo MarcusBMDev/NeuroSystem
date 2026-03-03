@@ -74,6 +74,17 @@ const comprasRepository = {
                 resolve(resultado);
             });
         });
+    },
+
+    // 5. Função para BUSCAR uma compra pelo ID
+    buscarPorId: (id) => {
+        return new Promise((resolve, reject) => {
+            const query = `SELECT * FROM requisicoes WHERE id = ?`;
+            db.query(query, [id], (erro, resultados) => {
+                if (erro) return reject(erro);
+                resolve(resultados[0]);
+            });
+        });
     }
 
 };

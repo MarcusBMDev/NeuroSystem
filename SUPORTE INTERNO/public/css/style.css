@@ -1,0 +1,320 @@
+:root {
+    --primary: #005c97;
+    --secondary: #363795;
+    --accent: #00d2ff;
+    --text-dark: #2c3e50;
+    --glass-bg: rgba(255, 255, 255, 0.95);
+    --input-bg: #f8f9fa;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background: linear-gradient(135deg, #141E30 0%, #243B55 100%);
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column; /* Changed to column to handle header naturally */
+    align-items: center;
+    color: var(--text-dark);
+}
+
+/* HEADER BUTTONS - Fixed overlapping */
+.header-nav {
+    width: 90%;
+    max-width: 1100px;
+    margin-top: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+}
+
+.btn-voltar-portal {
+    text-decoration: none;
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 20px;
+    border-radius: 30px;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-voltar-portal:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateX(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-admin {
+    background: rgba(20, 30, 48, 0.8);
+}
+
+.container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    width: 90%;
+    max-width: 1100px;
+    margin: 40px 0; /* Reduced top margin since we use flex column now */
+}
+
+.card {
+    background: var(--glass-bg);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.5);
+}
+
+h1 { color: var(--secondary); margin-bottom: 5px; margin-top: 0; }
+p { color: #666; margin-top: 0; }
+
+.form-group { margin-bottom: 15px; }
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: var(--secondary);
+    font-size: 0.9rem;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: var(--input-bg);
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #fff;
+}
+
+textarea { resize: vertical; min-height: 80px; }
+
+#campo-outros {
+    animation: fadeIn 0.4s ease;
+    margin-bottom: 20px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#categoria_demanda {
+    border-left: 5px solid var(--accent);
+    font-weight: 600;
+}
+
+.btn-submit {
+    background: linear-gradient(45deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    padding: 15px;
+    width: 100%;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: transform 0.2s;
+}
+
+.btn-submit:hover { transform: translateY(-2px); }
+
+/* FILA LISTA */
+.fila-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.chamado-item {
+    background: white;
+    border-left: 5px solid #ccc;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.borda-baixa { border-left-color: #007bff; }
+.borda-media { border-left-color: #28a745; }
+.borda-alta { border-left-color: #ffc107; }
+.borda-critica { border-left-color: #dc3545; }
+.borda-analise { border-left-color: #6f42c1; }
+
+/* TESTES GROUP - Fixed alignment */
+#grupo-testes > div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--input-bg);
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    
+    /* Centering content if desired, or keeping clean left align */
+    /* User said "sem serem centralizados" implying they were messy. 
+       Let's make them look organized. */
+}
+
+.checkbox-label {
+    font-weight: 400;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    cursor: pointer;
+    padding: 5px;
+    transition: background 0.2s;
+    border-radius: 5px;
+}
+
+.checkbox-label:hover {
+    background: rgba(0,0,0,0.05);
+}
+
+.checkbox-label input {
+    width: auto; /* Reset width from 100% global rule */
+    margin: 0;
+}
+
+@media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
+
+/* --- ADMIN PANEL STYLES --- */
+body.admin-body {
+    --primary: #141E30;
+    --secondary: #243B55;
+    --bg: #f4f6f9;
+    
+    font-family: 'Montserrat', sans-serif;
+    background: var(--bg);
+    margin: 0;
+    padding: 0;
+    color: #333;
+    display: block; /* Override flex from default body */
+    min-height: auto;
+}
+
+body.admin-body header {
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+body.admin-body h1 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: white; /* Header h1 */
+}
+
+/* Specific Admin Components */
+.header-actions { display: flex; gap: 10px; }
+.btn-header {
+    text-decoration: none; padding: 8px 15px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
+    transition: 0.2s; display: flex; align-items: center; cursor: pointer; color: white; border: 1px solid rgba(255,255,255,0.3); background: transparent;
+}
+.btn-header:hover { background: rgba(255,255,255,0.2); }
+.btn-excel { background: #217346 !important; border: none; }
+.btn-report { background: #6610f2 !important; border: none; }
+
+.dashboard-container { max-width: 1200px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; }
+
+body.admin-body h2 { border-bottom: 2px solid #ddd; padding-bottom: 10px; color: var(--secondary); margin-bottom: 20px; }
+
+.ticket-card {
+    background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #ccc; position: relative;
+}
+
+.ticket-header { display: flex; justify-content: space-between; font-size: 0.85rem; color: #666; margin-bottom: 8px; }
+.ticket-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 5px; }
+
+.prazo-badge { font-weight: bold; font-size: 0.8rem; }
+.vencido { color: #dc3545; }
+.no-prazo { color: #28a745; }
+
+.action-bar { margin-top: 15px; display: flex; gap: 10px; }
+/* Reusing .btn but creating specific variants */
+.btn { border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; flex: 1; transition: 0.2s; }
+.btn:hover { opacity: 0.9; }
+.btn-green { background: #28a745; }
+.btn-red { background: #dc3545; }
+.btn-blue { background: #007bff; }
+
+.historico-card { opacity: 0.8; border-left-color: #555 !important; }
+.resolucao { background: #e8f5e9; color: #1b5e20; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 0.9rem; }
+
+@media (max-width: 900px) { .dashboard-container { grid-template-columns: 1fr; } }
+
+/* Print Styles */
+/* Print Styles - Fixed Double Printing */
+@media print {
+    /* Hide everything by default */
+    body > * {
+        display: none !important;
+    }
+
+    /* Only show the modal if it's open - Move it to be visible */
+    #modalRelatorio {
+        display: block !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        background: white !important;
+        z-index: 9999;
+        visibility: visible !important;
+    }
+
+    #modalRelatorio * {
+        visibility: visible !important;
+    }
+
+    /* Print Specific Logic */
+    .no-print, .btn, button, .header-actions {
+        display: none !important;
+    }
+    .print-only {
+        display: block !important;
+    }
+
+    /* Chart sizing for print */
+    canvas {
+        max-width: 100% !important;
+        max-height: 400px !important;
+    }
+    .card-kpi {
+        border: 1px solid #ccc;
+        box-shadow: none !important;
+    }
+    
+    /* Ensure body allows printing */
+    body, html {
+        background: white !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+}

@@ -294,3 +294,122 @@ input[type="text"], input[type="password"], select { width: 100%; padding: 10px;
 .action-icon-btn.remove { color: #d32f2f; }
 .action-icon-btn.promote { color: #bdbdbd; } /* Cinza se não for admin */
 .action-icon-btn.promote.is-admin { color: #fbc02d; } /* Dourado se for admin */
+
+/* Estilo do Botão Sair */
+.btn-sair {
+    background-color: #e74c3c; /* Vermelho suave */
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px; /* Bordas arredondadas */
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.btn-sair:hover {
+    background-color: #c0392b; /* Vermelho mais escuro ao passar o mouse */
+    transform: translateY(-1px); /* Efeito de leve subida */
+}
+
+.btn-sair:active {
+    transform: translateY(1px); /* Efeito de clique */
+}
+
+.pinned-bar {
+            background-color: #fff9c4; /* Amarelo estilo Post-it */
+            border-bottom: 1px solid #fbc02d;
+            padding: 10px 15px;
+            display: none; /* Começa escondido, o JS ativa flex */
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            flex-shrink: 0; /* IMPEDE QUE A BARRA SEJA ESMAGADA */
+            z-index: 99;
+        }
+        
+        .pinned-bar b {
+            color: #e65100;
+            margin-right: 5px;
+        }
+
+        .pinned-content {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .pinned-close-btn {
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0 5px;
+        }
+        .pinned-close-btn:hover { color: red; }
+
+/* --- GALERIA DE MÍDIA --- */
+.media-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.media-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid #eee;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.media-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    background: #fff;
+}
+
+.media-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.media-item .file-icon {
+    font-size: 3rem;
+    margin-bottom: 8px;
+}
+
+.media-item .file-name {
+    font-size: 0.75rem;
+    color: #333;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+.media-item .media-info {
+    font-size: 0.65rem;
+    color: #888;
+    margin-top: 5px;
+}

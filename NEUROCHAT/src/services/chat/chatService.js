@@ -43,13 +43,27 @@ class ChatService {
         return await messageRepository.create(data);
     }
 
-    async getHistory(userId, targetId, type, offset) {
-        const messages = await messageRepository.getHistory(userId, targetId, type, offset);
+    async getHistory(userId, targetId, type, offset, limit) {
+        const messages = await messageRepository.getHistory(userId, targetId, type, offset, limit);
         if (offset === 0) {
             if (type === 'private') await messageRepository.markAsRead(userId, targetId);
             else if (type === 'group') await groupRepository.updateLastView(targetId, userId);
         }
         return messages;
+    }
+
+// --- MARCAR COMO LIDO E AVISAR AO VIVO ---
+    async markMessagesAsRead(myId, senderId) {
+        // 1. Atualiza no Banco
+        await messageRepository.markAsRead(myId, senderId);
+
+        // 2. Avisa o Socket
+        const io = socketStore.getIO();
+        if (io) {
+            io.to('user_' + senderId).emit('read confirmation', {
+                readerId: myId 
+            });
+        }
     }
 
     // --- REAÇÃO AO VIVO ---
@@ -68,30 +82,56 @@ class ChatService {
         });
     }
 
-// FIXAR MENSAGEM (Global)
-    async pinMessage(messageId, userId, targetId, targetType) {
-        // 1. Atualiza no banco
-        const action = await messageRepository.togglePin(messageId);
-        if (!action) return; // Mensagem não existe
+// --- FIXAR MENSAGEM (Versão Final Limpa) ---
+    async pinMessage(messageId, userId, targetId, targetType, desiredAction) {
+        // 1. Verifica estado atual
+        const msg = await messageRepository.findByIdWithDetails(messageId);
+        if (!msg) return;
 
-        // 2. Avisa o Socket para pintar de amarelo para TODOS
-        // Helper interno para notificar (se não tiver, use socketStore direto)
+        const isCurrentlyPinned = (msg.is_pinned == 1 || msg.is_pinned === true);
+
+        // 2. Atualiza no Banco se necessário
+        let shouldToggle = false;
+        if (desiredAction === 'pin' && !isCurrentlyPinned) shouldToggle = true;
+        else if (desiredAction === 'unpin' && isCurrentlyPinned) shouldToggle = true;
+
+        if (shouldToggle) {
+            await messageRepository.togglePin(messageId);
+        }
+
+        // 3. Avisa o Socket
         const io = socketStore.getIO();
         if (io) {
-            const payload = { messageId, action, targetId, targetType };
+            const payload = { messageId, action: desiredAction, targetId, targetType, userId };
             
             if (targetType === 'group') {
                 io.to('group_' + targetId).emit('message pinned', payload);
             } else {
-                // No privado avisa os dois envolvidos
                 io.to('user_' + userId).emit('message pinned', payload);
                 io.to('user_' + targetId).emit('message pinned', payload);
             }
         }
     }
 
+// --- CORREÇÃO: BUSCAR DETALHES COMPLETOS (BLINDADO) ---
     async getPinnedMessages(userId, targetId, targetType) {
-        return await messageRepository.getPinnedMessagesIds(targetId, targetType, userId);
+        // 1. Pega os IDs (pode vir como [10] ou [{id:10}])
+        const rawList = await messageRepository.getPinnedMessagesIds(targetId, targetType, userId);
+        
+        if (!rawList || rawList.length === 0) return [];
+
+        const fullMessages = [];
+        
+        // 2. Loop corrigido para extrair o ID corretamente
+        for (const item of rawList) {
+            // Se vier objeto {id: 10}, pega o .id. Se vier número 10, usa o item direto.
+            const messageId = item.id || item;
+            
+            const msg = await messageRepository.findByIdWithDetails(messageId);
+            if (msg) fullMessages.push(msg);
+        }
+
+        return fullMessages;
     }
 
     // ADMIN HISTORY
@@ -134,16 +174,26 @@ class ChatService {
         });
     }
     
-    // --- APAGAR (Bônus: já deixar pronto para apagar ao vivo também) ---
+   // --- APAGAR MENSAGEM (Versão Final Limpa) ---
     async deleteMessage(messageId, userId) {
         const msg = await messageRepository.findByIdWithDetails(messageId);
-        // Regra: Só dono ou admin apaga (Front já valida, mas backend deve garantir)
-        // Aqui simplificado:
-        await messageRepository.pool.execute("UPDATE messages SET is_deleted=1, text='🚫 Mensagem apagada', file_name=NULL WHERE id=?", [messageId]);
-        
-        await this._notifyUpdate(msg.targetType, msg.targetId, userId, 'message deleted', {
-            messageId
-        });
+        if (!msg) throw new Error("Mensagem não encontrada.");
+
+        // Atualiza no Banco
+        await messageRepository.updateText(messageId, "🚫 Mensagem apagada");
+
+        // Avisa o Socket
+        const io = socketStore.getIO();
+        if (io) {
+            const payload = { messageId, targetId: msg.targetId, targetType: msg.targetType };
+
+            if (msg.targetType === 'group') {
+                io.to('group_' + msg.targetId).emit('message deleted', payload);
+            } else {
+                io.to('user_' + msg.userId).emit('message deleted', payload);
+                io.to('user_' + msg.targetId).emit('message deleted', payload);
+            }
+        }
     }
 
     // Chamado quando um sistema externo (Marketing) insere algo no banco
@@ -169,6 +219,68 @@ class ChatService {
                 io.to('user_' + msg.userId).emit('chat message', msg);
             }
         }
+    }
+    // Quem Viu (Grupos)
+    async getMessageReaders(messageId, requestUserId) {
+        const msg = await messageRepository.findByIdWithDetails(messageId);
+        if (!msg) throw new Error("Mensagem não encontrada.");
+        
+        if (msg.targetType !== 'group') throw new Error("Funcionalidade disponível apenas para grupos.");
+
+        return await groupRepository.getMessageReaders(messageId);
+    }
+
+    // Listar reações com detalhes do usuário
+    async getReactions(messageId) {
+        return await messageRepository.getMessageReactions(messageId);
+    }
+
+    // --- BATCH FORWARDING (Otimização de Escala) ---
+    async forwardBatch(userId, originalMessageId, targets) {
+        // 1. Busca mensagem original uma única vez
+        const originalMsg = await messageRepository.findByIdWithDetails(originalMessageId);
+        if (!originalMsg) throw new Error("Mensagem original não encontrada.");
+
+        // Dados base para clonar
+        // Se for forward de forward, mantém o conteúdo original
+        const msgData = {
+            userId: userId,
+            text: originalMsg.text,
+            fileName: originalMsg.fileName, // Se tiver anexo
+            msgType: originalMsg.msgType,
+            isForwarded: true
+        };
+
+        const results = [];
+        const errors = [];
+
+        // 2. Itera e envia SEQUENCIALMENTE para não estourar o pool de conexões do Banco (Limit: 10)
+        // Antes usávamos Promise.all, mas com 27+ targets disparava 100+ queries simultâneas e dava timeout.
+        
+        for (const t of targets) {
+            try {
+                const newMsgData = { 
+                    ...msgData, 
+                    targetId: t.id, 
+                    targetType: t.type 
+                };
+
+                const savedMsg = await this.sendMessage(newMsgData);
+                results.push(t.id);
+
+                // Notifica via Socket
+                await this._notifyUpdate(t.type, t.id, userId, 'chat message', savedMsg);
+            } catch (e) {
+                console.error(`Erro ao encaminhar para ${t.type} ${t.id}:`, e.message);
+                errors.push({ target: t, error: e.message });
+            }
+        }
+
+        return { successCount: results.length, errorCount: errors.length, errors };
+    }
+
+    async getChatMedia(userId, targetId, type) {
+        return await messageRepository.getChatMedia(userId, targetId, type);
     }
 }
 

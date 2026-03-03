@@ -20,6 +20,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 3. Definir as Rotas da API
 app.use('/api/compras', comprasRoutes);
 app.use('/api/auth', authRoutes);
+// MUDANÇA: Rota de Estoque
+const inventoryRoutes = require('./src/routes/inventoryRoutes');
+app.use('/api/estoque', inventoryRoutes);
 
 // 4. Iniciar o Servidor na porta 3007
 const PORT = 3007; 

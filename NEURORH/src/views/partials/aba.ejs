@@ -1,0 +1,455 @@
+<div id="aba_coord" class="tab-content" style="display:none;">
+    <!-- ESTILOS EXCLUSIVOS ABA -->
+    <style>
+        .aba-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: white;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .aba-btn:hover {
+            transform: translateY(-2px);
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .aba-card {
+            background: rgba(26, 37, 47, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            padding: 40px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: slideUp 0.4s ease-out;
+            color: white;
+        }
+
+        .aba-form-group {
+            margin-bottom: 25px;
+        }
+        .aba-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.95rem;
+        }
+        .aba-input, .aba-select, .aba-textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            font-family: inherit;
+        }
+        .aba-input:focus, .aba-select:focus, .aba-textarea:focus {
+            border-color: #a29bfe;
+            background: rgba(0, 0, 0, 0.3);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(162, 155, 254, 0.1);
+        }
+        .aba-select option { background: #2c3e50; color: white; }
+
+        .aba-section-title {
+            font-size: 1.4rem;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            font-weight: 700;
+        }
+
+        .aba-checkbox-group {
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
+            gap: 15px;
+        }
+        .aba-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .aba-checkbox-item:hover {
+            background: #f8f9fa;
+            border-color: #ddd;
+        }
+
+        .btn-submit-premium {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .btn-submit-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            filter: brightness(1.05);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+
+    <!-- HEADER -->
+    <div style="background: linear-gradient(135deg, #a29bfe, #6c5ce7); color: white; padding: 40px; border-radius: 20px; margin-bottom: 40px; text-align: center; box-shadow: 0 10px 20px rgba(108, 92, 231, 0.2);">
+        <h2 style="font-size: 2rem; margin-bottom: 10px;">🧩 Coordenação ABA</h2>
+        <p style="font-size: 1.1rem; opacity: 0.9;">Central de Gerenciamento de Equipe Terapêutica</p>
+    </div>
+
+    <!-- BOTÕES DE AÇÃO -->
+    <div style="display: flex; gap: 20px; justify-content: center; margin-bottom: 30px;">
+        <button onclick="toggleAbaForm('desligamento')" id="btn-desligamento" class="aba-btn">
+            <span>📉</span> Solicitar Desligamento
+        </button>
+        <button onclick="toggleAbaForm('contratacao')" id="btn-contratacao" class="aba-btn">
+            <span>📈</span> Solicitar Contratação
+        </button>
+    </div>
+
+    <!-- ÁREA DOS FORMULÁRIOS -->
+    <div id="aba-forms-container" style="position: relative; min-height: 400px;">
+        
+        <!-- MENSAGEM INICIAL -->
+        <div id="aba-placeholder" style="text-align: center; color: rgba(255, 255, 255, 0.5); padding: 60px; background: rgba(0, 0, 0, 0.1); border-radius: 20px; border: 2px dashed rgba(255, 255, 255, 0.1); max-width: 600px; margin: 0 auto;">
+            <div style="font-size: 3rem; margin-bottom: 20px; opacity: 0.3;">👆</div>
+            <p style="font-size: 1.2rem; margin: 0; font-weight: 500;">Selecione uma ação acima para iniciar</p>
+        </div>
+
+        <!-- Form Desligamento -->
+        <div id="form-desligamento" class="aba-card" style="display: none; max-width: 800px; margin: 0 auto;">
+            <h3 class="aba-section-title" style="color:#e74c3c;">
+                📉 Solicitar Desligamento
+            </h3>
+            <form action="/solicitar/desligamento-at" method="POST">
+                
+                <!-- 1. Dados do Solicitante -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="aba-form-group">
+                        <label>Nome do Solicitante *</label>
+                        <input type="text" name="nome_solicitante" class="aba-input" required value="<%= user.username || '' %>" placeholder="Nome completo">
+                    </div>
+                    <div class="aba-form-group">
+                        <label>Setor e Cargo do Solicitante *</label>
+                        <input type="text" name="setor_cargo" class="aba-input" required placeholder="Ex: Coordenação ABA">
+                    </div>
+                </div>
+
+                <!-- 2. Data e AT -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="aba-form-group">
+                        <label>Data de Solicitação *</label>
+                        <input type="date" name="data_solicitacao" class="aba-input" required value="<%= new Date().toISOString().split('T')[0] %>">
+                    </div>
+                    <div class="aba-form-group">
+                        <label>Nome do Atendente Terapêutico (AT) *</label>
+                        <input type="text" name="nome_at" class="aba-input" required placeholder="Nome completo do AT">
+                    </div>
+                </div>
+
+                <!-- 3. Paciente -->
+                <div class="aba-form-group">
+                    <label>Nome do Paciente Acompanhado *</label>
+                    <input type="text" name="nome_paciente" class="aba-input" required placeholder="Nome do paciente">
+                </div>
+
+                <!-- 4. Motivos da Solicitação -->
+                <div class="aba-form-group">
+                    <label>Motivos da Solicitação *</label>
+                    <div class="aba-checkbox-group" style="font-size: 0.9em;">
+                        <% 
+                        const motivosDesligamento = [
+                            "Falta de pontualidade/frequência",
+                            "Baixo desempenho técnico",
+                            "Dificuldade de relacionamento com o paciente",
+                            "Dificuldade de relacionamento com a equipe",
+                            "Dificuldade de relacionamento com os pais",
+                            "Não cumprimento das orientações terapêuticas",
+                            "Falta de proatividade ou engajamento",
+                            "Atitudes inadequadas/antiéticas",
+                            "Queixas da família"
+                        ];
+                        motivosDesligamento.forEach(motivo => { %>
+                            <label class="aba-checkbox-item">
+                                <input type="checkbox" name="motivos" value="<%= motivo %>"> <%= motivo %>
+                            </label>
+                        <% }) %>
+                        <label class="aba-checkbox-item">
+                            <input type="checkbox" name="motivos" value="Outro"> Outro
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 5. Desligamento Imediato -->
+                <div class="aba-form-group">
+                    <label>Desligamento Imediato? *</label>
+                    <div style="display: flex; gap: 20px;">
+                        <label class="aba-checkbox-item">
+                            <input type="radio" name="desligamento_imediato" value="Sim" required> Sim
+                        </label>
+                        <label class="aba-checkbox-item">
+                            <input type="radio" name="desligamento_imediato" value="Não" required> Não
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 6. Apontamentos -->
+                <div class="aba-form-group">
+                    <label>Apontamentos *</label>
+                    <textarea name="apontamentos" class="aba-textarea" rows="4" required placeholder="Descreva observações adicionais, justificativas ou detalhes sobre o 'Outro' motivo..."></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit-premium" style="background-color: #e74c3c;">Registrar Desligamento</button>
+            </form>
+        </div>
+
+        <!-- Form Contratação -->
+        <div id="form-contratacao" class="aba-card" style="display: none; max-width: 900px; margin: 0 auto;">
+            <h3 class="aba-section-title" style="color:#00b894;">
+                📈 Solicitar Contratação de AT
+            </h3>
+            <form action="/solicitar/contratacao-at" method="POST">
+                
+                <!-- 1. E-mail e Nome -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="aba-form-group">
+                        <label>E-mail *</label>
+                        <input type="email" name="email" class="aba-input" required placeholder="Seu e-mail corporativo">
+                    </div>
+                    <div class="aba-form-group">
+                        <label>Nome do Solicitante *</label>
+                        <input type="text" name="nome_solicitante" class="aba-input" required value="<%= user.username || '' %>" placeholder="Nome completo">
+                    </div>
+                </div>
+
+                <!-- 2. Setor/Cargo e Data Anamnese -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="aba-form-group">
+                        <label>Setor e Cargo do Solicitante *</label>
+                        <input type="text" name="setor_cargo" class="aba-input" required placeholder="Ex: Coordenação ABA">
+                    </div>
+                    <div class="aba-form-group">
+                        <label>Data de Anamnese *</label>
+                        <input type="date" name="data_anamnese" class="aba-input" required>
+                    </div>
+                </div>
+
+                <!-- 3. Tipo de Atendimento -->
+                <div class="aba-form-group">
+                    <label>Tipo de Atendimento *</label>
+                    <div class="aba-checkbox-group">
+                        <label class="aba-checkbox-item"><input type="checkbox" name="tipo_atendimento" value="ABA CLINICO"> ABA CLÍNICO</label>
+                        <label class="aba-checkbox-item"><input type="checkbox" name="tipo_atendimento" value="ABA ESCOLAR"> ABA ESCOLAR</label>
+                        <label class="aba-checkbox-item"><input type="checkbox" name="tipo_atendimento" value="ABA DOMICILIAR"> ABA DOMICILIAR</label>
+                    </div>
+                </div>
+
+                <!-- 4. Dados do Paciente e Localização -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="aba-form-group">
+                        <label>Nome do Paciente *</label>
+                        <input type="text" name="nome_paciente" class="aba-input" required placeholder="Nome completo do paciente">
+                    </div>
+                    <div class="aba-form-group">
+                        <label>Localização do Paciente *</label>
+                        <input type="text" name="localizacao_paciente" class="aba-input" required placeholder="Endereço / Cidade / Bairro">
+                    </div>
+                </div>
+
+                <!-- 5. Horários -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="aba-form-group">
+                        <label>Horário de Atendimento *</label>
+                        <input type="text" name="horario_atendimento" class="aba-input" required placeholder="Ex: Seg a Sex, 13h as 17h">
+                    </div>
+                    <div class="aba-form-group">
+                        <label>Dia e Horário de Supervisão *</label>
+                        <input type="text" name="horario_supervisao" class="aba-input" required placeholder="Ex: Terça 10h">
+                    </div>
+                </div>
+
+                <!-- 6. Motivo, Data Solicitação e Tipo Seleção -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                    <div class="aba-form-group">
+                        <label>Motivo da Solicitação *</label>
+                        <select name="motivo_solicitacao" class="aba-select" required>
+                            <option value="">Selecione...</option>
+                            <option value="Nova vaga">Nova vaga</option>
+                            <option value="Reposição">Reposição</option>
+                        </select>
+                    </div>
+                    <div class="aba-form-group">
+                        <label>Data de Solicitação *</label>
+                        <input type="date" name="data_solicitacao" class="aba-input" required value="<%= new Date().toISOString().split('T')[0] %>">
+                    </div>
+                    <div class="aba-form-group">
+                        <label>Tipo de Seleção *</label>
+                        <select name="tipo_selecao" class="aba-select" required>
+                            <option value="">Selecione...</option>
+                            <option value="Interna">Interna</option>
+                            <option value="Externa">Externa</option>
+                            <option value="Confidencial">Confidencial</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 7. Sexo e Idade -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="aba-form-group">
+                        <label>Sexo Desejado *</label>
+                        <select name="sexo_desejado" class="aba-select" required>
+                            <option value="Sem preferência">Sem preferência</option>
+                            <option value="Feminino">Feminino</option>
+                            <option value="Masculino">Masculino</option>
+                        </select>
+                    </div>
+                    <div class="aba-form-group">
+                        <label>Idade Desejada *</label>
+                        <input type="text" name="idade_desejada" class="aba-input" required placeholder="Ex: 20 a 30 anos">
+                    </div>
+                </div>
+
+                <!-- 8. Formação e Competências -->
+                <div class="aba-form-group">
+                    <label>Formação Desejada *</label>
+                    <textarea name="formacao_desejada" class="aba-textarea" rows="2" required placeholder="Ex: Psicologia ou Pedagogia (cursando ou completo)"></textarea>
+                </div>
+
+                <div class="aba-form-group">
+                    <label>Competências Desejadas *</label>
+                    <div class="aba-checkbox-group" style="font-size: 0.9em;">
+                        <% 
+                        const competencias = [
+                            "Adaptação", "Agilidade", "Atenção", "Capacidade de aprender", "Colaboração", 
+                            "Comprometimento", "Comunicação", "Detalhista", "Dinamismo", "Energia", 
+                            "Equilibrio emocional", "Ética", "Flexibilidade", "Gerenciamento de tempo", 
+                            "Iniciativa", "Inovação", "Proatividade", "Organização", "Paciência", 
+                            "Persistência", "Persuasão", "Planejamento", "Priorização", "Resiliência", 
+                            "Tomada de decisão", "Trabalho em equipe", "Trabalho sob pressão", "Visão"
+                        ];
+                        competencias.forEach(comp => { %>
+                            <label class="aba-checkbox-item">
+                                <input type="checkbox" name="competencias" value="<%= comp %>"> <%= comp %>
+                            </label>
+                        <% }) %>
+                        <label class="aba-checkbox-item">
+                            <input type="checkbox" name="competencias" value="Outro"> Outro
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 9. DISC -->
+                <div class="aba-form-group">
+                    <label>Comportamental DISC *</label>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label class="aba-checkbox-item">
+                            <input type="radio" name="disc" value="D - Dominante" required> 
+                            <span><strong>D</strong> - Dominante / Ativo / Competitivo / Auto Confiante</span>
+                        </label>
+                        <label class="aba-checkbox-item">
+                            <input type="radio" name="disc" value="I - Comunicativo" required> 
+                            <span><strong>I</strong> - Comunicativo / Persuasivo / Entusiasmo / Otimista</span>
+                        </label>
+                        <label class="aba-checkbox-item">
+                            <input type="radio" name="disc" value="S - Planejador" required> 
+                            <span><strong>S</strong> - Planejador / Paciente / Calmo / Observador</span>
+                        </label>
+                        <label class="aba-checkbox-item">
+                            <input type="radio" name="disc" value="C - Analítico" required> 
+                            <span><strong>C</strong> - Preciso / Atento aos detalhes / Organizador / Analítico</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 10. Apontamentos -->
+                <div class="aba-form-group">
+                    <label>Apontamentos *</label>
+                    <textarea name="apontamentos" class="aba-textarea" rows="4" required placeholder="Observações adicionais..."></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit-premium" style="background-color: #00b894;">Enviar Solicitação de Vaga</button>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- SCRIPT DA ABA -->
+    <script>
+        function toggleAbaForm(type) {
+            const formDesligamento = document.getElementById('form-desligamento');
+            const formContratacao = document.getElementById('form-contratacao');
+            const placeholder = document.getElementById('aba-placeholder');
+            const btnDesligamento = document.getElementById('btn-desligamento');
+            const btnContratacao = document.getElementById('btn-contratacao');
+
+            // Reset
+            formDesligamento.style.display = 'none';
+            formContratacao.style.display = 'none';
+            placeholder.style.display = 'none';
+
+            // Reset botões para estado padrão (inactive)
+            const inactiveStyle = "background-color: white; color: #555; border: 2px solid #eee;";
+            btnDesligamento.style.cssText = ""; // Limpa inline para usar classe
+            btnContratacao.style.cssText = "";
+            
+            // Re-aplica classes bases se necessário ou apenas remove styles inline
+            // Aqui vamos forçar o estilo via JS para garantir a troca visual
+            btnDesligamento.style.background = "white";
+            btnDesligamento.style.color = "#e74c3c";
+            btnDesligamento.style.border = "2px solid #e74c3c";
+
+            btnContratacao.style.background = "white";
+            btnContratacao.style.color = "#00b894";
+            btnContratacao.style.border = "2px solid #00b894";
+
+            if (type === 'desligamento') {
+                formDesligamento.style.display = 'block';
+                // Ativo
+                btnDesligamento.style.background = '#e74c3c';
+                btnDesligamento.style.color = 'white';
+            } else if (type === 'contratacao') {
+                formContratacao.style.display = 'block';
+                // Ativo
+                btnContratacao.style.background = '#00b894';
+                btnContratacao.style.color = 'white';
+            }
+        }
+        
+        // Inicializa com estilos padrão (necessário pois o EJS renderiza estático)
+        document.addEventListener('DOMContentLoaded', () => {
+             const btnDesligamento = document.getElementById('btn-desligamento');
+             const btnContratacao = document.getElementById('btn-contratacao');
+             btnDesligamento.style.border = "2px solid #e74c3c";
+             btnDesligamento.style.color = "#e74c3c";
+             
+             btnContratacao.style.border = "2px solid #00b894";
+             btnContratacao.style.color = "#00b894";
+        });
+    </script>
+</div>

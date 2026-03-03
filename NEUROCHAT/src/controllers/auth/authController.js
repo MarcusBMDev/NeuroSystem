@@ -1,49 +1,69 @@
 const authService = require('../../services/auth/authService');
-const { cleanString, cleanUsername } = require('../../utils/sanitizers');
 
 class AuthController {
 
     async login(req, res) {
         try {
-            // 1. Sanitização (Limpeza)
-            const username = cleanUsername(req.body.username);
-            const password = cleanString(req.body.password); // Senha não deve ter HTML
+            // 1. Limpeza dos dados (Remove espaços extras que causavam erro antes)
+            const username = req.body.username ? req.body.username.trim() : '';
+            const password = req.body.password ? req.body.password.trim() : '';
 
             if (!username || !password) {
-                return res.json({ success: false, message: "Campos obrigatórios" });
+                return res.json({ success: false, sucesso: false, message: "Campos obrigatórios." });
             }
 
-            // 2. Chama o Service
+            // 2. Autenticação
             const user = await authService.login(username, password);
 
             if (user) {
-                res.json({ success: true, ...user });
+                // SUCESSO! Respondemos em Inglês e Português para garantir
+                res.json({ 
+                    success: true, 
+                    sucesso: true, // <--- AQUI ESTÁ A CURA
+                    id: user.id,
+                    username: user.username, // Para o Chat
+                    nome: user.username,     // Para o Financeiro
+                    department: user.department,
+                    setor: user.department,
+                    is_super_admin: user.is_super_admin,
+                    photo: user.photo
+                });
             } else {
-                res.json({ success: false, message: "Usuário ou senha incorretos" });
+                res.json({ success: false, sucesso: false, message: "Usuário ou senha incorretos." });
             }
         } catch (error) {
-            console.error(error);
-            res.json({ success: false, message: "Erro no servidor" });
+            console.error("Erro no Login:", error);
+            res.json({ success: false, sucesso: false, message: "Erro interno no servidor." });
         }
     }
 
-    async register(req, res) {
+   async register(req, res) {
         try {
-            const username = cleanUsername(req.body.username);
-            const password = cleanString(req.body.password);
-            const department = cleanString(req.body.department);
+            // Limpa os dados
+            const username = req.body.username ? req.body.username.trim() : '';
+            const password = req.body.password ? req.body.password.trim() : '';
+            const department = req.body.department ? req.body.department.trim() : '';
+            const adminId = req.body.adminId; // ID do admin que está criando
 
-            if (!username || !password || !department) {
-                return res.json({ success: false, message: "Preencha todos os campos" });
+            if (!username || !password || !department || !adminId) {
+                return res.json({ success: false, message: "Todos os campos são obrigatórios." });
             }
 
-            await authService.register(username, password, department);
-            res.json({ success: true });
+            // Chama o serviço para criar, passando o adminId para validação
+            const result = await authService.register(username, password, department, adminId);
 
+            res.json({ success: true, user: result });
+            
         } catch (error) {
-            console.error(error);
-            // Se o erro for "Usuário já existe", avisamos o front
-            res.json({ success: false, message: error.message || "Erro ao registrar" });
+            console.error("Erro no Registro:", error);
+            // Mensagem amigável
+            if (error.message === 'Sem permissão') {
+                return res.json({ success: false, message: "Você não tem permissão para criar usuários." });
+            }
+            if (error.message === 'Usuário já existe') {
+                return res.json({ success: false, message: "Este usuário já está cadastrado." });
+            }
+            res.json({ success: false, message: error.message || "Erro ao criar conta." });
         }
     }
 }

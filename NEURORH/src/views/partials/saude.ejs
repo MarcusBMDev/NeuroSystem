@@ -1,0 +1,82 @@
+<div id="incentivo_saude" class="tab-content">
+    <h2>🏥 Política de Incentivo à Saúde</h2>
+    <div class="split-container">
+        <div class="pdf-viewer">
+            <embed src="/uploads/politica_saude.pdf" type="application/pdf" />
+        </div>
+        <div class="form-box">
+            <h3>Termo de Solicitação - Saúde</h3>
+            <p style="font-size: 0.8rem;">Preencha para você ou dependentes (50% ou 25% de desconto).</p>
+            
+            <form action="/solicitar/beneficio" method="POST">
+                <input type="hidden" name="tipo_beneficio" value="saude">
+                
+                <h4 style="margin-top:0;">1. Seus Dados (Colaborador)</h4>
+                <div class="row">
+                    <div class="col">
+                        <label>Nome Completo:</label>
+                        <input type="text" name="nome_colaborador" value="<%= user.username %>" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <label>Cargo:</label>
+                        <input type="text" name="cargo_colaborador" required>
+                    </div>
+                    <div class="col">
+                        <label>Telefone:</label>
+                        <input type="text" name="telefone_colaborador" required placeholder="(63) ...">
+                    </div>
+                </div>
+
+                <h4>2. Dados do Beneficiário</h4>
+                <label>Nome Completo:</label>
+                <input type="text" name="nome_beneficiario" required>
+                
+                <div class="row">
+                    <div class="col">
+                        <label>Grau de Parentesco:</label>
+                        <select name="parentesco" required>
+                            <option value="" disabled selected>Selecione...</option>
+                            <option value="Proprio">Eu mesmo(a)</option>
+                            <option value="Conjuge">Cônjuge/Companheiro(a)</option>
+                            <option value="Filho">Filho(a)</option>
+                            <option value="Pais">Pai/Mãe</option>
+                            <option value="Irmaos">Irmão(ã)</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label>Data de Nascimento:</label>
+                        <input type="date" name="nascimento_beneficiario" required>
+                    </div>
+                </div>
+
+                <h4>3. Qual Serviço Você Procura?</h4>
+                
+                <label>Selecione a Especialidade:</label>
+                <select name="servico" required>
+                    <option value="" disabled selected>Clique para selecionar...</option>
+                    <option value="Psicoterapia">Psicoterapia</option>
+                    <option value="Fonoaudiologia">Fonoaudiologia</option>
+                    <option value="Avaliacao Psicologica">Avaliação Psicológica</option>
+                    <option value="Psicomotricidade/Fisioterapia">Psicomotricidade/Fisioterapia</option>
+                    <option value="Musicoterapia">Musicoterapia</option>
+                    <option value="Psicopedagogia">Psicopedagogia</option>
+                    <option value="Terapia Ocupacional">Terapia Ocupacional</option>
+                    <option value="Outro">Outro (Especifique abaixo)</option>
+                </select>
+
+                <input type="text" name="servico_outro" placeholder="Se selecionou 'Outro', especifique aqui..." style="margin-top: 10px;">
+
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="concordo" required id="check_saude">
+                    <label for="check_saude" style="font-size: 0.8rem; line-height: 1.4;">
+                        Declaro que estou ciente e concordo com as condições da Política de Cortesia.
+                    </label>
+                </div>
+
+                <button type="submit" class="btn">Solicitar Agendamento</button>
+            </form>
+        </div>
+    </div>
+</div>

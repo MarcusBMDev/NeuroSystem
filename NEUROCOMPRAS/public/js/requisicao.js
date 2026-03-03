@@ -4,7 +4,41 @@ function sair() {
     window.location.href = '/index.html';
 }
 
-// O evento principal começa aqui. Adicionei 'async' antes dos parenteses ()
+// Função para adicionar novos campos de link
+function adicionarLink() {
+    const container = document.getElementById('container-links');
+    const div = document.createElement('div');
+    div.className = 'input-group-link';
+    div.style.cssText = 'display: flex; gap: 10px; margin-bottom: 5px;';
+    
+    div.innerHTML = `
+        <input type="url" name="link_produto" placeholder="https://loja.com/produto..." style="flex: 1;">
+        <button type="button" onclick="this.parentElement.remove()" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">X</button>
+    `;
+    container.appendChild(div);
+}
+
+// Preview de múltiplas imagens
+function previewImagens() {
+    const input = document.getElementById('foto_produto');
+    const container = document.getElementById('preview-container');
+    container.innerHTML = '';
+    
+    if (input.files) {
+        Array.from(input.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'preview-img';
+                img.style.cssText = 'width: 100px; height: 100px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd;';
+                container.appendChild(img);
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     
     // 1. RECUPERAR DADOS DO LOGIN
@@ -12,59 +46,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     const usuarioSetor = localStorage.getItem('usuarioSetor');
     const usuarioId = localStorage.getItem('usuarioId');
 
-    // 2. VERIFICAÇÃO DE SEGURANÇA (Se não tiver ID, manda embora)
+    // 2. VERIFICAÇÃO DE SEGURANÇA
     if (!usuarioId) {
         alert("Sessão expirada. Por favor faça login novamente.");
         window.location.href = '/index.html';
-        return; // Para o código aqui
+        return;
     }
 
     // 3. PREENCHER O FORMULÁRIO AUTOMATICAMENTE
-    // Fazemos isto logo para o utilizador ver os dados dele
     document.getElementById('nome_solicitante').value = usuarioNome || "Usuário";
     document.getElementById('setor').value = usuarioSetor || "Geral";
     document.getElementById('usuario_id').value = usuarioId;
 
-    // 4. VERIFICAÇÃO DE ADMIN (Para mostrar o botão do Financeiro)
+    // 4. VERIFICAÇÃO DE PERMISSÃO
     try {
-        const resp = await fetch(`/api/compras/verificar-admin/${usuarioId}`);
+        const resp = await fetch(`/api/auth/permissoes/${usuarioId}`);
         const info = await resp.json();
 
-        if (info.admin === true) {
-            const btnAdmin = document.getElementById('btn-admin');
-            if (btnAdmin) {
-                btnAdmin.style.display = 'block'; // Mostra o botão vermelho
-            }
+        const btnAdmin = document.getElementById('btn-admin');
+        const btnEstoque = document.getElementById('btn-estoque');
+
+        if (info.acessoPainel === true && btnAdmin) btnAdmin.style.display = 'block'; 
+        if (info.acessoEstoque === true && btnEstoque) btnEstoque.style.display = 'block';
+
+        if (info.podeSolicitar !== true) {
+             alert('⛔ Você não tem permissão para acessar esta página de solicitações.');
+             window.location.href = 'http://192.168.10.133';
+             return;
         }
     } catch (e) {
         console.log("Erro ao verificar permissões (não crítico).");
     }
 
-    // 5. LÓGICA DA FOTO (PREVIEW)
-    const inputFoto = document.getElementById('foto_produto');
-    const preview = document.getElementById('preview');
-
-    if (inputFoto) {
-        inputFoto.addEventListener('change', function() {
-            const arquivo = this.files[0];
-            if (arquivo) {
-                const leitor = new FileReader();
-                leitor.onload = function(e) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                }
-                leitor.readAsDataURL(arquivo);
-            }
-        });
-    }
-
-    // 6. ENVIO DO FORMULÁRIO
+    // 5. ENVIO DO FORMULÁRIO
     const form = document.getElementById('form-requisicao');
     const msgBox = document.getElementById('mensagem');
 
     if (form) {
         form.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Impede a página de recarregar
+            e.preventDefault();
+
+            const btn = document.querySelector('.btn-submit');
+            btn.disabled = true;
+            btn.innerText = "Enviando...";
 
             const formData = new FormData(form);
 
@@ -78,12 +102,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (dados.sucesso) {
                     msgBox.className = 'alerta sucesso';
-                    msgBox.innerText = '✅ Pedido enviado com sucesso!';
+                    msgBox.innerText = '✅ ' + dados.mensagem;
                     msgBox.style.display = 'block';
-                    form.reset(); // Limpa o formulário
-                    preview.style.display = 'none'; // Esconde a foto
                     
-                    // Repreenche os dados do usuário que o reset limpou
+                    form.reset();
+                    document.getElementById('preview-container').innerHTML = '';
+                    document.getElementById('container-links').innerHTML = `
+                        <div class="input-group-link" style="display: flex; gap: 10px; margin-bottom: 5px;">
+                            <input type="url" name="link_produto" placeholder="https://loja.com/produto..." style="flex: 1;">
+                        </div>`;
+
+                    // Repreenche dados do usuário
                     document.getElementById('nome_solicitante').value = usuarioNome;
                     document.getElementById('setor').value = usuarioSetor;
                     document.getElementById('usuario_id').value = usuarioId;
@@ -96,6 +125,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 msgBox.className = 'alerta erro';
                 msgBox.innerText = '❌ Erro ao enviar: ' + erro.message;
                 msgBox.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Enviar Pedido ao Financeiro";
             }
         });
     }

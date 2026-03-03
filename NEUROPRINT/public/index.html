@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+    <link rel="icon" href="https://img.icons8.com/color/48/000000/print.png" type="image/png">
     <meta charset="UTF-8">
     <title>Nova Impressão - NeuroPrint</title>
     <link rel="stylesheet" href="css/style.css">
@@ -27,10 +28,18 @@
             <form id="printForm">
                 <input type="hidden" name="user_id" id="userId">
                 <div class="form-group">
-                    <label>Arquivos (PDF):</label>
-                    <input type="file" name="files" multiple required accept=".pdf"> 
-                    <small>Segure CTRL para selecionar vários.</small>
+                     <label>Arquivos (PDF):</label>
+    
+                    <div id="file-inputs-container">
+                    <div class="file-row" style="margin-bottom: 10px;">
+                    <input type="file" name="files" required accept=".pdf">
                 </div>
+            </div>
+
+    <button type="button" onclick="addFileInput()" style="background-color: #6c757d; font-size: 0.9rem; padding: 5px 10px; margin-top: 5px;">
+        ➕ Adicionar outro PDF
+    </button>
+</div>
 
                 <div style="display: flex; gap: 15px;">
                     <div class="form-group" style="flex: 1;">
@@ -136,12 +145,13 @@
 
                     // Formata lista de arquivos
                     const arquivos = req.file_name ? req.file_name.split(';').join(', ') : 'Arquivo';
+                    const infoPaginas = req.total_pages > 0 ? `<br><small style="color:#666;">📄 ${req.total_pages} pág(s) x ${req.copies || 1} cópia(s) = <b>${req.total_printed} impressões</b></small>` : '';
 
                     list.innerHTML += `
                         <tr style="border-bottom:1px solid #eee;">
                             <td style="padding:12px;">
                                 <div style="font-weight:600; color:#444;">${arquivos}</div>
-                                <div style="font-size:0.8rem; color:#888;">#${req.id} - ${new Date(req.created_at).toLocaleDateString('pt-BR')}</div>
+                                <div style="font-size:0.8rem; color:#888;">#${req.id} - ${new Date(req.created_at).toLocaleDateString('pt-BR')} ${infoPaginas}</div>
                             </td>
                             <td style="padding:12px; text-align:right;">
                                 <span style="background:${bg}; color:${cor}; padding:5px 10px; border-radius:15px; font-weight:bold; font-size:0.85rem; display:inline-block;">
@@ -197,6 +207,68 @@
         
         // ATUALIZAÇÃO AUTOMÁTICA
         setInterval(loadMyRequests, 5000); 
+
+// --- FUNÇÃO PARA ADICIONAR CAMPOS DE ARQUIVO (Versão Corrigida) ---
+function addFileInput() {
+    const container = document.getElementById('file-inputs-container');
+    const inputCount = container.querySelectorAll('input[type="file"]').length;
+
+    if (inputCount >= 10) {
+        alert('⚠️ Limite máximo de 10 arquivos por solicitação atingido.');
+        return;
+    }
+    
+    // Cria uma nova div para agrupar o input e o botão de remover
+    const newRow = document.createElement('div');
+    newRow.className = 'file-row added-dynamically'; 
+
+    // ESTILOS IMPORTANTES PARA EVITAR SOBREPOSIÇÃO
+    newRow.style.display = 'flex';
+    newRow.style.alignItems = 'center';
+    newRow.style.gap = '10px';
+    newRow.style.marginBottom = '15px'; 
+    newRow.style.padding = '5px';       
+    newRow.style.backgroundColor = '#f8f9fa'; 
+    newRow.style.borderRadius = '4px';
+    newRow.style.width = '100%'; 
+    newRow.style.boxSizing = 'border-box'; 
+
+    // Cria o novo input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.name = 'files';
+    input.accept = '.pdf';
+    input.required = true;
+    input.style.flex = '1';
+    input.style.width = '0'; 
+
+    // Cria o botão de remover (X)
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.innerHTML = '&#10006;'; 
+    removeBtn.style.background = '#ffdddd';
+    removeBtn.style.border = '1px solid red';
+    removeBtn.style.borderRadius = '50%';
+    removeBtn.style.width = '25px';
+    removeBtn.style.height = '25px';
+    removeBtn.style.display = 'flex';
+    removeBtn.style.justifyContent = 'center';
+    removeBtn.style.alignItems = 'center';
+    removeBtn.style.cursor = 'pointer';
+    removeBtn.style.color = 'red';
+    removeBtn.style.fontSize = '0.8rem';
+    removeBtn.title = 'Remover este arquivo';
+    
+    // Ação de remover a linha
+    removeBtn.onclick = function() {
+        container.removeChild(newRow);
+    };
+
+    // Junta tudo
+    newRow.appendChild(input);
+    newRow.appendChild(removeBtn);
+    container.appendChild(newRow);
+}
 
     </script>
 </body>

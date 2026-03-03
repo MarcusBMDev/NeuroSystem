@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEUROCENTER - RH</title>
+    <link rel="icon" href="/favicon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+    <div class="main-container">
+        <header>
+            <h1>NEUROCENTER - RH</h1>
+            <p>Olá, <strong><%= user.username %></strong> | <a href="/logout">Sair</a></p>
+        </header>
+
+        <% if (msg) { %> <div class="success-msg" style="text-align:center;"><%= msg %></div> <% } %>
+        <% if (erro) { %> <div class="error-msg" style="text-align:center;"><%= erro %></div> <% } %>
+
+        <nav>
+    <button class="tab-link active" onclick="openTab(event, 'gestao')">📢 Mural</button>
+    <button class="tab-link" onclick="openTab(event, 'regimento')">📜 Regimento</button>
+    <button class="tab-link" onclick="openTab(event, 'hierarquia')">👥 Hierarquia</button>
+    
+    <button class="tab-link" onclick="openTab(event, 'dayoff')">🎂 Day Off</button>
+    <button class="tab-link" onclick="openTab(event, 'formacao')">🎓 Formação</button> 
+    <button class="tab-link" onclick="openTab(event, 'incentivo_saude')">🏥 Saúde (Descontos)</button>
+    <button class="tab-link" onclick="openTab(event, 'atestados')">📎 Atestados</button>
+    
+    <% 
+        const isAba = (user.setor && user.setor.toUpperCase().includes('ABA')) || (user.department && user.department.toUpperCase().includes('ABA'));
+        const isRh = (user.setor && user.setor.toUpperCase().includes('RH')) || (user.department && user.department.toUpperCase().includes('RH'));
+    %>
+
+    <% if (isAdmin || isAba) { %>
+        <button class="tab-link" style="color: #8e44ad;" onclick="openTab(event, 'aba_coord')">🧩 Coordenação ABA</button>
+    <% } %>
+    
+    <% if (isAdmin || isRh) { %>
+        <button class="tab-link" style="color: #c0392b;" onclick="openTab(event, 'restrito')">🔒 Painel Gestão</button>
+    <% } %>
+</nav>
+
+<%- include('partials/gestao') %>
+<%- include('partials/regimento') %>
+<%- include('partials/hierarquia') %>
+
+<%- include('partials/dayoff') %>
+<%- include('partials/formacao') %> 
+<%- include('partials/saude') %>    
+<%- include('partials/atestados') %>
+<%- include('partials/aba') %>
+<%- include('partials/admin') %>
+
+    </div>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

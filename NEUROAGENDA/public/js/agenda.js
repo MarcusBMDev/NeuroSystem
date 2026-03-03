@@ -102,6 +102,17 @@ let refreshInterval = null; // Variável para controlar a atualização
 function initAgenda() {
     const adminLabel = currentUser.is_super_admin ? ' (Admin)' : '';
     document.getElementById('user-name-display').innerText = `Olá, ${currentUser.username}${adminLabel}`;
+    
+    // Adiciona botão Admin se for super admin
+    if (currentUser.is_super_admin) {
+        const headerDiv = document.querySelector('.app-header div:last-child');
+        const adminBtn = document.createElement('a');
+        adminBtn.href = '/admin';
+        adminBtn.innerHTML = '<i class="fa-solid fa-gauge"></i> Painel Admin';
+        adminBtn.style = 'background-color: #2e7d32; color: white; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); margin-right: 15px;';
+        headerDiv.insertBefore(adminBtn, headerDiv.firstChild);
+    }
+
     const dateInput = document.getElementById('date-picker');
     dateInput.value = currentDate;
     if (!currentUser.is_super_admin) dateInput.min = currentDate; 

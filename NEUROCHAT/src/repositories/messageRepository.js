@@ -13,7 +13,8 @@ class MessageRepository {
             user: row.username,
             userId: row.user_id,             
             targetId: row.target_id,         // <--- ADICIONADO AGORA
-            targetType: row.target_type,     // <--- ADICIONADO AGORA
+            targetType: row.target_type,     
+            isForwarded: row.is_forwarded,   // <--- NOVO
             text: row.text,
             fileName: row.file_name,
             msgType: row.msg_type,
@@ -24,12 +25,12 @@ class MessageRepository {
     }
 
     async create(data) {
-        const { userId, text, msg, targetId, targetType, msgType, fileName, replyToId } = data;
+        const { userId, text, msg, targetId, targetType, msgType, fileName, replyToId, isForwarded } = data; // <--- isForwarded
         const finalText = text || msg; 
 
         const [result] = await pool.execute(
-            `INSERT INTO messages (user_id, text, target_id, target_type, is_read, msg_type, file_name, reply_to_id) VALUES (?, ?, ?, ?, 0, ?, ?, ?)`,
-            [userId, finalText, targetId, targetType, msgType || 'text', fileName || null, replyToId || null]
+            `INSERT INTO messages (user_id, text, target_id, target_type, is_read, msg_type, file_name, reply_to_id, is_forwarded) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+            [userId, finalText, targetId, targetType, msgType || 'text', fileName || null, replyToId || null, isForwarded ? 1 : 0]
         );
         
         return this.findByIdWithDetails(result.insertId);
@@ -70,7 +71,15 @@ class MessageRepository {
             params = [targetId];
         }
 
-        sql += ` ORDER BY m.id DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+        // --- LÓGICA DE "LIMPO POR DIA" ---
+        if (limit === 'today') {
+            // Busca apenas mensagens de hoje (após 00:00)
+            sql += ` AND m.timestamp >= CURDATE()`;
+            sql += ` ORDER BY m.id DESC`; // Sem limit, traz tudo de hoje
+        } else {
+            // Padrão (Histórico antigo com paginação)
+            sql += ` ORDER BY m.id DESC LIMIT ${parseInt(limit)||30} OFFSET ${parseInt(offset)||0}`;
+        }
         
         const [rows] = await pool.execute(sql, params);
         const formattedRows = rows.map(row => this._mapMessage(row));
@@ -85,7 +94,8 @@ class MessageRepository {
             });
         }
 
-        return formattedRows.reverse();
+        // Removido .reverse() pois o frontend espera DESC (Mais novo primeiro) para renderizar corretamente
+        return formattedRows; 
     }
 
     async getReactionsForMessages(messageIds) {
@@ -93,6 +103,17 @@ class MessageRepository {
         const safeIds = messageIds.map(id => parseInt(id)).filter(n => !isNaN(n)).join(',');
         if (!safeIds) return [];
         const [rows] = await pool.query(`SELECT * FROM message_reactions WHERE message_id IN (${safeIds})`);
+        return rows;
+    }
+
+    async getMessageReactions(messageId) {
+        const [rows] = await pool.execute(`
+            SELECT r.*, u.username, u.photo 
+            FROM message_reactions r 
+            JOIN users u ON r.user_id = u.id 
+            WHERE r.message_id = ?`, 
+            [messageId]
+        );
         return rows;
     }
 
@@ -179,22 +200,27 @@ class MessageRepository {
         return rows.map(r => r.id);
     }
 
-    // --- HISTÓRICO PARA O ADMIN ---
-    async getAdminFullHistory(targetUserId) {
-        // Busca mensagens privadas enviadas ou recebidas pelo alvo
-        const sql = `
-            SELECT m.*, u.username, u.department, u.photo, m.is_read
-            FROM messages m 
-            JOIN users u ON m.user_id = u.id 
-            WHERE (m.user_id = ? AND m.target_type = 'private') 
-               OR (m.target_id = ? AND m.target_type = 'private')
-            ORDER BY m.timestamp DESC LIMIT 100`;
+    // --- GALERIA DE MÍDIA ---
+    async getChatMedia(userId, targetId, type) {
+        let sql = `
+            SELECT id, file_name, text, msg_type, timestamp, user_id 
+            FROM messages 
+            WHERE file_name IS NOT NULL AND file_name != ''`;
         
-        const [rows] = await pool.execute(sql, [targetUserId, targetUserId]);
-        // Reutiliza o map para formatar data igual ao chat normal
-        return rows.map(row => this._mapMessage(row));
-    }
+        let params = [];
+        if (type === 'private') {
+            sql += ` AND ((user_id=? AND target_id=? AND target_type='private') OR (user_id=? AND target_id=? AND target_type='private'))`;
+            params = [userId, targetId, targetId, userId];
+        } else {
+            sql += ` AND target_id=? AND target_type='group'`;
+            params = [targetId];
+        }
 
+        sql += ` ORDER BY id DESC`;
+        
+        const [rows] = await pool.execute(sql, params);
+        return rows;
+    }
 }
 
 

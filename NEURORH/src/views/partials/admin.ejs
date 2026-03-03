@@ -1,0 +1,9 @@
+<% if (isAdmin || user.setor === 'ABA') { %>
+<div id="restrito" class="tab-content">
+    <div class="locked-area">
+        <h2>🔒 Acesso Administrativo</h2>
+        <p>Você tem permissão de RH.</p>
+        <a href="/gestao/painel" class="btn btn-danger">Acessar Painel de Gestão Completo</a>
+    </div>
+</div>
+<% } %>

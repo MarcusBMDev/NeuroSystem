@@ -21,8 +21,8 @@ const upload = multer({ storage: storage });
 
 // 2. Definição das Rotas
 
-// Rota para CRIAR pedido (aceita 1 arquivo no campo chamado 'foto_produto')
-router.post('/nova', upload.single('foto_produto'), comprasController.novaRequisicao);
+// Rota para CRIAR pedido (aceita múltiplos arquivos no campo chamado 'foto_produto')
+router.post('/nova', upload.array('foto_produto', 10), comprasController.novaRequisicao);
 
 // Rota para LISTAR pedidos (Financeiro)
 router.get('/listar', comprasController.listarRequisicoes);

@@ -11,9 +11,17 @@ class ChatController {
             const myId = cleanId(req.params.myId);
             const targetId = cleanId(req.params.targetId);
             const type = cleanString(req.params.type);
-            const offset = cleanId(req.query.offset) || 0;
+            
+            // Se o frontend mandar ?filter=today, usamos isso
+            let limit = 30;
+            let offset = cleanId(req.query.offset) || 0;
 
-            const messages = await chatService.getHistory(myId, targetId, type, offset);
+            if (req.query.filter === 'today') {
+                limit = 'today';
+                offset = 0;
+            }
+
+            const messages = await chatService.getHistory(myId, targetId, type, offset, limit);
             res.json(messages);
         } catch (error) {
             console.error(error);
@@ -43,29 +51,42 @@ class ChatController {
         }
     }
 
-    // 1. Fixar Mensagem
+    // 1. Fixar Mensagem (Versão Final Limpa)
     async pinMessage(req, res) {
         try {
             const messageId = cleanId(req.body.messageId);
             const userId = cleanId(req.body.userId);
             const targetId = cleanId(req.body.targetId);
             const targetType = cleanString(req.body.targetType);
+            const action = cleanString(req.body.action) || 'pin'; 
 
-            await chatService.pinMessage(messageId, userId, targetId, targetType);
+            await chatService.pinMessage(messageId, userId, targetId, targetType, action);
+            
             res.json({ success: true });
-        } catch (error) { res.json({ success: false }); }
+        } catch (error) { 
+            console.error("Erro ao fixar:", error);
+            res.json({ success: false }); 
+        }
     }
 
-    // 2. Buscar Fixados (Chamado ao abrir o chat)
+// 2. Buscar Fixados (CORRIGIDO O NOME DO ID)
     async getPinned(req, res) {
         try {
-            const userId = cleanId(req.body.userId);
+            // O frontend manda 'myId', mas o código esperava 'userId'.
+            // Agora aceitamos os dois:
+            const userId = cleanId(req.body.userId) || cleanId(req.body.myId); // <--- A CORREÇÃO MÁGICA
+            
             const targetId = cleanId(req.body.targetId);
             const targetType = cleanString(req.body.targetType);
             
-            const ids = await chatService.getPinnedMessages(userId, targetId, targetType);
-            res.json({ success: true, pinnedIds: ids });
-        } catch (e) { res.json({ success: false, pinnedIds: [] }); }
+            // Busca as mensagens completas
+            const messages = await chatService.getPinnedMessages(userId, targetId, targetType);
+            
+            res.json({ success: true, pinnedMessages: messages });
+        } catch (e) { 
+            console.error("Erro ao buscar fixados:", e);
+            res.json({ success: false, pinnedMessages: [] }); 
+        }
     }
 
     // 5. Editar
@@ -82,29 +103,36 @@ class ChatController {
         }
     }
 
-    // 6. Apagar
+ // 6. Apagar Mensagem (Versão Final Limpa)
     async deleteMessage(req, res) {
         try {
             const messageId = cleanId(req.body.messageId);
-            const userId = cleanId(req.body.userId || req.body.myId); // Fallback
+            const userId = cleanId(req.body.userId || req.body.myId); 
             
             await chatService.deleteMessage(messageId, userId);
+            
             res.json({ success: true });
         } catch (error) {
+            console.error("Erro ao apagar:", error);
             res.json({ success: false });
         }
     }
 
-    // 3. Marcar como Lido (Correção do erro mark-read 404)
+   // 3. Marcar como Lido
     async markRead(req, res) {
         try {
             const myId = cleanId(req.body.myId);
-            const targetId = cleanId(req.body.targetId);
+            // Aceita tanto 'targetId' quanto 'senderId' para garantir compatibilidade
+            const targetId = cleanId(req.body.targetId) || cleanId(req.body.senderId);
+
             if (myId && targetId) {
-                await messageRepository.markAsRead(myId, targetId);
+                await chatService.markMessagesAsRead(myId, targetId);
             }
             res.json({ success: true });
-        } catch (e) { res.json({ success: false }); }
+        } catch (e) { 
+            console.error(e); // Mantemos apenas erros reais
+            res.json({ success: false }); 
+        }
     }
 
    // 4. Marcar como NÃO Lido
@@ -167,6 +195,62 @@ class ChatController {
         } catch (error) {
             console.error('Erro na integração:', error);
             res.status(500).json({ success: false });
+        }
+    }
+
+    // LISTA DE LEITORES (GRUPOS)
+    async getReaders(req, res) {
+        try {
+            const messageId = cleanId(req.params.messageId);
+            const readers = await chatService.getMessageReaders(messageId);
+            res.json({ success: true, readers });
+        } catch (error) {
+            console.error("Erro ao buscar leitores:", error);
+            res.json({ success: false, message: error.message });
+        }
+    }
+
+    // LISTAR REAÇÕES (DETALHADO)
+    async getReactions(req, res) {
+        try {
+            const messageId = cleanId(req.params.messageId);
+            const reactions = await chatService.getReactions(messageId);
+            res.json({ success: true, reactions });
+        } catch (error) {
+            console.error("Erro ao buscar reações:", error);
+            res.json({ success: false, message: error.message });
+        }
+    }
+
+    // ENCAMINHAMENTO EM LOTE (V120 - Otimização)
+    async forwardMessage(req, res) {
+        try {
+            const userId = cleanId(req.body.userId);
+            const originalMessageId = cleanId(req.body.messageId);
+            const targets = req.body.targets; // Espera array de {id, type}
+
+            if (!userId || !originalMessageId || !Array.isArray(targets)) {
+                return res.status(400).json({ success: false, message: "Dados inválidos." });
+            }
+
+            const result = await chatService.forwardBatch(userId, originalMessageId, targets);
+            res.json({ success: true, result });
+        } catch (error) {
+            console.error("Erro ao encaminhar em lote:", error);
+            res.json({ success: false, message: error.message });
+        }
+    }
+    // GALERIA DE MÍDIA
+    async getChatMedia(req, res) {
+        try {
+            const myId = cleanId(req.params.myId);
+            const targetId = cleanId(req.params.targetId);
+            const type = cleanString(req.params.type);
+            const media = await chatService.getChatMedia(myId, targetId, type);
+            res.json({ success: true, media });
+        } catch (error) {
+            console.error("Erro ao buscar mídia:", error);
+            res.json({ success: false, media: [] });
         }
     }
 }

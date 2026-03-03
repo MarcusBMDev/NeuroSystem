@@ -45,9 +45,9 @@ module.exports = (httpServer) => {
                 const savedMessage = await chatService.sendMessage(data);
 
                 if (savedMessage.targetType === 'private') {
-                    const targetSocket = getSocketByUserId(savedMessage.targetId);
-                    if (targetSocket) io.to(targetSocket).emit('chat message', savedMessage);
-                    socket.emit('chat message', savedMessage);
+                    // Manda para todas as abas do destinatário e do remetente
+                    io.to('user_' + savedMessage.targetId).emit('chat message', savedMessage);
+                    io.to('user_' + savedMessage.userId).emit('chat message', savedMessage);
                 } else if (savedMessage.targetType === 'group') {
                     io.to('group_' + savedMessage.targetId).emit('chat message', savedMessage);
                 }

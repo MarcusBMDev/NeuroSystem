@@ -1,0 +1,62 @@
+<!-- Modal de Boas-Vindas Reutilizável -->
+<div id="modalWelcome" class="modal-welcome">
+    <div class="modal-welcome-content">
+        <button onclick="closeWelcomeModal()" class="modal-close-x" title="Fechar">&times;</button>
+        <div class="modal-welcome-header">
+            <h2>Bem-vindo ao nosso Canal de Atendimento <span class="heart-icon">💙</span></h2>
+        </div>
+        <div class="modal-welcome-body">
+            <p>Na Clínica Psiconeuro, acreditamos que ouvir é parte essencial do cuidado e da excelência operacional.</p>
+            <p>Nosso Canal de Atendimento foi criado para que pacientes, familiares e colaboradores possam registrar sugestões, elogios, dúvidas, críticas ou apontamentos relacionados à execução de atividades, rotinas, condutas profissionais e processos internos da clínica.</p>
+            
+            <p><strong>Este espaço permite sinalizar situações que envolvam:</strong></p>
+            <ul>
+                <li>Qualidade na execução dos atendimentos</li>
+                <li>Cumprimento de protocolos e rotinas</li>
+                <li>Organização dos setores</li>
+                <li>Postura e conduta profissional</li>
+                <li>Oportunidades de melhoria nos processos</li>
+            </ul>
+
+            <p><em>"Nosso compromisso é claro: Atender com excelência, satisfazer com qualidade e encantar com humanização."</em></p>
+
+            <p><strong>Todas as manifestações são tratadas com:</strong></p>
+            <ul class="check-list">
+                <li>Confidencialidade</li>
+                <li>Imparcialidade</li>
+                <li>Responsabilidade</li>
+                <li>Análise criteriosa</li>
+                <li>Compromisso com retorno</li>
+            </ul>
+
+            <p>Cada apontamento é avaliado como oportunidade de aprimoramento institucional, fortalecimento da cultura organizacional e melhoria contínua dos nossos serviços.</p>
+            
+            <p><strong>Porque ouvir também é parte da execução responsável. E executar com excelência é o que nos move a atender, satisfazer e encantar.</strong></p>
+        </div>
+        <div class="modal-welcome-footer">
+            <button onclick="closeWelcomeModal()" class="btn-primary">Entendido</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function closeWelcomeModal() {
+        const modal = document.getElementById('modalWelcome');
+        modal.classList.remove('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const modal = document.getElementById('modalWelcome');
+        // Pequeno delay para suavizar a entrada
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 500);
+
+        // Tecla ESC para fechar
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                closeWelcomeModal();
+            }
+        });
+    });
+</script>

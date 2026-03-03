@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuroChat</title>
@@ -50,20 +51,26 @@
 
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
 
-                <h3 style="color: #d32f2f; margin-bottom: 10px;">🆕 Novas Funcionalidades</h3>
+                <h4 style="color: #333; margin-bottom: 5px;">🖼️ Galeria de Mídia</h4>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">
+                    Clique no ícone de quadro (🖼️) no topo de qualquer conversa para ver todas as fotos e arquivos já enviados naquele chat, organizados por data.
+                </p>
+
+                <h4 style="color: #333; margin-bottom: 5px;">➡️ Encaminhar e "Quem Viu"</h4>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">
+                    • <b>Encaminhar:</b> No menu da mensagem (setinha), escolha "Encaminhar" para enviar para várias pessoas ao mesmo tempo.
+                    <br>• <b>Quem Viu:</b> Em grupos, clique na setinha e escolha "Quem viu" para saber exatamente quem já leu sua mensagem.
+                </p>
 
                 <h4 style="color: #333; margin-bottom: 5px;">😀 Reações e Menu de Mensagem</h4>
                 <p style="font-size: 0.9rem; margin-bottom: 10px;">
                     Passe o mouse sobre qualquer mensagem (ou toque nela no celular) e clique na <b>setinha (⌄)</b> que aparece.<br>
-                    Um menu se abrirá com opções para:
-                    <br>• <b>Reagir:</b> 👍 ❤️ 😂 😮 😢 (As reações se acumulam!)
-                    <br>• <b>Responder:</b> Cita a mensagem específica.
-                    <br>• <b>Fixar:</b> Prende a mensagem no topo da conversa (útil para avisos).
+                    Um menu se abrirá com opções para reagir, responder, fixar ou apagar.
                 </p>
 
-                <h4 style="color: #333; margin-bottom: 5px;">🛡️ Segurança e Bloqueios (Admin)</h4>
-                <p style="font-size: 0.9rem; margin-bottom: 10px;">
-                    Administradores podem configurar <b>Restrições de Setor</b>. Se um usuário estiver bloqueado de falar com o "Financeiro", o sistema impedirá o envio da mensagem e avisará o remetente na hora.
+                <h4 style="color: #333; margin-bottom: 5px;">🛡️ Segurança (Admin)</h4>
+                <p style="font-size: 0.85rem; margin-bottom: 10px;">
+                    Administradores podem configurar <b>Restrições de Setor</b> e criar novos usuários diretamente pelo botão "+" na aba de Grupos.
                 </p>
 
                 <h4 style="color: #333; margin-bottom: 5px;">🔍 Outros Recursos</h4>
@@ -118,6 +125,7 @@
                     <option value="Diretoria Geral">Diretoria Geral</option>
                     <option value="Diretoria Financeira e Controle Interno">Diretoria Financeira e Controle Interno</option>
                     <option value="Diretoria Pedagógica">Diretoria Pedagógica</option>
+                    <option value="Diretora de RH e Estratégia">Diretora de RH e Estratégia</option>
                     <option value="Marketing">Marketing</option>
                 </optgroup>
 
@@ -199,12 +207,13 @@
         <div class="menu-section">
             <div id="groups-container" style="display: none;">
                 <button class="new-group-btn" onclick="openModalCreate()">+ Criar Novo Grupo</button>
+                <button class="new-group-btn" id="btn-show-user-modal" onclick="openUserModal()" style="display:none; background:#00796b; margin-top:5px;">+ Criar Novo Usuário</button>
                 <ul class="contact-list" id="groups-list"></ul>
             </div>
             <ul class="contact-list" id="users-list"></ul>
         </div>
 
-        <button class="logout-btn" onclick="logout()">Sair</button>
+        <button onclick="window.logout()" class="btn-sair">Sair</button>
     </aside>
 
     <main class="main-area">
@@ -221,6 +230,7 @@
                         <li>1 - Insira seu nome e primeiro sobrenome.</li>
                         <li>2 - Solicite ao Marketing uma foto institucional para adicionar ao seu perfil.</li>
                         <li>3 - Foi criado o "MANUAL & NOVIDADES" que traz todas as melhorias do chat.</li>
+                        <li>4 - Foi feito uma atualização para correção de problemas, qualquer outro problema refente ao chat tratar com o TI.</li>
                     </ul>
                 </div>
 
@@ -250,6 +260,7 @@
                     <button class="icon-btn" onclick="window.toggleChatSearch()" title="Buscar na conversa">🔍</button>
                     
                     <button id="btn-mark-unread" class="icon-btn" onclick="markChatUnread()" title="Marcar como não lida" style="display:none">✉️</button>
+                    <button class="icon-btn" onclick="openMediaGallery()" title="Mídias da conversa">🖼️</button>
                     <button id="group-settings-btn" class="icon-btn settings-btn" onclick="openGroupSettings()" style="display:none">⚙️</button>
                     <button class="icon-btn close-chat-btn" onclick="closeChat()">✕</button>
                 </div>
@@ -274,12 +285,82 @@
     </main>
 
     <div id="group-modal" class="modal-overlay"><div class="modal"><h3>Novo Grupo</h3><input id="new-group-name" placeholder="Nome"><label><input type="checkbox" id="is-broadcast"> Transmissão</label><label><input type="checkbox" id="select-all-users" onchange="toggleAll(this)"> Todos</label><div id="modal-users-list" class="user-select-list"></div><div class="modal-actions"><button class="btn-create" onclick="createGroup()">Criar</button><button class="btn-cancel" onclick="document.getElementById('group-modal').style.display='none'">Cancelar</button></div></div></div>
+    
+    <div id="user-modal" class="modal-overlay">
+        <div class="modal">
+            <h3>Criar Novo Usuário</h3>
+            <input type="text" id="new-user-username" placeholder="Nome de Usuário">
+            <input type="password" id="new-user-password" placeholder="Senha">
+            <select id="new-user-department" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                <option value="" disabled selected>Selecionar Departamento</option>
+            </select>
+            <div class="modal-actions">
+                <button class="btn-create" onclick="createUser()">Criar</button>
+                <button class="btn-cancel" onclick="document.getElementById('user-modal').style.display='none'">Cancelar</button>
+            </div>
+        </div>
+    </div>
     <div id="settings-modal" class="modal-overlay"><div class="modal"><h3>Grupo</h3><div id="settings-members-list" class="user-select-list"></div><div id="add-member-area" style="display:none; margin-top:10px;"><select id="add-member-select" style="width:100%; padding:8px;"></select><button class="btn-create" style="width:100%; margin-top:5px;" onclick="addNewMember()">Adicionar</button></div><div class="modal-actions" style="margin-top:10px;"><button id="btn-leave" class="btn-leave-group" onclick="leaveGroup()" style="display:none">Sair</button><button id="btn-delete" class="btn-delete-group" onclick="deleteGroup()" style="display:none">Excluir</button><button class="btn-cancel" onclick="document.getElementById('settings-modal').style.display='none'">Fechar</button></div></div></div>
+
+    <!-- Modais de Features (Encaminhar / Quem Viu) -->
+    <link rel="stylesheet" href="css/chat_features.css">
+
+    <!-- Modal Encaminhar -->
+    <div id="forward-modal" class="forward-modal">
+        <div class="modal-header">
+            <span class="modal-title">Encaminhar para...</span>
+            <button class="modal-close" onclick="closeForwardModal()">×</button>
+        </div>
+        <div style="padding: 10px;">
+            <input type="text" id="forward-search-input" placeholder="🔍 Pesquisar contato ou grupo..." onkeyup="filterForwardList(this.value)" style="width: 100%; padding: 10px; border-radius: 20px; border: 1px solid #ccc; outline: none;">
+        </div>
+        <div id="forward-list" class="forward-list">
+            <!-- Lista de contatos/grupos carregada via JS -->
+        </div>
+        <button id="btn-confirm-forward" class="forward-btn" onclick="confirmForward()">Enviar</button>
+    </div>
+
+    <!-- Modal Quem Viu -->
+    <div id="readers-modal" class="readers-modal">
+        <div class="modal-header">
+            <span class="modal-title">Visto por</span>
+            <button class="modal-close" onclick="closeReadersModal()">×</button>
+        </div>
+        <div id="readers-list" class="forward-list">
+            <!-- Lista de leitores -->
+        </div>
+    </div>
+
+    <!-- Modal Reações -->
+    <div id="reactions-modal" class="readers-modal">
+        <div class="modal-header">
+            <span class="modal-title">Reações</span>
+            <button class="modal-close" onclick="closeReactionsModal()">×</button>
+        </div>
+        <div id="reactions-list" class="forward-list">
+            <!-- Lista de reações -->
+        </div>
+    </div>
+
+    <!-- Modal Galeria de Mídia -->
+    <div id="media-modal" class="modal-overlay">
+        <div class="modal" style="width: 800px; max-height: 85vh;">
+            <div class="modal-header">
+                <span class="modal-title">🖼️ Galeria de Mídia</span>
+                <button class="modal-close" onclick="document.getElementById('media-modal').style.display='none'">×</button>
+            </div>
+            <div id="media-gallery-content" class="media-gallery">
+                <!-- Imagens e arquivos carregados via JS -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="document.getElementById('media-modal').style.display='none'">Fechar</button>
+            </div>
+        </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@3.0.3/dist/index.min.js"></script>
     <script src="js/chat.js"></script>
-    <script src="js/marketing.js"></script>
-</body>
+    </body>
 </body>
 </html>

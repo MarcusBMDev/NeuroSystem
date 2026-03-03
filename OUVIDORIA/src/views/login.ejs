@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Canal de Atendimento</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📢</text></svg>">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <h1>Canal de Atendimento</h1>
+        <% if (msg) { %>
+            <div class="alert error"><%= msg %></div>
+        <% } %>
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label>Usuário</label>
+                <input type="text" name="username" required>
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit" class="btn-primary">Entrar</button>
+        </form>
+        <div style="text-align: center; margin-top: 15px;">
+            <a href="http://192.168.10.133" style="color: var(--secondary); text-decoration: none; font-size: 0.9rem;">⬅️ Voltar ao Portal</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -5,13 +5,14 @@ const upload = require('../config/upload');
 
 // Gets
 router.get('/history/:myId/:targetId/:type', chatController.getHistory);
+router.get('/chat/get-media/:myId/:targetId/:type', chatController.getChatMedia);
 
 // Posts
 router.post('/upload', upload.single('file'), chatController.uploadFile);
 router.post('/message/react', chatController.react);
 router.post('/message/edit', chatController.editMessage);
 router.post('/message/delete', chatController.deleteMessage);
-router.post('/message/pin', chatController.pinMessage);     // <--- Nova
+router.post('/message/pin', chatController.pinMessage);
 
 // Rotas de Leitura/Estado
 router.post('/mark-read', chatController.markRead);         // <--- Corrige erro 404
@@ -19,6 +20,14 @@ router.post('/chat/mark-unread', chatController.markUnread);
 router.post('/chat/get-pinned', chatController.getPinned);  // <--- Corrige erro 404
 router.post('/admin/history', chatController.getAdminHistory); // <--- Admin
 router.post('/admin/get-full-history', chatController.getAdminHistory);
+
+
+// Rota de Leitura (Grupos e Reações)
+router.get('/readers/:messageId', chatController.getReaders);
+router.get('/message/reactions/:messageId', chatController.getReactions);
+
+// Rota de Encaminhamento (Lote)
+router.post('/forward', chatController.forwardMessage);
 
 // Rota de Integração (Webhook)
 router.post('/api/integrate/notify', chatController.notifyExternalMessage);

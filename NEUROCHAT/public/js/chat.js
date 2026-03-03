@@ -2,15 +2,52 @@
 var socket = io();
 
 // 1. SESSÃO
+// 1. SESSÃO
 const userSession = localStorage.getItem('neurochat_user');
 if (!userSession) window.location.href = '/';
-let currentUser = JSON.parse(userSession);
+
+let currentUser;
+try {
+    currentUser = JSON.parse(userSession);
+    if (!currentUser || !currentUser.id) throw new Error("Dados inválidos");
+} catch (e) {
+    localStorage.removeItem('neurochat_user');
+    window.location.href = '/';
+}
 
 let allUsers=[], allGroups=[], onlineIds=[], currentChatId=null, currentChatType=null, replyingTo=null;
 let activeTab='users', chatOffset=0, isUploading=false, pinnedMessagesList=[], pinnedIndex=0;
 let originalTitle=document.title, blinkInterval=null, unreadCountGlobal=0, searchResults=[], searchIndex=-1;
 
-const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+// 14. SOM DE NOTIFICAÇÃO (MP3 TIPO WHATSAPP)
+const notificationAudio = new Audio('/notification.mp3');
+notificationAudio.volume = 1.0; 
+
+// Desbloqueio de áudio robusto (Tenta em qualquer interação)
+const unlockAudio = () => {
+    notificationAudio.play().then(() => {
+        notificationAudio.pause();
+        notificationAudio.currentTime = 0;
+        // Remove os listeners após desbloquear
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('keydown', unlockAudio);
+        document.removeEventListener('touchstart', unlockAudio);
+    }).catch(() => {});
+};
+document.addEventListener('click', unlockAudio);
+document.addEventListener('keydown', unlockAudio);
+document.addEventListener('touchstart', unlockAudio);
+
+window.playNotificationSound = () => {
+    try {
+        // Usa cloneNode para permitir sons sobrepostos (ex: várias msgs seguidas)
+        const sound = notificationAudio.cloneNode(true);
+        sound.volume = 1.0;
+        sound.play().catch(e => console.log("Áudio bloqueado ou erro:", e));
+    } catch (e) {
+        console.error("Erro ao tocar som:", e);
+    }
+};
 
 // 2. HELPERS & UTILS
 window.getAvatarUrl = (p) => (p && p !== 'NULL' && p !== '') ? `/uploads/${p}` : '/avatar.png';
@@ -77,10 +114,14 @@ window.loadData = async () => {
 
         if(data.me) { 
             currentUser = {...currentUser, ...data.me}; 
-            localStorage.setItem('chatUser', JSON.stringify(currentUser)); 
+            currentUser = {...currentUser, ...data.me}; 
+            localStorage.setItem('neurochat_user', JSON.stringify(currentUser)); 
+            window.updateMyInfo();
             window.updateMyInfo(); 
             const b = document.querySelector('.new-group-btn');
             if(b) b.style.display = currentUser.is_super_admin ? 'block' : 'none';
+            const bUser = document.getElementById('btn-show-user-modal');
+            if(bUser) bUser.style.display = currentUser.is_super_admin ? 'block' : 'none';
         }
         allUsers = (data.users||[]).map(u => ({...u, last_activity: u.last_interaction })); 
         allGroups = data.groups||[];
@@ -216,46 +257,132 @@ window.openChat = async (type, id, name, el) => {
     }
     
     chatOffset = 0;
-    await window.loadChatHistory(false);
-    window.loadPinnedMessages(id, type);
+    await window.loadChatHistory('initial');
+    window.loadPinnedMessages(id, type); 
+    window.scrollToBottom();
+};
+
+window.loadPinnedMessages = async function(tid, type) {
+    // 1. Só carrega se ainda estivermos na mesma conversa
+    if (tid != currentChatId) return;
+
+    try {
+        const r = await fetch('/chat/get-pinned', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                myId: currentUser.id, 
+                targetId: tid, 
+                targetType: type // <--- IMPORTANTE: Mapeamos 'type' para 'targetType'
+            })
+        });
+
+        const d = await r.json();
+        
+        // 2. Atualiza a lista global de mensagens fixadas
+        pinnedMessagesList = d.pinnedMessages || [];
+
+        // 3. Reseta o índice se necessário (evita erros se a lista diminuiu)
+        if (pinnedIndex >= pinnedMessagesList.length) pinnedIndex = 0;
+
+        // 4. ATUALIZA A TELA (Faltava isto!)
+        window.updatePinUI();
+
+    } catch (e) {
+        console.error("Erro ao carregar mensagens fixadas:", e);
+    }
+};
     window.scrollToBottom();
     setTimeout(window.scrollToBottom, 100);
     setTimeout(window.scrollToBottom, 300);
-};
 
-window.loadChatHistory = async (isLoadMore=false) => {
+
+// 6. HISTÓRICO INTELIGENTE (DIA A DIA)
+window.loadChatHistory = async (mode = 'initial') => {
     if(!currentChatId) return;
-    if(isLoadMore) chatOffset+=30; else chatOffset=0;
+    
+    let url = `/history/${currentUser.id}/${currentChatId}/${currentChatType}`;
+    
+    // MODO INICIAL: Carrega só HOJE (?filter=today)
+    // MODO ANTIGO/SCROLL: Carrega offset normal
+    
+    if (mode === 'initial') {
+        chatOffset = 0;
+        // url += `?filter=today`; // REMOVIDO: Traz histórico padrão (últimas 30)
+    } else {
+        chatOffset += 30; 
+        const currentCount = document.querySelectorAll('.msg-container').length;
+        url += `?offset=${currentCount}`;
+    }
+
     try {
-        const res = await fetch(`/history/${currentUser.id}/${currentChatId}/${currentChatType}?offset=${chatOffset}`);
+        const res = await fetch(url);
         const msgs = await res.json();
         const container = document.getElementById('messages');
+        
         if(!container) return;
 
         const oldBtn = document.getElementById('btn-load-more');
         if(oldBtn) oldBtn.remove();
-        if(msgs.length===0 && isLoadMore) return;
         
-        const oldScroll = container.scrollHeight;
+        // Se for carregamento inicial e vazio
+        if (msgs.length === 0 && mode === 'initial') {
+            container.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">Nenhuma mensagem encontrada.</div>';
+            return;
+        }
+
+        if(msgs.length === 0 && mode !== 'initial') return;
+
+        // --- CORREÇÃO DO SCROLL JUMP ---
+        // Salvamos a altura e posição exata ANTES de inserir
+        // const isAtBottom = container.scrollHeight - container.scrollTop === container.clientHeight;
+        const oldScrollHeight = container.scrollHeight;
+        const oldScrollTop = container.scrollTop;
+
+        // Renderiza (sem jogar para baixo ainda)
         const render = (m, top) => window.addMessageToScreen({ ...m, userId: m.user_id, msgType: m.msg_type, fileName: m.file_name, raw_time: m.timestamp, reactions: m.reactions||[], is_read: m.is_read }, top);
         
-        if(!isLoadMore) msgs.forEach(m => render(m, false)); else for(let i=msgs.length-1; i>=0; i--) render(msgs[i], true);
-
-        if(msgs.length>=30) {
+        if (mode === 'initial') {
+            // Se é inicial (Hoje), limpa tudo e desenha
+            container.innerHTML = '';
+            // Inverte pois vem do banco DESC (mais novo primeiro) -> mas queremos desenhar cronológico
+            for(let i=msgs.length-1; i>=0; i--) render(msgs[i], false); // false = append no final
+            
+            // Adiciona botão "Ver Anteriores" no topo se quiser ver ontem
             const btn = document.createElement('button');
-            btn.id='btn-load-more'; btn.className='load-more-btn'; btn.textContent='🔄 Mais';
-            btn.onclick = () => window.loadChatHistory(true);
+            btn.id='btn-load-more'; btn.className='load-more-btn'; btn.textContent='🔄 Ver histórico anterior';
+            btn.onclick = () => window.loadChatHistory('history');
             container.insertBefore(btn, container.firstChild);
-        }
-        
-        if(!isLoadMore) {
+
+            window.updateDateSeparators();
             window.scrollToBottom();
-            setTimeout(window.scrollToBottom, 200); 
+            setTimeout(window.scrollToBottom, 100);
+
         } else {
-            container.scrollTop = container.scrollHeight - oldScroll;
+            // HISTÓRICO (Carregando para cima)
+            msgs.forEach(m => render(m, true));
+
+            // Botão "Ver Mais"
+            const btn = document.createElement('button');
+            btn.id='btn-load-more'; btn.className='load-more-btn'; btn.textContent='🔄 Ver mais';
+            btn.onclick = () => window.loadChatHistory('history');
+            container.insertBefore(btn, container.firstChild);
+
+            // Atualiza separadores (Isso adiciona altura!)
+            window.updateDateSeparators();
+            
+            // RESTAURAÇÃO DE SCROLL (AGORA NO FINAL - CORRETO)
+            // A diferença entre a NOVA altura total e a ANTIGA altura total
+            // é exatamente o quanto de conteúdo foi adicionado no topo.
+            // Se somarmos isso ao scroll, mantemos o usuário no mesmo ponto visual relativo ao conteúdo de baixo.
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - oldScrollHeight; 
         }
+
     } catch(e) { console.error(e); }
-};
+}; 
+
+
 
 window.addMessageToScreen = (data, prepend=false) => {
     if(document.getElementById(`msg-${data.id}`)) return;
@@ -294,7 +421,7 @@ window.addMessageToScreen = (data, prepend=false) => {
         const isImg = ['jpg','jpeg','png','gif','webp'].includes(ext);
         const url = `/uploads/${data.fileName}`;
         if(isImg) {
-            content = `<div class="image-wrapper"><img src="${url}" class="chat-image-preview" onclick="event.stopPropagation(); window.openImageZoom('${url}')" onload="window.scrollToBottom()"><a href="${url}" download="${data.fileName}" class="download-btn-overlay">⬇️ Baixar</a></div>`;
+            content = `<div class="image-wrapper"><img src="${url}" class="chat-image-preview" onclick="event.stopPropagation(); window.openImageZoom('${url}')"><a href="${url}" download="${data.fileName}" class="download-btn-overlay">⬇️ Baixar</a></div>`;
             if(data.text && data.text!==data.fileName) content += `<div class="image-caption"><span id="msg-text-${data.id}">${formatMessage(data.text)}</span>${editedHtml}</div>`;
         } else {
             content = `<a href="${url}" target="_blank" class="chat-file-link">📎 ${data.fileName}</a>`;
@@ -318,7 +445,7 @@ window.addMessageToScreen = (data, prepend=false) => {
         for (const [emoji, count] of Object.entries(counts)) { 
             const txt = count > 1 ? `${emoji} ${count}` : emoji; 
             const people = names[emoji].join(', ');
-            reactionsHtml += `<span class="reaction-bubble" title="${people}">${txt}</span>`; 
+            reactionsHtml += `<span class="reaction-bubble" title="${people}" onclick="event.stopPropagation(); window.openReactionsModal(${data.id})">${txt}</span>`; 
         }
     }
     reactionsHtml += `</div>`;
@@ -336,6 +463,8 @@ window.addMessageToScreen = (data, prepend=false) => {
         </div>
         <div class="menu-divider"></div>
         <div class="menu-item" onclick="replyMessage(${data.id}, '${safeUser}', '${safeText.substring(0,30)}')">↩️ Responder</div>
+        <div class="menu-item" onclick="openForwardModal(${data.id})">↪️ Encaminhar</div>
+        ${(currentChatType === 'group') ? `<div class="menu-item" onclick="openReadersModal(${data.id})">👁️ Quem Viu</div>` : ''}
         ${(isMine) ? `<div class="menu-item" onclick="editMessage(${data.id}, '${safeText}')">✏️ Editar</div>` : ''}
         ${(currentUser.is_super_admin || isMine) ? `<div class="menu-item" onclick="deleteMessage(${data.id})">🗑️ Apagar</div>` : ''}
         <div class="menu-item" onclick="pinMessage(${data.id})">📌 Fixar</div>
@@ -399,7 +528,7 @@ window.sendMessage = () => {
 };
 
 // 5. SOCKET LISTENERS
-socket.on('error message', (msg) => { try { notificationSound.play().catch(e => {}) } catch(e){} alert(msg); if(currentChatId) window.loadChatHistory(false); });
+socket.on('error message', (msg) => { window.playNotificationSound(); alert(msg); if(currentChatId) window.loadChatHistory('initial'); });
 
 socket.on('chat message', (data) => {
         // LÓGICA DE VISIBILIDADE:
@@ -423,6 +552,9 @@ socket.on('chat message', (data) => {
         }
 
         if (isChatOpen) {
+            // TOCA SOM TAMBÉM (Se não fui eu)
+            if (data.userId !== currentUser.id) window.playNotificationSound();
+
             // Mostra a mensagem
             addMessageToScreen(data);
             scrollToBottom();
@@ -436,8 +568,11 @@ socket.on('chat message', (data) => {
                 });
             }
         } else {
-            // Notifica
-            try { notificationSound.play().catch(()=>{}) } catch(e){}
+            // --- CORREÇÃO AQUI ---
+            // Chamamos a função mestre que toca som, pisca a aba e manda notificação do Windows
+            window.notifyUser(data); 
+            // --------------------- 
+            // ---------------------
             
             // Atualiza contadores na lista lateral
             if (data.targetType === 'group') {
@@ -488,15 +623,62 @@ socket.on('message updated', (d) => {
 });
 
 socket.on('message pinned', (data) => {
-        // Se a mensagem fixada pertence ao chat que estou vendo agora
-        if (data.targetId == currentChatId && data.targetType == currentChatType) {
-            const el = document.getElementById(`msg-${data.messageId}`);
-            if (el) {
-                if (data.action === 'pin') el.classList.add('pinned-message');
-                else el.classList.remove('pinned-message');
-            }
+    // 1. Verifica se o evento pertence ao chat que estou a ver agora
+    let isForCurrentChat = false;
+
+    if (currentChatType === 'group' && data.targetType === 'group') {
+        // Se for grupo, o ID do grupo tem de bater
+        if (data.targetId == currentChatId) isForCurrentChat = true;
+    } 
+    else if (currentChatType === 'private' && data.targetType === 'private') {
+        // Se for privado, serve se:
+        // A) O 'targetId' do evento for quem eu estou vendo (eu fixei pra ele)
+        // B) O 'userId' do evento for quem eu estou vendo (ele fixou pra mim)
+        if (data.targetId == currentChatId || data.userId == currentChatId) {
+            isForCurrentChat = true;
         }
-    });
+    }
+
+    if (isForCurrentChat) {
+        // 2. ATUALIZA A BARRA AMARELA NO TOPO (Fundamental!)
+        // Isto vai buscar a lista atualizada ao servidor e mostrar a barra
+        window.loadPinnedMessages(currentChatId, currentChatType);
+
+        // 3. Atualiza o estilo visual da bolha da mensagem (borda/cor)
+        const el = document.getElementById(`msg-${data.messageId}`);
+        if (el) {
+            if (data.action === 'pin') el.classList.add('pinned-message');
+            else el.classList.remove('pinned-message');
+        }
+    }
+});
+// --- NAVEGAÇÃO ENTRE MENSAGENS FIXADAS ---
+
+window.nextPin = function() {
+    // Se não tiver lista ou só tiver 1 mensagem, não faz nada
+    if (!pinnedMessagesList || pinnedMessagesList.length <= 1) return;
+    
+    // Avança o índice
+    pinnedIndex++;
+    
+    // Se passar do fim, volta para o começo (Loop)
+    if (pinnedIndex >= pinnedMessagesList.length) pinnedIndex = 0;
+    
+    // Atualiza a barra com a nova mensagem
+    window.updatePinUI();
+};
+
+window.prevPin = function() {
+    if (!pinnedMessagesList || pinnedMessagesList.length <= 1) return;
+    
+    // Recua o índice
+    pinnedIndex--;
+    
+    // Se for menor que 0, vai para a última mensagem (Loop reverso)
+    if (pinnedIndex < 0) pinnedIndex = pinnedMessagesList.length - 1;
+    
+    window.updatePinUI();
+};
 socket.on('message deleted', (d) => { const b = document.getElementById(`msg-bubble-${d.messageId}`); if(b) { const h = b.querySelector('.msg-header').outerHTML; b.innerHTML = `${h}<div class="deleted-content" style="color:#aaa;font-style:italic">🚫 Mensagem apagada</div>`; const c = document.getElementById(`msg-${d.messageId}`); if(c) { const a = c.querySelector('.msg-actions'); if(a) a.remove(); } } window.loadPinnedMessages(currentChatId, currentChatType); });
 socket.on('read confirmation', (d) => { if(currentChatType === 'private' && currentChatId == d.readerId) document.querySelectorAll('.read-ticks').forEach(e => e.classList.add('read')); });
 
@@ -532,6 +714,10 @@ socket.on('message reaction', (data) => {
                 if(count > 1) { count--; existingBubble.textContent = (count > 1) ? `${data.reaction} ${count}` : data.reaction; } else { existingBubble.remove(); }
             }
         }
+        // Atualiza o onclick caso mude o autor da reação
+        existingBubble = null;
+        Array.from(bar.children).forEach(child => { if(child.textContent.includes(data.reaction)) existingBubble = child; });
+        if(existingBubble) existingBubble.onclick = (e) => { e.stopPropagation(); window.openReactionsModal(data.messageId); };
     }
 });
 
@@ -556,8 +742,8 @@ socket.on('refresh group members', () => {
         // O loadData já cuida de entrar na sala do socket automaticamente
         window.loadData();
         
-        // Toca um som ou notificação leve se quiser
-        try { notificationSound.play().catch(()=>{}) } catch(e){}
+        // Toca o som de notificação
+        window.playNotificationSound();
     });
 
     socket.on('you were removed', (data) => {
@@ -616,7 +802,102 @@ window.deleteUser = async function(tid) {
 window.toggleRestriction=async function(d,c){await fetch('/admin/toggle-restriction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminId:currentUser.id,targetUserId:document.getElementById('admin-target-id').value,department:d,action:c?'add':'remove'})})};
 window.toggleAdminRole=async function(){if(confirm("Mudar Admin?"))await fetch('/admin/toggle-admin-role',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminId:currentUser.id,targetUserId:document.getElementById('admin-target-id').value})});window.openAdminControl(document.getElementById('admin-target-id').value)};
 window.openFullAudit=function(){window.open(`/audit.html?target=${document.getElementById('admin-target-id').value}`,'_blank')};
-window.notifyUser=(d)=>{try{notificationSound.play().catch(()=>{})}catch(e){}if(document.hidden){unreadCountGlobal++;if(!blinkInterval)blinkInterval=setInterval(()=>{document.title=document.title===originalTitle?`(${unreadCountGlobal}) Nova Msg!`:originalTitle},1000);if("Notification"in window&&Notification.permission==="granted"){new Notification("NeuroChat",{body:d.targetType==='group'?'Grupo':d.user,icon:'/avatar.png',silent:true}).onclick=function(){window.focus();this.close()}}}};
+
+// --- NOVAS FUNÇÕES DE CRIAÇÃO DE USUÁRIO (ADMIN) ---
+window.openUserModal = async function() {
+    document.getElementById('user-modal').style.display = 'flex';
+    const select = document.getElementById('new-user-department');
+    select.innerHTML = '<option value="" disabled selected>Carregando...</option>';
+    
+    try {
+        const res = await fetch('/api/departments');
+        const depts = await res.json();
+        select.innerHTML = '<option value="" disabled selected>Selecionar Departamento</option>';
+        depts.forEach(cat => {
+            const group = document.createElement('optgroup');
+            group.label = cat.category;
+            cat.departments.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d; opt.textContent = d;
+                group.appendChild(opt);
+            });
+            select.appendChild(group);
+        });
+    } catch (e) { console.error("Erro ao carregar departamentos", e); }
+};
+
+window.createUser = async function() {
+    const u = document.getElementById('new-user-username').value.trim();
+    const p = document.getElementById('new-user-password').value.trim();
+    const d = document.getElementById('new-user-department').value;
+    
+    if(!u || !p || !d) return alert("Preencha todos os campos.");
+    
+    try {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username: u, password: p, department: d, adminId: currentUser.id })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert("Usuário criado com sucesso!");
+            document.getElementById('user-modal').style.display = 'none';
+            document.getElementById('new-user-username').value = '';
+            document.getElementById('new-user-password').value = '';
+            window.loadData();
+        } else {
+            alert(data.message || "Erro ao criar usuário.");
+        }
+    } catch (e) { console.error(e); alert("Erro de conexão."); }
+};
+// --- GALERIA DE MÍDIA ---
+window.openMediaGallery = async function() {
+    if(!currentChatId) return;
+    const modal = document.getElementById('media-modal');
+    const container = document.getElementById('media-gallery-content');
+    modal.style.display = 'flex';
+    container.innerHTML = '<div style="color:#666; padding:20px; text-align:center; width:100%;">Carregando mídias...</div>';
+
+    try {
+        const res = await fetch(`/chat/get-media/${currentUser.id}/${currentChatId}/${currentChatType}`);
+        const data = await res.json();
+        
+        if(!data.success || !data.media || data.media.length === 0) {
+            container.innerHTML = '<div style="color:#aaa; padding:20px; text-align:center; width:100%;">Nenhuma mídia encontrada nesta conversa.</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        data.media.forEach(m => {
+            const ext = m.file_name.split('.').pop().toLowerCase();
+            const isImg = ['jpg','jpeg','png','gif','webp'].includes(ext);
+            const url = `/uploads/${m.file_name}`;
+
+            const item = document.createElement('div');
+            item.className = 'media-item';
+            
+            if(isImg) {
+                item.innerHTML = `
+                    <img src="${url}" onclick="window.openImageZoom('${url}')" title="${m.text || m.file_name}">
+                    <div class="media-info">${new Date(m.timestamp).toLocaleDateString()}</div>
+                `;
+            } else {
+                item.innerHTML = `
+                    <div class="file-icon" onclick="window.open('${url}', '_blank')">📄</div>
+                    <div class="file-name" title="${m.file_name}">${m.file_name}</div>
+                    <div class="media-info">${new Date(m.timestamp).toLocaleDateString()}</div>
+                `;
+            }
+            container.appendChild(item);
+        });
+    } catch (e) {
+        console.error("Erro ao carregar galeria:", e);
+        container.innerHTML = '<div style="color:red; padding:20px; text-align:center; width:100%;">Erro ao carregar mídias.</div>';
+    }
+};
+
+window.notifyUser=(d)=>{if(d.userId!==currentUser.id)window.playNotificationSound();if(document.hidden && d.userId!==currentUser.id){unreadCountGlobal++;if(!blinkInterval)blinkInterval=setInterval(()=>{document.title=document.title===originalTitle?`(${unreadCountGlobal}) Nova Msg!`:originalTitle},1000);if("Notification"in window&&Notification.permission==="granted"){new Notification("NeuroChat",{body:d.targetType==='group'?'Grupo':d.user,icon:'/avatar.png',silent:true}).onclick=function(){window.focus();this.close()}}}};
 window.markAsRead=async(sid)=>{await fetch('/mark-read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({myId:currentUser.id,senderId:sid})})};
 // --- CORREÇÃO: Atualiza a lista ANTES de perder a referência do ID ---
 window.markChatUnread = async () => {
@@ -666,9 +947,99 @@ window.sendReaction = async (mid, r) => {
     });
 };
 window.replyMessage=(id,user,text)=>{replyingTo={id,user,text};document.getElementById('reply-area').style.display='flex';document.getElementById('reply-user').textContent=user;document.getElementById('reply-text').textContent=text;document.getElementById('input').focus()};
-window.cancelReply=()=>{replyingTo=null;document.getElementById('reply-area').style.display='none'};window.closeChat=()=>{document.body.classList.remove('mobile-active');document.getElementById('welcome-screen').style.display='flex';document.getElementById('chat-interface').style.display='none';currentChatId=null};window.logout=()=>{localStorage.removeItem('chatUser');location.href='/'};window.stopBlinking=()=>{clearInterval(blinkInterval);blinkInterval=null;unreadCountGlobal=0;document.title=originalTitle};document.addEventListener('visibilitychange',()=>{if(!document.hidden)window.stopBlinking()});
-window.loadPinnedMessages=async function(tid,type){if(tid!=currentChatId)return;try{const r=await fetch('/chat/get-pinned',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({myId:currentUser.id,targetId:tid,type})});const d=await r.json();pinnedMessagesList=d.pinnedMessages||[];if(pinnedIndex>=pinnedMessagesList.length)pinnedIndex=0;window.updatePinUI()}catch(e){}};
-window.updatePinUI=function(){const b=document.getElementById('pinned-bar');b.style.display='none';b.innerHTML='';if(pinnedMessagesList.length>0){b.style.display='flex';const m=pinnedMessagesList[pinnedIndex];const t=(m.msgType==='file')?'📎':m.text;const n=pinnedMessagesList.length>1?`<span onclick="prevPin()" style="cursor:pointer;margin-right:10px;">❮</span> ${pinnedIndex+1}/${pinnedMessagesList.length} <span onclick="nextPin()" style="cursor:pointer;margin-left:10px;">❯</span>`:'';b.innerHTML=`<div style="flex:1;cursor:pointer;" onclick="scrollToMsg(${m.id})">${n} <b>${m.username}:</b> ${t}</div><button onclick="event.stopPropagation(); unpinMessage(${m.id})">✕</button>`}};window.nextPin=()=>{pinnedIndex=(pinnedIndex+1)%pinnedMessagesList.length;window.updatePinUI()};window.prevPin=()=>{pinnedIndex=(pinnedIndex-1+pinnedMessagesList.length)%pinnedMessagesList.length;window.updatePinUI()};
+window.cancelReply=()=>{replyingTo=null;document.getElementById('reply-area').style.display='none'};window.closeChat=()=>{document.body.classList.remove('mobile-active');document.getElementById('welcome-screen').style.display='flex';document.getElementById('chat-interface').style.display='none';currentChatId=null};
+// Função de Logout Global (Substitui a da linha 426)
+window.logout = () => {
+    if (confirm("Deseja realmente sair?")) {
+        // Limpa TUDO o que é do sistema (Chat, Financeiro, Login)
+        localStorage.clear(); 
+        sessionStorage.clear();
+        
+        // Desconecta o socket para não ficar "fantasma" online
+        if (socket) socket.disconnect();
+
+        // Manda para a tela de login
+        window.location.href = '/index.html'; 
+    }
+};
+window.stopBlinking=()=>{clearInterval(blinkInterval);blinkInterval=null;unreadCountGlobal=0;document.title=originalTitle};document.addEventListener('visibilitychange',()=>{if(!document.hidden)window.stopBlinking()});
+window.loadPinnedMessages = async function(tid, type) {
+    // 1. Segurança: Só carrega se ainda estivermos com este chat aberto
+    if (tid != currentChatId) return; 
+
+    try {
+        const r = await fetch('/chat/get-pinned', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                myId: currentUser.id, 
+                targetId: tid, 
+                
+                // --- CORREÇÃO IMPORTANTE ---
+                // O Controller espera 'targetType', então mapeamos a variável 'type' para esse nome
+                targetType: type 
+            })
+        });
+
+        const d = await r.json();
+        
+        // Atualiza a lista global
+        pinnedMessagesList = d.pinnedMessages || [];
+
+        // Reseta o índice se a lista diminuiu (para não dar erro de índice inválido)
+        if (pinnedIndex >= pinnedMessagesList.length) pinnedIndex = 0;
+
+        // --- FALTAVA ESTA LINHA ---
+        // Chama a função que desenha a barra amarela na tela
+        window.updatePinUI();
+
+    } catch (e) {
+        console.error("Erro ao carregar mensagens fixadas:", e);
+    }
+};
+
+window.updatePinUI = function() {
+    const b = document.getElementById('pinned-bar');
+    if (!b) return;
+
+    // Reseta visualmente
+    b.style.display = 'none';
+    b.innerHTML = '';
+
+    if (pinnedMessagesList && pinnedMessagesList.length > 0) {
+        // Garante que o índice é válido
+        if (pinnedIndex >= pinnedMessagesList.length) pinnedIndex = 0;
+        
+        const m = pinnedMessagesList[pinnedIndex];
+        
+        // Define o texto (se for arquivo, mostra ícone)
+        const displayText = (m.msgType === 'file' || m.file_name) 
+            ? `📎 Arquivo: ${m.fileName || m.text}` 
+            : m.text;
+
+        // Navegação (se tiver mais de uma mensagem fixada)
+        const navArrows = pinnedMessagesList.length > 1 
+            ? `<span onclick="event.stopPropagation(); prevPin()" style="cursor:pointer;margin-right:10px;font-weight:bold;">❮</span> 
+               <small>${pinnedIndex + 1}/${pinnedMessagesList.length}</small> 
+               <span onclick="event.stopPropagation(); nextPin()" style="cursor:pointer;margin-left:10px;font-weight:bold;">❯</span>` 
+            : '';
+
+        // Monta o HTML com as classes CSS que criámos
+        b.innerHTML = `
+            <div class="pinned-content" onclick="scrollToMsg(${m.id})">
+                ${navArrows} 
+                <span style="margin-left:10px;">
+                    <b>📌 ${m.username || 'Alguém'}:</b> ${displayText}
+                </span>
+            </div>
+            <button class="pinned-close-btn" onclick="event.stopPropagation(); unpinMessage(${m.id})" title="Desafixar">✕</button>
+        `;
+        
+        // FORÇA O DISPLAY FLEX
+        b.style.display = 'flex';
+        console.log("📌 Barra Atualizada e Exibida:", m.text); // Log para confirmar
+    }
+};
 window.pinMessage = async (mid) => {
     await fetch('/message/pin', {
         method:'POST',
@@ -725,7 +1096,62 @@ window.updateSearchUI = function() { document.getElementById('search-count-displ
 window.scrollToSearchResult = function() { const el = searchResults[searchIndex]; if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.querySelector('.message-bubble').style.background = '#fff59d'; } };
 window.nextSearch = function() { if (searchResults.length === 0) return; searchIndex++; if (searchIndex >= searchResults.length) searchIndex = 0; updateSearchUI(); scrollToSearchResult(); };
 window.prevSearch = function() { if (searchResults.length === 0) return; searchIndex--; if (searchIndex < 0) searchIndex = searchResults.length - 1; updateSearchUI(); scrollToSearchResult(); };
-window.openProfileModal = function() { document.getElementById('profile-username').value = currentUser.username; const s = document.getElementById('profile-department'); if(s) s.value = currentUser.department || ""; document.getElementById('profile-password').value = ''; document.getElementById('profile-photo-input').value = ''; document.getElementById('profile-modal').style.display = 'flex'; };
+window.loadDepartmentsForProfile = async function() {
+    try {
+        const res = await fetch('/api/departments');
+        const depts = await res.json();
+        const select = document.getElementById('profile-department');
+        
+        // Salva o valor atual caso já tenha selecionado algo ou esteja editando
+        const currentVal = select.getAttribute('data-value') || select.value;
+        
+        select.innerHTML = '<option value="" disabled selected>Carregando...</option>';
+        
+        // Remove optgroups antigos se tiver (mas estamos reescrevendo innerHTML)
+        select.innerHTML = '<option value="" disabled>Selecione seu Departamento</option>';
+
+        depts.forEach(cat => {
+            const group = document.createElement('optgroup');
+            group.label = cat.category;
+            cat.departments.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = d;
+                if(d === currentVal) opt.selected = true;
+                group.appendChild(opt);
+            });
+            select.appendChild(group);
+        });
+
+        // Se o currentVal não bateu com nenhum, reseta (ou mantém se for texto livre antigo)
+        if(currentVal && select.value !== currentVal) {
+             // Opcional: Adicionar o valor antigo como opção extra se não existir na lista nova
+             const opt = document.createElement('option');
+             opt.value = currentVal;
+             opt.textContent = currentVal + " (Antigo)";
+             opt.selected = true;
+             select.appendChild(opt);
+        }
+
+    } catch (error) {
+        console.error("Erro ao carregar departamentos:", error);
+    }
+};
+
+window.openProfileModal = function() { 
+    document.getElementById('profile-username').value = currentUser.username; 
+    
+    // Store current dept to set as selected after loading
+    const s = document.getElementById('profile-department');
+    if(s) s.setAttribute('data-value', currentUser.department || "");
+    
+    document.getElementById('profile-password').value = ''; 
+    document.getElementById('profile-photo-input').value = ''; 
+    document.getElementById('profile-modal').style.display = 'flex';
+    
+    // Carrega dinâmico
+    window.loadDepartmentsForProfile();
+};
 window.saveProfile = async function() {
     const n = document.getElementById('profile-username').value.trim();
     const d = document.getElementById('profile-department').value;
@@ -754,7 +1180,9 @@ window.saveProfile = async function() {
             currentUser.username = n;
             currentUser.department = d;
             if (data.photo) currentUser.photo = data.photo; 
-            localStorage.setItem('chatUser', JSON.stringify(currentUser));
+            if (data.photo) currentUser.photo = data.photo; 
+            localStorage.setItem('neurochat_user', JSON.stringify(currentUser));
+            window.updateMyInfo();
             window.updateMyInfo();
             document.getElementById('profile-modal').style.display = 'none';
         } else {
@@ -767,7 +1195,40 @@ window.openImageZoom = function(src) { document.getElementById('img-zoom-target'
 window.closeImageZoom = function() { document.getElementById('image-zoom-modal').style.display = 'none'; };
 window.openModalCreate = function() { const l = document.getElementById('modal-users-list'); l.innerHTML = ''; const h = document.createElement('div'); h.innerHTML = `<input type="checkbox" onchange="toggleAll(this)"> Selecionar Todos`; l.appendChild(h); allUsers.forEach(u => { if(u.id !== currentUser.id) { l.innerHTML += `<div class="user-checkbox-item"><input type="checkbox" class="user-sel" value="${u.id}"> ${u.username}</div>`; } }); document.getElementById('group-modal').style.display = 'flex'; };
 window.toggleAll = function(s) { document.querySelectorAll('.user-sel').forEach(c => c.checked = s.checked); };
-window.createGroup = async function() { const n = document.getElementById('new-group-name').value; const ib = document.getElementById('is-broadcast').checked; const m = Array.from(document.querySelectorAll('.user-sel:checked')).map(x => x.value); if(!n || m.length === 0) return alert('Preencha tudo.'); await fetch('/create-group', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name:n, creatorId:currentUser.id, members:m, isBroadcast:ib }) }); document.getElementById('group-modal').style.display = 'none'; };
+window.createGroup = async function() {
+    const n = document.getElementById('new-group-name').value;
+    const ib = document.getElementById('is-broadcast').checked;
+    const m = Array.from(document.querySelectorAll('.user-sel:checked')).map(x => x.value);
+
+    // Permite criar grupo sem membros (só o nome é obrigatório)
+    if (!n) return alert('Digite o nome do grupo.');
+
+    try {
+        const res = await fetch('/create-group', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: n, creatorId: currentUser.id, members: m, isBroadcast: ib })
+        });
+        
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('group-modal').style.display = 'none';
+            // Limpa o form
+            document.getElementById('new-group-name').value = '';
+            document.querySelectorAll('.user-sel').forEach(x => x.checked = false);
+            
+            // ATUALIZA A LISTA IMEDIATAMENTE
+            window.loadData();
+            alert('Grupo criado com sucesso!');
+        } else {
+            alert('Erro ao criar grupo: ' + (data.message || 'Erro desconhecido'));
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Erro de conexão ao criar grupo.');
+    }
+};
 window.openGroupSettings = function() { document.getElementById('settings-modal').style.display = 'flex'; window.loadGroupSettings(); };
 // --- FUNÇÃO ATUALIZADA: LISTA DE MEMBROS BONITA (V116) ---
 window.loadGroupSettings = async function() {
@@ -880,6 +1341,212 @@ window.leaveGroup = async function() { if(confirm('Sair?')) { await fetch('/grou
 window.deleteGroup = async function() { if(confirm('Excluir?')) { await fetch('/group/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId:currentChatId}) }); document.getElementById('settings-modal').style.display='none'; window.closeChat(); } };
 window.scrollToMsg = function(id) { const el = document.getElementById(`msg-${id}`); if(el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.style.background='#fff9c4'; setTimeout(()=>el.style.background='', 1500); } };
 
+// --- FEATURES: ENCAMINHAR & QUEM VIU (V120) ---
+let messageToForwardId = null;
+let forwardSelection = []; // array de {id, type}
+
+window.openForwardModal = function(msgId) {
+    messageToForwardId = msgId;
+    forwardSelection = [];
+    const searchInput = document.getElementById('forward-search-input');
+    if(searchInput) searchInput.value = '';
+    document.getElementById('forward-modal').style.display = 'flex';
+    renderForwardList();
+};
+
+window.closeForwardModal = function() {
+    document.getElementById('forward-modal').style.display = 'none';
+    messageToForwardId = null;
+};
+
+window.renderForwardList = function() {
+    const list = document.getElementById('forward-list');
+    list.innerHTML = '';
+
+    // Grupos
+    allGroups.forEach(g => {
+        list.innerHTML += `
+            <div class="forward-item" data-name="${(g.name||'').toLowerCase()}" onclick="toggleForwardTarget('${g.id}', 'group', this)">
+                <input type="checkbox" class="forward-checkbox" pointer-events="none" ${(forwardSelection.some(x => x.id == g.id && x.type === 'group')) ? 'checked' : ''}>
+                <span class="forward-name">👥 ${g.name}</span>
+            </div>`;
+    });
+
+    // Separador
+    list.innerHTML += '<div class="forward-divider" style="margin:10px 0; border-bottom:1px solid #eee;"></div>';
+
+    // Usuários
+    allUsers.forEach(u => {
+        if(u.id !== currentUser.id) {
+            list.innerHTML += `
+            <div class="forward-item" data-name="${(u.username||'').toLowerCase()}" onclick="toggleForwardTarget('${u.id}', 'private', this)">
+                <input type="checkbox" class="forward-checkbox" pointer-events="none" ${(forwardSelection.some(x => x.id == u.id && x.type === 'private')) ? 'checked' : ''}>
+                <span class="forward-name">👤 ${u.username}</span>
+            </div>`;
+        }
+    });
+
+    const term = document.getElementById('forward-search-input')?.value;
+    if(term) window.filterForwardList(term);
+};
+
+window.filterForwardList = function(term) {
+    const t = (term || '').toLowerCase();
+    const items = document.querySelectorAll('.forward-item');
+    items.forEach(el => {
+        const name = el.getAttribute('data-name');
+        if(name && name.includes(t)) el.style.display = 'flex';
+        else el.style.display = 'none';
+    });
+    
+    // Esconde o divisor se estiver pesquisando
+    const divider = document.querySelector('.forward-divider');
+    if(divider) divider.style.display = t ? 'none' : 'block';
+};
+
+window.toggleForwardTarget = function(id, type, el) {
+    const cb = el.querySelector('input');
+    cb.checked = !cb.checked;
+    
+    if(cb.checked) {
+        forwardSelection.push({id, type});
+        el.style.background = '#e3f2fd';
+    } else {
+        forwardSelection = forwardSelection.filter(x => !(x.id == id && x.type == type));
+        el.style.background = '';
+    }
+    
+    const btn = document.getElementById('btn-confirm-forward');
+    btn.textContent = `Enviar para (${forwardSelection.length})`;
+    btn.disabled = forwardSelection.length === 0;
+};
+
+window.confirmForward = async function() {
+    if(!messageToForwardId || forwardSelection.length === 0) return;
+
+    const btn = document.getElementById('btn-confirm-forward');
+    btn.textContent = "Enviando...";
+    btn.disabled = true;
+
+    try {
+        // Agora usamos o backend para processar em lote (Mil vezes mais robusto)
+        // Rota corrigida: no chat.routes.js está como '/forward' e o server.js monta na raiz.
+        const res = await fetch('/forward', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                messageId: messageToForwardId,
+                targets: forwardSelection
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            alert(`✅ Mensagem encaminhada para ${data.result.successCount} destinatários!`);
+            window.closeForwardModal();
+        } else {
+            alert("❌ Erro ao encaminhar: " + (data.message || "Falha no servidor."));
+        }
+    } catch (e) {
+        console.error(e);
+        alert("❌ Erro de conexão ao encaminhar.");
+    } finally {
+        if(document.getElementById('forward-modal').style.display !== 'none') {
+             btn.textContent = "Enviar";
+             btn.disabled = false;
+        }
+    }
+};
+
+
+// --- QUEM VIU ---
+window.openReadersModal = async function(msgId) {
+    document.getElementById('readers-modal').style.display = 'flex';
+    const list = document.getElementById('readers-list');
+    list.innerHTML = '<div style="padding:20px; text-align:center">Carregando...</div>';
+
+    try {
+        const res = await fetch(`/readers/${msgId}`);
+        const data = await res.json();
+        
+        if(data.success) {
+            list.innerHTML = '';
+            if(data.readers.length === 0) {
+                list.innerHTML = '<div style="padding:15px">Ninguém visualizou ainda.</div>';
+                return;
+            }
+
+            data.readers.forEach(r => {
+                const photo = getAvatarUrl(r.photo);
+                const time = new Date(r.last_view).toLocaleString();
+                list.innerHTML += `
+                    <div class="reader-item">
+                        <img src="${photo}" class="reader-avatar">
+                        <div class="reader-info">
+                            <b>${r.username}</b>
+                            <span class="reader-time">Visto após: ${time}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            list.innerHTML = 'Erro ao carregar.';
+        }
+    } catch(e) {
+        console.error(e);
+        list.innerHTML = 'Erro de conexão.';
+    }
+};
+
+window.closeReadersModal = function() {
+    document.getElementById('readers-modal').style.display = 'none';
+};
+
+// --- REAÇÕES ---
+window.openReactionsModal = async function(msgId) {
+    document.getElementById('reactions-modal').style.display = 'flex';
+    const list = document.getElementById('reactions-list');
+    list.innerHTML = '<div style="padding:20px; text-align:center">Carregando...</div>';
+
+    try {
+        const res = await fetch(`/message/reactions/${msgId}`);
+        const data = await res.json();
+        
+        if(data.success) {
+            list.innerHTML = '';
+            if(data.reactions.length === 0) {
+                list.innerHTML = '<div style="padding:15px">Nenhuma reação.</div>';
+                return;
+            }
+
+            data.reactions.forEach(r => {
+                const photo = getAvatarUrl(r.photo);
+                list.innerHTML += `
+                    <div class="reader-item">
+                        <img src="${photo}" class="reader-avatar">
+                        <div class="reader-info">
+                            <b>${r.username}</b>
+                            <span class="reader-time">Reagiu com ${r.reaction}</span>
+                        </div>
+                        <div style="font-size: 1.5rem;">${r.reaction}</div>
+                    </div>
+                `;
+            });
+        } else {
+            list.innerHTML = 'Erro ao carregar.';
+        }
+    } catch(e) {
+        console.error(e);
+        list.innerHTML = 'Erro de conexão.';
+    }
+};
+
+window.closeReactionsModal = function() {
+    document.getElementById('reactions-modal').style.display = 'none';
+};
+
 // INIT
 document.addEventListener('DOMContentLoaded',()=>{
     console.log("Chat V115 - Fix Order & filterContacts Error");
@@ -891,6 +1558,34 @@ document.addEventListener('DOMContentLoaded',()=>{
     
     const f=document.getElementById('file-input');if(f)f.onchange=()=>window.uploadFile();
     const i=document.getElementById('input');if(i)i.addEventListener('paste',e=>{const it=(e.clipboardData||e.originalEvent.clipboardData).items;for(let x in it)if(it[x].kind==='file')window.uploadFile(it[x].getAsFile())});
+    
+    // --- FUNÇÃO ESC PARA FECHAR TUDO (Modais e Chat) ---
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            // 1. Tenta fechar modais primeiro
+            const modals = document.querySelectorAll('.modal-overlay, .modal-zoom, .forward-modal, .readers-modal');
+            let modalClosed = false;
+            
+            modals.forEach(m => {
+                if (m.style.display === 'flex' || m.style.display === 'block') {
+                    m.style.display = 'none';
+                    modalClosed = true;
+                }
+            });
+
+            // Fecha especificamente os novos modais se abertos
+            if (document.getElementById('reactions-modal').style.display === 'flex') {
+                document.getElementById('reactions-modal').style.display = 'none';
+                modalClosed = true;
+            }
+
+            // 2. Se não fechou nenhum modal, fecha a conversa atual
+            if (!modalClosed && currentChatId) {
+                window.closeChat();
+            }
+        }
+    });
+
     if(window.EmojiButton){
         const p=new EmojiButton({position:'top-start',rootElement:document.body,theme:'light',autoHide:false,zIndex:999999});
         const t=document.getElementById('emoji-btn');
@@ -898,23 +1593,6 @@ document.addEventListener('DOMContentLoaded',()=>{
         if(t)t.addEventListener('click',()=>p.togglePicker(t))
     }
 
-    // Função para sair do sistema (chamada pelo botão no HTML)
-function logout() {
-    // 1. Pergunta de segurança (Opcional, mas boa prática)
-    if (confirm("Tens a certeza que queres sair?")) {
-        
-        // 2. Limpar os dados guardados no navegador
-        // Remove o nome do utilizador ou token de sessão
-        localStorage.removeItem('usuarioNome'); 
-        localStorage.removeItem('usuarioSala');
-        
-        // Se usares sessionStorage também:
-        sessionStorage.clear();
 
-        // 3. Redirecionar para a página de login
-        // Ajusta o caminho conforme as tuas pastas. 
-        // Se o login for a raiz, usa apenas '/'
-        window.location.href = '/index.html'; 
-    }
-}
 });
+

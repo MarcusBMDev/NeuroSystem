@@ -14,6 +14,7 @@ class GroupRepository {
             FROM groups g 
             JOIN group_members gm ON g.id = gm.group_id
             WHERE gm.user_id = ?
+            GROUP BY g.id
         `, [userId, userId]);
         return rows;
     }
@@ -56,8 +57,6 @@ class GroupRepository {
         await pool.execute("DELETE FROM group_members WHERE group_id=? AND user_id=?", [groupId, userId]);
     }
 
-    // ... código anterior ...
-
     // Atualiza visualização (para zerar contador de mensagens)
     async updateLastView(groupId, userId) {
         // Usa data do JS para garantir sincronia com a aplicação
@@ -88,6 +87,27 @@ class GroupRepository {
         await pool.execute("DELETE FROM messages WHERE target_id = ? AND target_type = 'group'", [groupId]);
         await pool.execute("DELETE FROM group_members WHERE group_id = ?", [groupId]);
         await pool.execute("DELETE FROM groups WHERE id = ?", [groupId]);
+    }
+
+    async getMessageReaders(messageId) {
+        // 1. Busca timestamp da mensagem
+        const [msgData] = await pool.execute("SELECT timestamp, target_id FROM messages WHERE id = ?", [messageId]);
+        if (!msgData || msgData.length === 0) return [];
+        
+        const msgTime = new Date(msgData[0].timestamp);
+        const groupId = msgData[0].target_id;
+
+        // 2. Busca membros que viram o grupo APÓS essa mensagem
+        // GROUP BY para evitar duplicatas se a tabela estiver suja
+        const [readers] = await pool.execute(`
+            SELECT u.id, u.username, u.photo, MAX(gm.last_view) as last_view
+            FROM group_members gm
+            JOIN users u ON gm.user_id = u.id
+            WHERE gm.group_id = ? AND gm.last_view >= ?
+            GROUP BY u.id
+        `, [groupId, msgTime]);
+
+        return readers;
     }
 
 }

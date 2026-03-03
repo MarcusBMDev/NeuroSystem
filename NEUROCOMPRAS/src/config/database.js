@@ -1,18 +1,30 @@
 const mysql = require('mysql2');
 
-const connection = mysql.createConnection({
+// Criamos um POOL (Piscina) em vez de uma conexão única
+const pool = mysql.createPool({
     host: 'localhost',
-    user: 'root',      // Confirma se é este o teu utilizador
-    password: '',      // Coloca a tua senha do banco aqui, se tiveres
-    database: 'neurochat_db' // Usamos o mesmo banco para aproveitar os usuários
+    user: 'root',            
+    password: '',            
+    database: 'neurochat_db', 
+    waitForConnections: true,
+    connectionLimit: 10,     // Mantém até 10 conexões prontas para uso
+    queueLimit: 0,
+    enableKeepAlive: true,   // Ajuda a evitar que a conexão caia por inatividade
+    keepAliveInitialDelay: 0
 });
 
-connection.connect((err) => {
+// Teste de conexão ao iniciar (apenas para veres o log de sucesso)
+pool.getConnection((err, connection) => {
     if (err) {
-        console.error('Erro ao conectar ao MySQL (NeuroCompras): ' + err.stack);
-        return;
+        console.error('❌ Erro crítico ao conectar ao MySQL (NeuroCompras): ' + err.message);
+        /* Nota: Se der erro de "ECONNREFUSED", verifica se o XAMPP/MySQL está ligado.
+           Se der erro de acesso, verifica user/senha.
+        */
+    } else {
+        console.log('✅ Conectado ao Banco de Dados (NeuroCompras)! Thread ID: ' + connection.threadId);
+        // Devolvemos a conexão para a piscina para ser usada pelas requisições
+        connection.release();
     }
-    console.log('Conectado ao Banco de Dados (NeuroCompras) como id ' + connection.threadId);
 });
 
-module.exports = connection;
+module.exports = pool;

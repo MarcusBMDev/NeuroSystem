@@ -1,0 +1,62 @@
+<%- include('partials/header') %>
+
+    <h2>Nova Solicitação</h2>
+    
+    <div class="form-container">
+        <form action="/salvar" method="POST">
+            <div class="form-group">
+                <label>Unidade</label>
+                <select name="unidade" required>
+                    <option value="Unidade 1">Unidade 1</option>
+                    <option value="Unidade 2">Unidade 2</option>
+                    <option value="Unidade 3">Unidade 3</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+            <label>Tipo de Solicitante</label>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <label style="font-weight: normal; cursor: pointer;">
+                    <input type="radio" name="tipo_solicitante" value="Funcionario" onclick="togglePaciente(false)"> Funcionário (Eu)
+                </label>
+                <label style="font-weight: normal; cursor: pointer;">
+                    <input type="radio" name="tipo_solicitante" value="Paciente" checked onclick="togglePaciente(true)"> Paciente / Responsável
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group" id="campo-paciente">
+            <label>Nome do Paciente / Responsável</label>
+            <input type="text" name="paciente" placeholder="Digite o nome completo">
+        </div>
+
+        <script>
+            function togglePaciente(show) {
+                const campo = document.getElementById('campo-paciente');
+                const input = campo.querySelector('input');
+                if(show) {
+                    campo.style.display = 'block';
+                    input.required = true;
+                } else {
+                    campo.style.display = 'none';
+                    input.required = false;
+                    input.value = '';
+                }
+            }
+        </script>
+            
+            <div class="form-group">
+                <label>Relato da Solicitação</label>
+                <textarea name="relato" rows="5" required placeholder="Descreva detalhadamente o ocorrido..."></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <a href="/" class="btn-secondary">Cancelar</a>
+                <button type="submit" class="btn-primary">Registrar Solicitação</button>
+            </div>
+        </form>
+    </div>
+
+    <%- include('partials/welcome_modal') %>
+
+<%- include('partials/footer') %>

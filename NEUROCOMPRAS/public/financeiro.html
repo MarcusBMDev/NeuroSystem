@@ -6,6 +6,7 @@
     <title>Painel Financeiro - NeuroCompras</title>
     
     <link rel="stylesheet" href="css/financeiro.css">
+    <link rel="stylesheet" href="css/financeiro_filtros.css">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -18,7 +19,6 @@
         </div>
         <div>
             <a href="requisicao.html" class="btn-voltar">Nova Requisição</a>
-            
             <a href="http://192.168.10.133" class="btn-voltar" style="background: #333;">Sair para Portal</a>
         </div>
     </div>
@@ -44,7 +44,13 @@
     <div class="card">
         <div class="header-flex">
             <h3>📑 Fila de Aquisições</h3>
-            <button onclick="carregarDados()" style="background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">🔄 Atualizar Lista</button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button onclick="filtrarPedidos('Pendente')" class="btn-filtro btn-pendente ativo">⏳ Pendentes</button>
+                <button onclick="filtrarPedidos('Aprovado')" class="btn-filtro btn-aprovado">✅ Aprovados</button>
+                <button onclick="filtrarPedidos('Reprovado')" class="btn-filtro btn-reprovado">❌ Reprovados</button>
+                <button onclick="filtrarPedidos('Todos')" class="btn-filtro btn-todos">📄 Todos</button>
+                <button onclick="carregarDados()" style="background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-left: 10px;">🔄 Atualizar</button>
+            </div>
         </div>
 
         <table>

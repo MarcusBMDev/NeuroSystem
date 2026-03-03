@@ -5,151 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HelpDesk - NeuroCenter</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #005c97;
-            --secondary: #363795;
-            --accent: #00d2ff;
-            --text-dark: #2c3e50;
-            --glass-bg: rgba(255, 255, 255, 0.95);
-            --input-bg: #f8f9fa;
-        }
-
-        body {
-            font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(135deg, #141E30 0%, #243B55 100%);
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--text-dark);
-            position: relative;
-        }
-
-        /* BOTÃO VOLTAR */
-        .btn-voltar-portal {
-            position: absolute;
-            top: 25px;
-            left: 25px;
-            text-decoration: none;
-            color: white;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px 20px;
-            border-radius: 30px;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 100;
-        }
-
-        .btn-voltar-portal:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateX(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            width: 90%;
-            max-width: 1100px;
-            margin: 80px 0 40px 0;
-        }
-
-        .card {
-            background: var(--glass-bg);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.5);
-        }
-
-        h1 { color: var(--secondary); margin-bottom: 5px; margin-top: 0; }
-        p { color: #666; margin-top: 0; }
-
-        .form-group { margin-bottom: 15px; }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: var(--secondary);
-            font-size: 0.9rem;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            background: var(--input-bg);
-            box-sizing: border-box;
-            font-family: inherit;
-            font-size: 0.95rem;
-        }
-        
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            background: #fff;
-        }
-
-        textarea { resize: vertical; min-height: 80px; }
-
-        .btn-submit {
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            color: white;
-            border: none;
-            padding: 15px;
-            width: 100%;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: transform 0.2s;
-        }
-
-        .btn-submit:hover { transform: translateY(-2px); }
-
-        .fila-lista {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 500px;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-
-        .chamado-item {
-            background: white;
-            border-left: 5px solid #ccc;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .borda-baixa { border-left-color: #007bff; }
-        .borda-media { border-left-color: #28a745; }
-        .borda-alta { border-left-color: #ffc107; }
-        .borda-critica { border-left-color: #dc3545; }
-        .borda-analise { border-left-color: #6f42c1; }
-
-        @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-    <a href="http://192.168.10.133" class="btn-voltar-portal">
-        ⬅ Voltar ao Portal
-    </a>
+    <div class="header-nav">
+        <a href="http://192.168.10.133" class="btn-voltar-portal">
+            ⬅ Voltar ao Portal
+        </a>
+    </div>
 
     <div class="container">
         <div class="card">
@@ -157,22 +22,21 @@
             <p>Suporte Técnico e Desenvolvimento</p>
             <br>
             <form id="formChamado">
-                
                 <div class="form-group">
-                    <label>O que você precisa?</label>
-                    <select id="tipo" onchange="mudarFormulario()" style="background:#e3f2fd; font-weight:bold; border-color:#90caf9;">
+                    <label><i class="fa-solid fa-circle-question"></i> O que você precisa?</label>
+                    <select id="tipo" onchange="mudarFormulario()" style="background: rgba(227, 242, 253, 0.8); font-weight:bold; border-color:#90caf9;">
                         <option value="suporte">🛠️ Suporte Técnico (Computador/Internet)</option>
                         <option value="projeto">💡 Novo Projeto / Sistema (Criação)</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Solicitante (Nome):</label>
+                    <label><i class="fa-solid fa-user"></i> Solicitante (Nome):</label>
                     <input type="text" id="solicitante" placeholder="Ex: Maria (Recepção)" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Setor:</label>
+                    <label><i class="fa-solid fa-building"></i> Setor:</label>
                     <select id="setor" required>
                         <option value="">Selecione...</option>
                         <optgroup label="Geral">
@@ -190,8 +54,47 @@
                     </select>
                 </div>
 
+                <!-- CAMPOS ESPECÍFICOS DE SUPORTE (NOVO) -->
+                <div id="campos-suporte">
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-tags"></i> Tipo de Demanda:</label>
+                        <select id="categoria_demanda" onchange="mudarCategoria()" required>
+                            <option value="Internet">🌐 Internet</option>
+                            <option value="Computador">💻 Computador</option>
+                            <option value="Impressora">🖨️ Impressora</option>
+                            <option value="Outros">❓ Outros</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="campo-outros" style="display:none;">
+                        <label><i class="fa-solid fa-pen-to-square"></i> Detalhe a Demanda:</label>
+                        <textarea id="detalhes_outros" placeholder="Fale mais sobre o que está acontecendo..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-laptop-code"></i> Software/Programa (Falha)</label>
+                        <input type="text" id="software" placeholder="Ex: Word, Chrome, Sistema... (Opcional)">
+                    </div>
+                </div>
+
+                <!-- CAMPOS ESPECÍFICOS DE PROJETO -->
+                <div id="campos-projeto" style="display:none;">
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-bullseye"></i> Objetivo Principal:</label>
+                        <textarea id="objetivo" placeholder="O que esse sistema/automação deve resolver?"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-calendar-alt"></i> Prazo Desejado:</label>
+                        <input type="date" id="prazo_desejado">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-chart-line"></i> Impacto Esperado:</label>
+                        <textarea id="impacto_esperado" placeholder="Quais melhorias/economia isso trará?"></textarea>
+                    </div>
+                </div>
+
                 <div class="form-group">
-                    <label>Urgência:</label>
+                    <label><i class="fa-solid fa-triangle-exclamation"></i> Urgência:</label>
                     <select id="urgencia">
                         <option value="critica">🔴 Imediato (Parou tudo)</option>
                         <option value="alta">🟡 Alta (Até 60 min)</option>
@@ -201,16 +104,27 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Descrição Detalhada:</label>
-                    <textarea id="descricao" required placeholder="Descreva o problema ou o sistema que deseja criar..."></textarea>
+                    <label><i class="fa-solid fa-align-left"></i> Descrição Detalhada:</label>
+                    <textarea id="descricao" required placeholder="Descreva o problema com detalhes..."></textarea>
                 </div>
 
-                <div class="form-group">
-                    <label id="lblTestes">Testes Realizados:</label>
-                    <input type="text" id="testes" placeholder="Reiniciei, verifiquei cabos...">
+                <div class="form-group" id="grupo-testes">
+                    <label id="lblTestes"><i class="fa-solid fa-vial"></i> Testes Realizados:</label>
+                    <div>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="checkTeste" value="Reiniciou PC"> Reiniciei o computador
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="checkTeste" value="Verificou Cabos"> Verifiquei se os cabos estão conectados
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="checkTeste" value="Relogou Sistema"> Sai e entrei novamente no sistema
+                        </label>
+                        <input type="text" id="testes_outros" placeholder="Outro teste? (Opcional)" style="margin-top:5px; font-size:0.85rem; padding:8px;">
+                    </div>
                 </div>
 
-                <button type="submit" class="btn-submit">Enviar Solicitação</button>
+                <button type="submit" class="btn-submit">🚀 Enviar Solicitação</button>
             </form>
         </div>
 
@@ -224,102 +138,6 @@
         </div>
     </div>
 
-    <script>
-        const API_URL = '/api/chamados';
-
-        function mudarFormulario() {
-            const tipo = document.getElementById('tipo').value;
-            const lblTestes = document.getElementById('lblTestes');
-            const inputTestes = document.getElementById('testes');
-
-            if (tipo === 'projeto') {
-                lblTestes.innerText = "Justificativa do Projeto:";
-                inputTestes.placeholder = "Por que precisamos desse sistema?";
-            } else {
-                lblTestes.innerText = "Testes Realizados:";
-                inputTestes.placeholder = "Reiniciei, verifiquei...";
-            }
-        }
-
-        async function carregarFila() {
-            try {
-                const res = await fetch(API_URL);
-                const dados = await res.json();
-                const pendentes = dados.filter(c => c.status !== 'concluido' && c.status !== 'rejeitado');
-                const div = document.getElementById('fila');
-                
-                if (pendentes.length === 0) {
-                    div.innerHTML = `<div style="text-align:center; padding:20px; color:#999;">
-                        <span style="font-size:2rem;">✅</span><br>Tudo tranquilo!
-                    </div>`;
-                    return;
-                }
-
-                div.innerHTML = '';
-                pendentes.forEach(c => {
-                    let cor = `borda-${c.urgencia}`;
-                    let statusText = 'Aguardando';
-                    let statusColor = '#888';
-                    
-                    if(c.status === 'analise') { 
-                        cor = 'borda-analise'; 
-                        statusText = '🧐 Em Análise'; 
-                        statusColor = '#6f42c1';
-                    }
-                    if(c.status === 'andamento') { 
-                        statusText = '⚡ Em Atendimento'; 
-                        statusColor = '#fd7e14';
-                    }
-
-                    div.innerHTML += `
-                        <div class="chamado-item ${cor}">
-                            <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:#666; margin-bottom:5px;">
-                                <strong>#${c.id} - ${c.setor}</strong>
-                                <span style="color:${statusColor}; font-weight:bold;">${statusText}</span>
-                            </div>
-                            <div style="font-weight:bold; color:#333;">${c.solicitante}</div>
-                            <div style="font-size:0.9rem; color:#555; margin-top:5px;">${c.descricao}</div>
-                        </div>`;
-                });
-            } catch (e) { console.error("Erro fila:", e); }
-        }
-
-        document.getElementById('formChamado').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.querySelector('.btn-submit');
-            const textoOriginal = btn.innerText;
-            
-            btn.disabled = true; 
-            btn.innerText = "Enviando...";
-
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        tipo: document.getElementById('tipo').value,
-                        solicitante: document.getElementById('solicitante').value,
-                        setor: document.getElementById('setor').value,
-                        urgencia: document.getElementById('urgencia').value,
-                        descricao: document.getElementById('descricao').value,
-                        testes_realizados: document.getElementById('testes').value
-                    })
-                });
-                
-                document.getElementById('formChamado').reset();
-                mudarFormulario();
-                alert('Solicitação enviada com sucesso!');
-                carregarFila();
-            } catch (error) {
-                alert('Erro ao enviar. Tente novamente.');
-            } finally {
-                btn.disabled = false; 
-                btn.innerText = textoOriginal;
-            }
-        });
-
-        setInterval(carregarFila, 5000);
-        carregarFila();
-    </script>
+    <script src="js/script.js"></script>
 </body>
 </html>

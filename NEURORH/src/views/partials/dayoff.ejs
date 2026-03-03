@@ -1,0 +1,41 @@
+<div id="dayoff" class="tab-content">
+    <h2>🎂 Day Off de Aniversário</h2>
+    <div class="split-container">
+        <div class="pdf-viewer">
+            <embed src="/uploads/politica_dayoff.pdf" type="application/pdf" />
+        </div>
+        <div class="form-box">
+            <h3>Termo de Solicitação</h3>
+            <p style="font-size: 0.8rem;">
+                Solicitar com antecedência mínima de 60 dias.
+            </p>
+
+            <form action="/solicitar/dayoff" method="POST">
+                <input type="text" value="<%= user.username %>" disabled>
+                
+                <div class="row">
+                    <div class="col">
+                        <label>Cargo:</label>
+                        <input type="text" name="cargo" required placeholder="Seu cargo atual">
+                    </div>
+                    <div class="col">
+                        <label>CPF:</label>
+                        <input type="text" name="cpf" required placeholder="000.000.000-00">
+                    </div>
+                </div>
+
+                <label>Solicito meu Day Off para a data (Aniversário):</label>
+                <input type="date" name="data_aniversario" required>
+
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="concordo" required id="check_dayoff">
+                    <label for="check_dayoff" style="font-size: 0.8rem; line-height: 1.4;">
+                        Declaro que estou ciente e concordo com todas as condições estabelecidas na Política de Day Off.
+                    </label>
+                </div>
+
+                <button type="submit" class="btn">Solicitar Folga</button>
+            </form>
+        </div>
+    </div>
+</div>

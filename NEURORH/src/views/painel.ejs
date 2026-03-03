@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel RH - Gestão</title>
+    <link rel="icon" href="/favicon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body style="color: #333;">
+
+    <div class="dashboard-header">
+        <h2>
+            <span>🧠</span> 
+            <div>
+                NeuroRH 
+                <span style="display:block; font-weight:300; font-size:0.9rem; color:rgba(255,255,255,0.7);">Cockpit de Gestão</span>
+            </div>
+        </h2>
+        
+        <div class="dashboard-header-actions">
+            <span style="font-size: 1.1rem; color: white;">Olá, <strong><%= user.username %></strong></span>
+            <a href="/" class="btn" style="margin:0; background:linear-gradient(135deg, #7f8c8d, #95a5a6);">⬅ Voltar ao Portal</a>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        
+        <% 
+            const isAdminSafe = (typeof isAdmin !== 'undefined') ? isAdmin : false; 
+            const userSetor = (user && user.setor) ? user.setor : '';
+        %>
+
+        <div class="sidebar">
+            
+            <% if(isAdminSafe || userSetor !== 'ABA') { %>
+                <div style="margin-bottom: 20px;">
+                    <small style="color:#aaa; text-transform:uppercase; font-size:0.75rem; font-weight:bold;">Gestão RH</small>
+                    <button class="btn" style="width:100%; margin-bottom:5px;" onclick="showSection('solicitacoes')">📬 Solicitações</button>
+                    <button class="btn" style="width:100%; margin-bottom:5px; background:#2980b9;" onclick="showSection('uploads')">📂 Arquivos</button>
+                </div>
+            <% } %>
+
+            <hr>
+            <div style="font-size:0.9rem; color:#777;">
+                <% if(isAdminSafe || userSetor !== 'ABA') { %>
+                    <p><strong>Resumo RH:</strong></p>
+                    <p>Pendentes: <%= solicitacoes.filter(s => s.status == 'pendente').length %></p>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="content-area">
+
+            <% if(isAdminSafe || userSetor !== 'ABA') { %>
+            <div id="sec-solicitacoes">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                    <h3>📬 Gestão de Solicitações</h3>
+                </div>
+
+                <!-- FILTROS DE VISUALIZAÇÃO -->
+                <div class="filter-bar" style="margin-bottom: 30px; display:flex; gap: 15px;">
+                    <button class="btn-filter active" onclick="filterRequests('pendente')">⏳ Pendentes</button>
+                    <button class="btn-filter" onclick="filterRequests('historico')">📂 Histórico (Finalizados)</button>
+                    <button class="btn-filter" onclick="filterRequests('todos')">👁️ Todos</button>
+                </div>
+                
+                <% if(solicitacoes.length === 0) { %>
+                    <div style="text-align:center; padding: 50px; background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.05);">
+                        <span style="font-size: 3rem;">📭</span>
+                        <p style="color:#777; margin-top:10px;">Nenhuma solicitação encontrada.</p>
+                    </div>
+                <% } %>
+
+                <div class="requests-grid">
+                    <% solicitacoes.forEach(function(sol) { 
+                        // Lógica de ícones (mantida)
+                        let icone = '📝';
+                        if(sol.tipo.toLowerCase().includes('day')) icone = '🏖️';
+                        if(sol.tipo.toLowerCase().includes('formação')) icone = '📚';
+                        if(sol.tipo.toLowerCase().includes('benefício')) icone = '💊';
+                        if(sol.tipo.toLowerCase().includes('atestado')) icone = '🏥';
+                        if(sol.tipo.toLowerCase().includes('aba')) icone = '🧩';
+                    %>
+                    <% /* Adicionando style="display:none" se não for pendente */ %>
+                    <div class="request-card <%= sol.status %>" data-status="<%= sol.status %>" style="<%= sol.status !== 'pendente' ? 'display:none' : '' %>">
+                        <div class="card-header">
+                            <div>
+                                <h4 class="card-title">
+                                    <span style="font-size:1.5rem;"><%= icone %></span> 
+                                    <%= sol.tipo %>
+                                </h4>
+                                <div class="card-meta">
+                                    <span style="display:block; color:white; font-weight:700; margin-bottom:2px;"><%= sol.nome || sol.username || 'Usuario' %></span>
+                                    📅 <%= new Date(sol.data_criacao).toLocaleDateString() %>
+                                </div>
+                            </div>
+                            <span class="status-badge bg-<%= sol.status %>"><%= sol.status %></span>
+                        </div>
+
+                        <div class="card-body">
+                            <%= sol.descricao %>
+                        </div>
+
+                        <div class="card-actions">
+                            <% if(sol.caminho_anexo) { %>
+                                <a href="<%= sol.caminho_anexo %>" target="_blank" class="btn-action btn-download">📎 Ver Anexo</a>
+                            <% } %>
+
+                            <% if(sol.status === 'pendente') { %>
+                                <form action="/gestao/status" method="POST" style="display:contents;">
+                                    <input type="hidden" name="id" value="<%= sol.id %>">
+                                    <button type="submit" name="status" value="aprovado" class="btn-action btn-approve" title="Aprovar">✅ Aprovar</button>
+                                    <button type="submit" name="status" value="recusado" class="btn-action btn-reject" title="Recusar">❌ Recusar</button>
+                                </form>
+                            <% } else { %>
+                                <div style="flex:1; text-align:center; font-size:0.8rem; color:rgba(255,255,255,0.4); padding:10px;">
+                                    Processado em <%= new Date().toLocaleDateString() %> 
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% }); %>
+                </div>
+            </div>
+            <% } %>
+
+
+
+            <% if(isAdminSafe || userSetor !== 'ABA') { %>
+            <div id="sec-uploads" style="display:none;">
+                <!-- Conteúdo do Upload -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                    <h3>📂 Documentos do Portal</h3>
+                </div>
+                
+                <!-- Upload Box Premium -->
+                <div class="upload-card">
+                    <div class="card-header" style="border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">
+                        <h4 class="card-title" style="color:#2980b9;">📤 Novo Upload</h4>
+                        <div class="card-meta">Publique no Mural ou Modelos</div>
+                    </div>
+
+                    <form action="/gestao/upload" method="POST" enctype="multipart/form-data">
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+                            <div>
+                                <label>Título do Documento</label>
+                                <input type="text" name="titulo" required placeholder="Ex: Informativo Março/26" style="margin-top:5px;">
+                            </div>
+                            <div>
+                                <label>Categoria</label>
+                                <select name="categoria" style="margin-top:5px;">
+                                    <option value="informativo">Mural & News (Público)</option>
+                                    <option value="modelo">Modelo de Documento</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Novo Campo de Texto -->
+                        <div style="margin-top: 20px;">
+                            <label>Texto do Comunicado (Opcional se enviar arquivo)</label>
+                            <textarea name="texto_comunicado" rows="4" placeholder="Escreva aqui o conteúdo do aviso, se não houver arquivo..." style="margin-top:5px; font-family:inherit; resize:vertical;"></textarea>
+                        </div>
+                        
+                        <div style="margin-top: 15px;">
+                            <label>Selecione o Arquivo (Opcional se escrever texto)</label>
+                            <div style="display:flex; gap:15px; align-items:center;">
+                                <input type="file" name="arquivo" style="margin-top:5px; border:1px dashed #ccc; padding: 15px;">
+                                <button type="submit" class="btn" style="background:linear-gradient(135deg, #2980b9, #3498db); height: fit-content; margin:0; box-shadow: 0 4px 10px rgba(41, 128, 185, 0.3);">
+                                    🚀 Publicar Agora
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div style="margin-top: 40px; margin-bottom: 20px;">
+                    <h3>📚 Biblioteca Ativa</h3>
+                    <p style="color:#222; margin-top:5px; font-weight:700; text-shadow: 0 1px 2px rgba(255,255,255,0.3);">Gerencie os arquivos visíveis para os colaboradores.</p>
+                </div>
+
+                <div style="background: rgba(26, 37, 47, 0.98); border-radius:16px; padding:20px; box-shadow:0 10px 40px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <table class="table-gestao">
+                        <thead>
+                            <tr>
+                                <th>Título</th>
+                                <th>Categoria</th>
+                                <th>Data Upload</th>
+                                <th style="text-align:center;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% arquivos.forEach(function(arq) { %>
+                            <tr>
+                                <td><strong><%= arq.titulo %></strong></td>
+                                <td>
+                                    <% if(arq.categoria == 'informativo') { %> <span class="status-badge" style="background:#3498db; float:none;">Informativo</span> <% } %>
+                                    <% if(arq.categoria == 'modelo') { %> <span class="status-badge" style="background:#9b59b6; float:none;">Modelo</span> <% } %>
+                                </td>
+                                <td style="font-size: 0.85rem;">
+                                    <%= new Date(arq.data_upload).toLocaleDateString() %>
+                                </td>
+                                <td style="text-align:center;">
+                                    <div style="display:flex; justify-content:center; gap:10px;">
+                                        <button onclick="openPreview('<%= arq.titulo %>', `<%= arq.conteudo_texto %>`, '<%= arq.caminho_arquivo %>')" class="btn-action" style="background:#2980b9; color:white; width:auto; padding: 5px 10px; border:none;" title="Visualizar">👁️ Ver</button>
+                                        
+                                        <button onclick="openEditModal('<%= arq.id %>', '<%= arq.titulo %>', `<%= arq.conteudo_texto %>`)" class="btn-action" style="background:#f39c12; color:white; width:auto; padding: 5px 10px; border:none;" title="Editar">✏️</button>
+
+                                        <a href="/gestao/excluir/<%= arq.id %>" class="btn-action btn-reject" style="text-decoration:none; width:auto; padding: 5px 10px;" onclick="return confirm('Tem certeza que deseja apagar este documento?');" title="Excluir">🗑️</a>
+                                    </div>
+                                </td>
+                            </tr>
+                            <% }); %>
+                            
+                            <% if(arquivos.length === 0) { %>
+                                <tr><td colspan="4" style="text-align:center; padding:30px; color:#aaa;">Nenhum documento publicado.</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <% } %>
+
+        </div>
+    </div>
+
+    <div id="edit-modal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:1000;">
+        <div class="modal-rh" style="background: rgba(26, 37, 47, 0.98); border-radius: 20px; padding: 30px; border: 1px solid rgba(255, 255, 255, 0.1); width: 600px; max-width: 90vw; color: white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:15px; margin-bottom:15px;">
+                <h3 style="margin:0; color:#f39c12;">✏️ Editar Informativo</h3>
+                <button onclick="closeEditModal()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+            
+            <form action="/gestao/editar" method="POST">
+                <input type="hidden" name="id" id="edit-id">
+                
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; color:#bbb;">Título do Documento</label>
+                    <input type="text" name="titulo" id="edit-title" required style="width:100%; border-radius:8px;">
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; color:#bbb;">Texto do Comunicado</label>
+                    <textarea name="texto_comunicado" id="edit-text" rows="6" style="width:100%; border-radius:8px; font-family:inherit; resize:vertical;"></textarea>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                    <button type="button" onclick="closeEditModal()" class="btn" style="background:#7f8c8d; margin:0;">Cancelar</button>
+                    <button type="submit" class="btn" style="background:#f39c12; margin:0;">💾 Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="preview-modal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:1000;">
+        <div class="modal-rh" style="background: rgba(26, 37, 47, 0.98); border-radius: 20px; padding: 30px; border: 1px solid rgba(255, 255, 255, 0.1); width: 800px; max-width: 95vw; color: white; display: flex; flex-direction: column; gap: 15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:15px;">
+                <h3 id="preview-title" style="margin:0; color:#d81b60;">Visualizar Informativo</h3>
+                <button onclick="closePreview()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+            
+            <div id="preview-body" style="background: rgba(0, 0, 0, 0.2); padding: 15px; border-radius: 12px; color: #e0e0e0; font-size: 1rem; line-height: 1.6; max-height: 30vh; overflow-y: auto; white-space: pre-wrap;">
+            </div>
+
+            <div id="preview-media" style="flex: 1; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.1); min-height: 300px; display: none;">
+            </div>
+
+            <div style="text-align:right; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+                <button onclick="closePreview()" class="btn" style="background:#7f8c8d; margin:0;">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/painel.js"></script>
+    <script>
+        function openPreview(title, text, filePath) {
+            document.getElementById('preview-title').innerText = title;
+            document.getElementById('preview-body').innerText = text;
+            
+            const mediaContainer = document.getElementById('preview-media');
+            mediaContainer.innerHTML = '';
+            mediaContainer.style.display = 'none';
+
+            if (filePath && filePath !== 'null' && filePath !== '') {
+                mediaContainer.style.display = 'block';
+                const ext = filePath.split('.').pop().toLowerCase();
+                
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                    mediaContainer.innerHTML = `<img src="${filePath}" style="width:100%; height:auto; display:block;">`;
+                } else if (ext === 'pdf') {
+                    mediaContainer.innerHTML = `<iframe src="${filePath}" style="width:100%; height:500px; border:none;"></iframe>`;
+                } else {
+                    mediaContainer.innerHTML = `
+                        <div style="padding: 40px; text-align:center;">
+                            <span style="font-size: 3rem;">📎</span>
+                            <br><br>
+                            <a href="${filePath}" target="_blank" class="btn">Baixar/Abrir Arquivo</a>
+                        </div>`;
+                }
+            }
+            
+            document.getElementById('preview-modal').style.display = 'flex';
+        }
+
+        function closePreview() {
+            document.getElementById('preview-modal').style.display = 'none';
+        }
+
+        function openEditModal(id, title, text) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-title').value = title;
+            document.getElementById('edit-text').value = text;
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+        }
+
+        // Funções de Filtro do Painel
+        function filterRequests(filterType) {
+            const cards = document.querySelectorAll('.request-card');
+            const buttons = document.querySelectorAll('.btn-filter');
+
+            // Atualiza botões
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Filtra cards
+            cards.forEach(card => {
+                const status = card.getAttribute('data-status');
+                
+                if (filterType === 'todos') {
+                    card.style.display = 'flex';
+                } else if (filterType === 'pendente') {
+                    if (status === 'pendente') card.style.display = 'flex';
+                    else card.style.display = 'none';
+                } else if (filterType === 'historico') {
+                    if (status !== 'pendente') card.style.display = 'flex'; // Mostra aprovados/recusados
+                    else card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

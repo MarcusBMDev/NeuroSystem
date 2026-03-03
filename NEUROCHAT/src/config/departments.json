@@ -1,0 +1,58 @@
+[
+  {
+    "category": "Diretoria / Estratégico",
+    "departments": [
+      "Diretoria Geral",
+      "Diretoria Financeira e Controle Interno",
+      "Diretora de RH e Estratégia",
+      "Diretoria Pedagógica",
+      "Marketing"
+    ]
+  },
+  {
+    "category": "Coordenações",
+    "departments": [
+      "Coordenação ABA",
+      "Coordenação Agendamento/Recepção",
+      "Coordenação Faturamento",
+      "Coordenação Operacional",
+      "Coordenação de RH",
+      "Coordenação TCC/AVN"
+    ]
+  },
+  {
+    "category": "Administrativo & Financeiro",
+    "departments": [
+      "Faturamento - Unidade 1",
+      "Faturamento - Unidade 3",
+      "Financeiro",
+      "RH"
+    ]
+  },
+  {
+    "category": "Operacional / Atendimento",
+    "departments": [
+      "Relacionamento e Comercial",
+      "Assessoria",
+      "Recepção 1",
+      "Recepção 2",
+      "Recepção 3"
+    ]
+  },
+  {
+    "category": "Pedagógico / Clínico",
+    "departments": [
+      "ABA",
+      "Apoio AVN - Unidade 3",
+      "Apoio Pedagógico"
+    ]
+  },
+  {
+    "category": "Equipe Terapêutica",
+    "departments": [
+      "Terapeutas - Unidade 1",
+      "Terapeutas - Unidade 2",
+      "Terapeutas - Unidade 3"
+    ]
+  }
+]

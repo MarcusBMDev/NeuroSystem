@@ -5,163 +5,99 @@ const { getCurrentTimestamp } = require('../utils/time');
 // Função auxiliar para notificar o NeuroChat (Webhook)
 async function notifyNeuroChat(messageId) {
     try {
-        // AJUSTE O IP ABAIXO SE O NEUROCHAT ESTIVER EM OUTRO SERVIDOR
-        // Se estiver na mesma máquina, pode usar 'http://localhost:3000...'
-        const neuroChatUrl = 'http://192.168.10.133:3000/api/integrate/notify';
+        const neuroChatUrl = 'http://localhost:3000/api/integrate/notify';
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
 
         await fetch(neuroChatUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messageId: messageId })
+            body: JSON.stringify({ messageId: messageId }),
+            signal: controller.signal
         });
-        console.log(`📡 NeuroChat notificado para msg #${messageId}`);
+        clearTimeout(timeoutId);
     } catch (error) {
-        console.error("⚠️ Falha ao notificar NeuroChat:", error.message);
-        // Não paramos o fluxo, apenas logamos o erro
+        // Silencioso
     }
 }
 
 // 1. CRIAR PEDIDO + CHAT
 exports.createRequest = async (req, res) => {
-    console.log("--- 🚀 NOVA SOLICITAÇÃO ---");
     let novoPedidoId = 0;
-    const IDS_MARKETING = [32, 74]; // IDs do Marcus e Thays
+    const IDS_MARKETING = [32, 74]; 
 
     try {
         const d = req.body;
-        const files = req.files.map(f => f.filename);
+        const files = req.files ? req.files.map(f => f.filename) : [];
 
-        // A. Salvar Pedido na Tabela do Marketing
+        // A. Salvar Pedido
         const [resultRequest] = await db.query({
             sql: `INSERT INTO marketing_requests 
             (user_id, requester_name, department, request_type, description, main_message, references_text, reference_files, deadline, approver, notes) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            timeout: 10000,
             values: [d.userId, d.requesterName, d.department, d.requestType, d.description, d.mainMessage, d.referencesText, JSON.stringify(files), d.deadline, d.approver, d.notes]
         });
 
         novoPedidoId = resultRequest.insertId;
-        console.log(`✅ Pedido #${novoPedidoId} salvo.`);
-
-        // B. Inserir Mensagens e Notificar (WEBHOOK)
-        try {
-            const conteudoMensagem = `🔔 *PEDIDO DE MARKETING #${novoPedidoId}*\n` +
-                                     `📌 Tipo: ${d.requestType}\n` +
-                                     `📅 Entrega: ${d.deadline}\n` +
-                                     `📝 Descrição: ${d.description}\n\n` +
-                                     `>> Acesse o Painel para ver detalhes.`;
-            
-            const dataHora = getCurrentTimestamp();
-
-            for (const idFuncionario of IDS_MARKETING) {
-                // 1. Insere no Banco
-                const [resultMsg] = await db.query({
-                    sql: `INSERT INTO messages 
-                    (user_id, target_id, target_type, text, msg_type, timestamp, is_read, is_pinned, is_edited, is_deleted) 
-                    VALUES (?, ?, 'private', ?, 'text', ?, 0, 0, 0, 0)`,
-                    timeout: 5000,
-                    values: [d.userId, idFuncionario, conteudoMensagem, dataHora] // user_id = Remetente (Cliente)
-                });
-
-                const idNovaMensagem = resultMsg.insertId;
-
-                // 2. ⚡ CHAMA O WEBHOOK (Avisa o NeuroChat que tem mensagem nova)
-                // Isso vai fazer o socket disparar lá no outro sistema
-                await notifyNeuroChat(idNovaMensagem);
-            }
-            console.log("✅ Mensagens inseridas e notificações enviadas.");
-
-        } catch (chatError) {
-            console.error("⚠️ Erro no processo de Chat:", chatError.message);
-        }
-
+        
+        // Resposta imediata
         res.json({ success: true, request_id: novoPedidoId });
+
+        // B. Processo em Segundo Plano
+        (async () => {
+            try {
+                const conteudoMensagem = `🔔 *PEDIDO DE MARKETING #${novoPedidoId}*\n` +
+                                         `📌 Tipo: ${d.requestType}\n` +
+                                         `📅 Entrega: ${d.deadline}\n` +
+                                         `📝 Descrição: ${d.description}\n\n` +
+                                         `>> Acesse o Painel para ver detalhes.`;
+                
+                const dataHora = getCurrentTimestamp();
+
+                for (const idFuncionario of IDS_MARKETING) {
+                    const [resultMsg] = await db.query({
+                        sql: `INSERT INTO messages 
+                        (user_id, target_id, target_type, text, msg_type, timestamp, is_read, is_pinned, is_edited, is_deleted) 
+                        VALUES (?, ?, 'private', ?, 'text', ?, 0, 0, 0, 0)`,
+                        values: [d.userId, idFuncionario, conteudoMensagem, dataHora]
+                    });
+
+                    await notifyNeuroChat(resultMsg.insertId);
+                }
+            } catch (chatError) {
+                console.error("⚠️ Erro background chat:", chatError.message);
+            }
+        })();
 
     } catch (e) {
         console.error("❌ ERRO FATAL:", e);
-        res.status(500).json({ success: false, message: "Erro ao salvar: " + e.message });
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, message: "Erro ao salvar." });
+        }
     }
 };
 
-// ... Mantenha as outras funções (getAllRequests, getMyRequests, etc) iguais ...
-// (Se precisar que eu repita o código completo do arquivo, me avise, mas basta substituir a createRequest e adicionar a função notifyNeuroChat no topo)
+// ... MANTENHA AS OUTRAS FUNÇÕES IGUAIS ...
 
-// 2. LISTAR TUDO (Painel)
-exports.getAllRequests = async (req, res) => {
-    try {
-        const [rows] = await db.execute("SELECT * FROM marketing_requests ORDER BY created_at DESC");
-        res.json(rows);
-    } catch (e) { res.status(500).json([]); }
-};
-
-// 3. MEUS PEDIDOS
-exports.getMyRequests = async (req, res) => {
-    try {
-        const userId = req.query.userId;
-        if (!userId) return res.json([]);
-        const [rows] = await db.execute("SELECT * FROM marketing_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 10", [userId]);
-        res.json(rows);
-    } catch (e) { res.status(500).json([]); }
-};
-
-// 4. ATUALIZAR STATUS
-exports.updateStatus = async (req, res) => {
-    try {
-        await db.execute("UPDATE marketing_requests SET status = ? WHERE id = ?", [req.body.status, req.body.id]);
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
-};
-
-// 5. ESTATÍSTICAS COM FILTRO DE DATA
 exports.getStats = async (req, res) => {
     try {
-        // Pega as datas da URL (ex: ?start=2023-01-01&end=2023-01-31)
         let { start, end } = req.query;
-        
         let dateFilter = "";
         let params = [];
 
-        // Se o usuário mandou datas, usamos elas. Se não, pegamos o mês atual por padrão.
         if (start && end) {
             dateFilter = "WHERE created_at BETWEEN ? AND ?";
-            // Adiciona o horário para pegar o dia inteiro (00:00 até 23:59)
             params = [`${start} 00:00:00`, `${end} 23:59:59`];
         } else {
-            // Padrão: Mês atual
             dateFilter = "WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())";
         }
 
-        // Consultas SQL dinâmicas (Reutilizamos o dateFilter em todas)
-        
-        // 1. Total no período
-        const [totalRows] = await db.execute(
-            `SELECT COUNT(*) as count FROM marketing_requests ${dateFilter}`, 
-            params
-        );
-
-        // 2. Por Status
-        const [statusRows] = await db.execute(
-            `SELECT status, COUNT(*) as count FROM marketing_requests ${dateFilter} GROUP BY status`, 
-            params
-        );
-
-        // 3. Por Tipo
-        const [typeRows] = await db.execute(
-            `SELECT request_type, COUNT(*) as count FROM marketing_requests ${dateFilter} GROUP BY request_type`, 
-            params
-        );
-
-        // 4. Quem mais pediu (Top 10)
-        const [userRows] = await db.execute(
-            `SELECT requester_name, COUNT(*) as count FROM marketing_requests ${dateFilter} GROUP BY requester_name ORDER BY count DESC LIMIT 10`, 
-            params
-        );
-
-        // 5. Por Setor
-        const [deptRows] = await db.execute(
-            `SELECT department, COUNT(*) as count FROM marketing_requests ${dateFilter} GROUP BY department ORDER BY count DESC`, 
-            params
-        );
+        const [totalRows] = await db.query(`SELECT COUNT(*) as count FROM marketing_requests ${dateFilter}`, params);
+        const [statusRows] = await db.query(`SELECT status, COUNT(*) as count FROM marketing_requests ${dateFilter} GROUP BY status`, params);
+        const [typeRows] = await db.query(`SELECT request_type, COUNT(*) as count FROM marketing_requests ${dateFilter} GROUP BY request_type`, params);
+        const [userRows] = await db.query(`SELECT requester_name, COUNT(*) as count FROM marketing_requests ${dateFilter} GROUP BY requester_name ORDER BY count DESC LIMIT 10`, params);
+        const [deptRows] = await db.query(`SELECT department, COUNT(*) as count FROM marketing_requests ${dateFilter} GROUP BY department ORDER BY count DESC`, params);
 
         res.json({
             total: totalRows[0].count,
@@ -171,7 +107,77 @@ exports.getStats = async (req, res) => {
             byDept: deptRows
         });
     } catch (e) { 
-        console.error(e);
+        console.error("Erro Stats:", e.message);
         res.status(500).json({ byStatus: [], total: 0 }); 
+    }
+};
+
+exports.getAllRequests = async (req, res) => {
+    try {
+        const [rows] = await db.execute("SELECT * FROM marketing_requests ORDER BY created_at DESC");
+        res.json(rows);
+    } catch (e) { res.status(500).json([]); }
+};
+
+exports.getMyRequests = async (req, res) => {
+    try {
+        const userId = req.query.userId;
+        if (!userId) return res.json([]);
+        const [rows] = await db.execute("SELECT * FROM marketing_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 10", [userId]);
+        res.json(rows);
+    } catch (e) { res.status(500).json([]); }
+};
+
+exports.updateStatus = async (req, res) => {
+    try {
+        const { id, status } = req.body;
+
+        // A. Atualizar o Status no Banco
+        await db.execute("UPDATE marketing_requests SET status = ? WHERE id = ?", [status, id]);
+        
+        // Resposta imediata para a UI
+        res.json({ success: true });
+
+        // B. Notificar Usuário (Segundo Plano)
+        if (status === 'Em Produção' || status === 'Negado') {
+            (async () => {
+                try {
+                    // Busca dados do solicitante
+                    const [rows] = await db.execute("SELECT user_id, request_type FROM marketing_requests WHERE id = ?", [id]);
+                    if (rows.length > 0) {
+                        const { user_id, request_type } = rows[0];
+                        const dataHora = getCurrentTimestamp();
+                        
+                        let msgContent = "";
+                        if (status === 'Em Produção') {
+                            msgContent = `🛠️ *PEDIDO EM PRODUÇÃO*\n\n` +
+                                         `Sua solicitação *#${id} (${request_type})* já está sendo produzida pelo Marketing.`;
+                        } else if (status === 'Negado') {
+                            msgContent = `🚫 *SOLICITAÇÃO NEGADA*\n\n` +
+                                         `A sua solicitação *#${id} (${request_type})* foi negada. Em caso de dúvidas, entre em contato com o setor de marketing. 🙂`;
+                        }
+
+                        // Insere mensagem no Neurochat (Remetente ID 32 - Marketing)
+                        const [resultMsg] = await db.query({
+                            sql: `INSERT INTO messages 
+                            (user_id, target_id, target_type, text, msg_type, timestamp, is_read, is_pinned, is_edited, is_deleted) 
+                            VALUES (?, ?, 'private', ?, 'text', ?, 0, 0, 0, 0)`,
+                            values: [32, user_id, msgContent, dataHora]
+                        });
+
+                        // Notifica o socket do Neurochat (Webhook)
+                        await notifyNeuroChat(resultMsg.insertId);
+                    }
+                } catch (notifyError) {
+                    console.error("⚠️ Erro ao enviar notificação de status:", notifyError.message);
+                }
+            })();
+        }
+
+    } catch (e) { 
+        console.error("Erro updateStatus:", e.message);
+        if (!res.headersSent) {
+            res.status(500).json({ success: false }); 
+        }
     }
 };

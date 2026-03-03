@@ -5,92 +5,184 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel TI - Gestão</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root { --primary: #141E30; --secondary: #243B55; --bg: #f4f6f9; }
-        body { font-family: 'Montserrat', sans-serif; background: var(--bg); margin: 0; padding: 0; color: #333; }
-        
-        header {
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        h1 { margin: 0; font-size: 1.4rem; }
-        
-        .header-actions { display: flex; gap: 10px; }
-        .btn-header {
-            text-decoration: none; padding: 8px 15px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
-            transition: 0.2s; display: flex; align-items: center; color: white; border: 1px solid rgba(255,255,255,0.3);
-        }
-        .btn-header:hover { background: rgba(255,255,255,0.2); }
-        .btn-excel { background: #217346; border: none; }
-        
-        .dashboard-container { max-width: 1200px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; }
-        
-        h2 { border-bottom: 2px solid #ddd; padding-bottom: 10px; color: var(--secondary); margin-bottom: 20px; }
+    <link rel="stylesheet" href="css/style.css">
 
-        .ticket-card {
-            background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #ccc; position: relative;
-        }
-
-        .ticket-header { display: flex; justify-content: space-between; font-size: 0.85rem; color: #666; margin-bottom: 8px; }
-        .ticket-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 5px; }
-
-        .prazo-badge { font-weight: bold; font-size: 0.8rem; }
-        .vencido { color: #dc3545; }
-        .no-prazo { color: #28a745; }
-
-        .action-bar { margin-top: 15px; display: flex; gap: 10px; }
-        .btn { border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; flex: 1; transition: 0.2s; }
-        .btn:hover { opacity: 0.9; }
-        .btn-green { background: #28a745; }
-        .btn-red { background: #dc3545; }
-        .btn-blue { background: #007bff; }
-
-        .historico-card { opacity: 0.8; border-left-color: #555 !important; }
-        .resolucao { background: #e8f5e9; color: #1b5e20; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 0.9rem; }
-
-        @media (max-width: 900px) { .dashboard-container { grid-template-columns: 1fr; } }
-    </style>
 </head>
-<body>
+<body class="admin-body">
 
-    <header>
-        <h1>🛡️ Painel TI <small style="font-size:0.6em; opacity:0.8">Admin</small></h1>
-        <div class="header-actions">
-            <a href="/api/exportar" class="btn-header btn-excel">📊 Excel</a>
-            <a href="http://192.168.10.133" class="btn-header">🏠 Voltar ao Portal</a>
-        </div>
-    </header>
-
-    <div class="dashboard-container">
-        <div>
-            <h2>🔥 Fila de Atendimento</h2>
-            <div id="listaAbertos">Carregando...</div>
-        </div>
-        <div>
-            <h2>✅ Últimos Concluídos</h2>
-            <div id="listaHistorico">Carregando...</div>
+    <div id="main-layout">
+        <header>
+            <h1>🛡️ Painel TI <small style="font-size:0.6em; opacity:0.8">Admin</small></h1>
+            <div class="header-actions">
+                <button onclick="abrirRelatorio()" class="btn-header btn-report">📈 Relatórios</button>
+                <a href="/api/exportar" class="btn-header btn-excel">📊 Excel</a>
+                <a href="http://192.168.10.133" class="btn-header">🏠 Voltar ao Portal</a>
+            </div>
+        </header>
+    
+        <div class="dashboard-container">
+            <div>
+                <h2>🔥 Fila de Atendimento</h2>
+                <div id="listaAbertos">Carregando...</div>
+            </div>
+            <div>
+                <h2>🚀 Projetos em Andamento</h2>
+                <div id="listaProjetos">Carregando...</div>
+                
+                <h2 style="margin-top: 40px;">✅ Últimos Concluídos</h2>
+                <div id="listaHistorico">Carregando...</div>
+            </div>
         </div>
     </div>
 
+    <!-- MODAL DE PROJETOS -->
+    <div id="modalProjeto" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; overflow-y:auto;">
+        <div style="background:white; max-width:800px; margin:50px auto; padding:30px; border-radius:10px; position:relative;">
+            <button onclick="fecharModal()" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            
+            <h2 id="modalTitle">Detalhes do Projeto</h2>
+            <div id="modalContent" style="margin-bottom:20px; line-height:1.6; color:#555;"></div>
+
+            <h3>📅 Diário de Bordo (Logs)</h3>
+            <div id="modalLogs" style="background:#f9f9f9; padding:15px; max-height:300px; overflow-y:auto; border:1px solid #eee; margin-bottom:20px;">
+                <!-- Logs aqui -->
+            </div>
+
+            <div style="background:#e3f2fd; padding:15px; border-radius:8px;">
+                <h4 style="margin-top:0;">Novo Registro</h4>
+                <select id="novoLogTipo" style="padding:8px; margin-bottom:10px; width:100%;">
+                    <option value="progresso">✅ Progresso (O que foi feito)</option>
+                    <option value="reuniao">🤝 Reunião / Alinhamento</option>
+                    <option value="impedimento">⚠️ Impedimento / Problema</option>
+                </select>
+                <textarea id="novoLogDesc" placeholder="O que foi realizado hoje?" style="width:100%; height:60px; padding:10px; margin-bottom:10px;"></textarea>
+                <textarea id="novoLogProx" placeholder="Próximos passos?" style="width:100%; height:40px; padding:10px; margin-bottom:10px;"></textarea>
+                <button onclick="salvarLog()" class="btn btn-blue">💾 Salvar Registro</button>
+            </div>
+
+            <div style="margin-top:30px; text-align:right; border-top:1px solid #eee; padding-top:20px;">
+                <button onclick="concluirProjeto()" class="btn btn-green">🏆 Concluir Projeto</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE RELATÓRIOS (NOVO) -->
+    <div id="modalRelatorio" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.98); z-index:2000; overflow-y:auto;">
+        <div style="max-width:1000px; margin:20px auto; padding:40px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;" class="no-print">
+                <h1 style="color:var(--primary);">📊 Relatório Gerencial de TI</h1>
+                <div>
+                    <button onclick="window.print()" class="btn btn-blue">🖨️ Imprimir / PDF</button>
+                    <button onclick="fecharRelatorio()" class="btn btn-red">Fechar</button>
+                </div>
+            </div>
+
+            <!-- FILTROS -->
+            <div class="no-print" style="background:#f4f6f9; padding:20px; border-radius:10px; margin-bottom:30px; display:flex; gap:15px; align-items:flex-end;">
+                <div>
+                    <label style="font-size:0.9rem; font-weight:bold; color:#555;">Data Início:</label>
+                    <input type="date" id="filtroInicio" style="display:block; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                </div>
+                <div>
+                    <label style="font-size:0.9rem; font-weight:bold; color:#555;">Data Fim:</label>
+                    <input type="date" id="filtroFim" style="display:block; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                </div>
+                <button onclick="aplicarFiltroRelatorio()" class="btn btn-blue" style="height:38px;">🔍 Filtrar</button>
+                <button onclick="baixarExcelFiltrado()" class="btn btn-excel" style="height:38px;">📊 Baixar Excel do Período</button>
+            </div>
+
+            <!-- Cabeçalho apenas para impressão -->
+            <div class="print-only" style="text-align:center; margin-bottom:40px; display:none;">
+                <h2>Relatório de Performance - HelpDesk TI</h2>
+                <p>Gerado em: <span id="dataRelatorio"></span></p>
+                <div id="periodoRelatorio" style="font-weight:bold; margin-top:5px;"></div>
+                <hr>
+            </div>
+
+            <!-- KPI CARDS -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px; margin-bottom:40px;">
+                <div class="card-kpi" style="background:#fff; padding:20px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.05); text-align:center;">
+                    <h3 style="margin:0; font-size:0.9rem; color:#666;">Total de Chamados</h3>
+                    <div id="kpiTotal" style="font-size:2.5rem; font-weight:bold; color:var(--primary);">0</div>
+                </div>
+                <div class="card-kpi" style="background:#fff; padding:20px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.05); text-align:center;">
+                    <h3 style="margin:0; font-size:0.9rem; color:#666;">Setor com Mais Demandas</h3>
+                    <div id="kpiSetorTop" style="font-size:1.5rem; font-weight:bold; color:#dc3545;">--</div>
+                </div>
+                <div class="card-kpi" style="background:#fff; padding:20px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.05); text-align:center;">
+                    <h3 style="margin:0; font-size:0.9rem; color:#666;">Taxa de Resolução</h3>
+                    <div id="kpiResolucao" style="font-size:2.5rem; font-weight:bold; color:#28a745;">0%</div>
+                </div>
+            </div>
+
+            <!-- GRÁFICOS -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px;">
+                <div style="background:white; padding:20px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                    <h3 style="text-align:center; margin-bottom:20px;">Demandas/Setor</h3>
+                    <canvas id="chartSetores"></canvas>
+                </div>
+                <div style="background:white; padding:20px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                    <h3 style="text-align:center; margin-bottom:20px;">Tipo de Demanda</h3>
+                    <canvas id="chartCategorias"></canvas>
+                </div>
+                <div style="background:white; padding:20px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                    <h3 style="text-align:center; margin-bottom:20px;">Status Atual</h3>
+                    <canvas id="chartStatus"></canvas>
+                </div>
+            </div>
+
+            <!-- LISTA DETALHADA SETORES -->
+            <div style="margin-top:40px; background:white; padding:20px; border-radius:10px;">
+                <h3>📋 Detalhamento por Setor</h3>
+                <table style="width:100%; border-collapse:collapse; margin-top:15px;">
+                    <thead>
+                        <tr style="background:#f4f6f9; text-align:left;">
+                            <th style="padding:10px;">Setor</th>
+                            <th style="padding:10px;">Quantidade</th>
+                            <th style="padding:10px;">% do Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaSetores"></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script>
+        let projetoAtualId = null;
+        let chartSetoresInst = null;
+        let chartStatusInst = null;
+
         async function carregarTudo() {
+            // (Função original mantida - não precisa alterar o painel principal, só o modal de relatório)
             try {
                 const res = await fetch('/api/chamados');
                 if (!res.ok) throw new Error("Erro na conexão com API");
                 const todos = await res.json();
                 
                 const divAbertos = document.getElementById('listaAbertos');
+                const divProjetos = document.getElementById('listaProjetos');
                 const divHist = document.getElementById('listaHistorico');
                 
                 divAbertos.innerHTML = '';
+                divProjetos.innerHTML = '';
                 divHist.innerHTML = '';
 
-                const pendentes = todos.filter(c => c.status !== 'concluido' && c.status !== 'rejeitado');
+                // FILTROS
+                // Projetos em aberto/analise vão para listaAbertos inicialmente para aprovação
+                const pendentes = todos.filter(c => c.status !== 'concluido' && c.status !== 'rejeitado' && c.status !== 'andamento' || (c.status === 'andamento' && c.tipo !== 'projeto'));
+                
+                // Projetos em andamento vão para listaProjetos
+                const projetosAndamento = todos.filter(c => c.tipo === 'projeto' && c.status === 'andamento');
+                
                 const concluidos = todos.filter(c => c.status === 'concluido');
 
                 if (pendentes.length === 0) divAbertos.innerHTML = '<p style="text-align:center; color:#888;">Nenhum chamado pendente. ☕</p>';
+                if (projetosAndamento.length === 0) divProjetos.innerHTML = '<p style="text-align:center; color:#888;">Nenhum projeto ativo.</p>';
 
                 pendentes.forEach(c => {
                     const corMap = { 'critica':'#dc3545', 'alta':'#ffc107', 'media':'#28a745', 'baixa':'#007bff' };
@@ -99,6 +191,10 @@
                     let extraInfo = '';
                     let prazoInfo = '';
 
+                    // Info extra de Suporte ou Projeto (fase de aprovação)
+                    if (c.tipo === 'suporte' && c.patrimonio) extraInfo += `<div style="font-size:0.8rem; color:#666;">🖥️ Patr: ${c.patrimonio} | Soft: ${c.software}</div>`;
+                    if (c.tipo === 'projeto') extraInfo += `<div style="font-size:0.85rem; color:#666; font-style:italic;">🎯 Obj: ${c.objetivo}</div>`;
+
                     if (c.prazo_limite) {
                         const prazo = new Date(c.prazo_limite);
                         const agora = new Date();
@@ -106,15 +202,13 @@
                         
                         if (diffMin < 0) prazoInfo = `<span class="prazo-badge vencido">⚠️ ATRASADO (${Math.abs(diffMin)} min)</span>`;
                         else prazoInfo = `<span class="prazo-badge no-prazo">🕒 Vence em ${diffMin} min</span>`;
-                    } else {
-                        prazoInfo = `<span style="font-size:0.8rem; color:#999;">(Sem prazo)</span>`;
                     }
 
                     if (c.status === 'analise') {
                         corBorda = '#6f42c1'; 
-                        extraInfo = `<div style="color:#6f42c1; font-weight:bold; margin-bottom:5px;">🧐 AGUARDANDO APROVAÇÃO</div>`;
+                        extraInfo += `<div style="color:#6f42c1; font-weight:bold; margin-bottom:5px;">🧐 AGUARDANDO APROVAÇÃO</div>`;
                         botoes = `
-                            <button class="btn btn-green" onclick="aprovar(${c.id}, true)">✅ Aprovar</button>
+                            <button class="btn btn-green" onclick="aprovar(${c.id}, true)">✅ Aprovar Projeto</button>
                             <button class="btn btn-red" onclick="aprovar(${c.id}, false)">❌ Rejeitar</button>
                         `;
                     } else {
@@ -133,8 +227,26 @@
                                 ${prazoInfo}
                             </div>
                             <div class="ticket-title">${c.tipo === 'projeto' ? '🚀 ' : '🛠️ '}${c.descricao}</div>
+                            ${c.categoria_demanda ? `<div style="font-size:0.85rem; font-weight:bold; color:var(--primary); margin-bottom:5px;">📂 Categoria: ${c.categoria_demanda} ${c.detalhes_outros ? `(${c.detalhes_outros})` : ''}</div>` : ''}
                             ${extraInfo}
                             <div class="action-bar">${botoes}</div>
+                        </div>
+                    `;
+                });
+
+                // RENDERIZAR PROJETOS EM ANDAMENTO
+                projetosAndamento.forEach(p => {
+                    divProjetos.innerHTML += `
+                        <div class="ticket-card" style="border-left-color:#6f42c1">
+                            <div class="ticket-header">
+                                <span>#${p.id} • ${p.solicitante}</span>
+                                <span style="color:#6f42c1; font-weight:bold;">EM ANDAMENTO</span>
+                            </div>
+                            <div class="ticket-title">🚀 ${p.descricao}</div>
+                            <div style="font-size:0.85rem; color:#555;">Meta: ${p.objetivo}</div>
+                            <button class="btn btn-blue" style="margin-top:10px; width:100%;" onclick="abrirModalProjeto(${p.id}, '${p.descricao}', '${p.objetivo}', '${p.impacto_esperado}')">
+                                📋 Gerenciar & Logs
+                            </button>
                         </div>
                     `;
                 });
@@ -154,6 +266,138 @@
             } catch (error) { console.error(error); }
         }
 
+        // --- RELATÓRIOS ---
+        async function abrirRelatorio() {
+            document.getElementById('modalRelatorio').style.display = 'block';
+            document.getElementById('dataRelatorio').innerText = new Date().toLocaleString('pt-BR');
+            
+            // Define datas padrão (Mês atual) se estiver vazio
+            if(!document.getElementById('filtroInicio').value) {
+                const hoje = new Date();
+                const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                document.getElementById('filtroInicio').value = primeiroDia.toISOString().split('T')[0];
+                document.getElementById('filtroFim').value = hoje.toISOString().split('T')[0];
+            }
+
+            aplicarFiltroRelatorio();
+        }
+
+        async function aplicarFiltroRelatorio() {
+            const inicio = document.getElementById('filtroInicio').value;
+            const fim = document.getElementById('filtroFim').value;
+            
+            let url = '/api/relatorios/stats';
+            if(inicio && fim) url += `?inicio=${inicio}&fim=${fim}`;
+            
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            const p = document.getElementById('periodoRelatorio');
+            if(inicio && fim) {
+                const dataPt = (d) => d.split('-').reverse().join('/');
+                p.innerText = `Período: ${dataPt(inicio)} a ${dataPt(fim)}`;
+                p.style.display = 'block';
+            } else {
+                p.style.display = 'none';
+            }
+
+            // KPIs
+            document.getElementById('kpiTotal').innerText = data.total_geral;
+            document.getElementById('kpiSetorTop').innerText = data.setores.length > 0 ? data.setores[0].setor : '-- (0 chamados)';
+            
+            // Calc Resolução
+            const concluidos = data.status.find(s => s.status === 'concluido')?.total || 0;
+            const taxa = data.total_geral > 0 ? Math.round((concluidos / data.total_geral) * 100) : 0;
+            document.getElementById('kpiResolucao').innerText = taxa + '%';
+
+            // Tabela Detalhada
+            const tbody = document.getElementById('tabelaSetores');
+            tbody.innerHTML = '';
+            data.setores.forEach(s => {
+                const perc = data.total_geral > 0 ? Math.round((s.total / data.total_geral) * 100) : 0;
+                tbody.innerHTML += `
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:10px;">${s.setor}</td>
+                        <td style="padding:10px;">${s.total}</td>
+                        <td style="padding:10px;">
+                            <div style="background:#e9ecef; width:100%; height:8px; border-radius:4px; overflow:hidden;">
+                                <div style="width:${perc}%; background:var(--secondary); height:100%;"></div>
+                            </div>
+                            <div style="font-size:0.75rem; color:#666; margin-top:2px;">${perc}%</div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // GRÁFICOS
+            renderCharts(data);
+        }
+        
+        function baixarExcelFiltrado() {
+            const inicio = document.getElementById('filtroInicio').value;
+            const fim = document.getElementById('filtroFim').value;
+            let url = '/api/exportar';
+            if(inicio && fim) url += `?inicio=${inicio}&fim=${fim}`;
+            window.location.href = url;
+        }
+
+        function fecharRelatorio() {
+            document.getElementById('modalRelatorio').style.display = 'none';
+        }
+
+        function renderCharts(dados) {
+            const ctxSetor = document.getElementById('chartSetores').getContext('2d');
+            const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+            const ctxCat = document.getElementById('chartCategorias').getContext('2d');
+
+            if(chartSetoresInst) chartSetoresInst.destroy();
+            if(chartStatusInst) chartStatusInst.destroy();
+            if(window.chartCatInst) window.chartCatInst.destroy();
+
+            // 1. Chart Setores
+            chartSetoresInst = new Chart(ctxSetor, {
+                type: 'bar',
+                data: {
+                    labels: dados.setores.map(s => s.setor),
+                    datasets: [{
+                        label: 'Chamados',
+                        data: dados.setores.map(s => s.total),
+                        backgroundColor: '#243B55',
+                        borderRadius: 5
+                    }]
+                },
+                options: { responsive: true, animation: false, plugins: { legend: {display: false} } }
+            });
+
+            // 2. Chart Categorias (Novo)
+            window.chartCatInst = new Chart(ctxCat, {
+                type: 'pie',
+                data: {
+                    labels: dados.categorias.map(c => c.categoria),
+                    datasets: [{
+                        data: dados.categorias.map(c => c.total),
+                        backgroundColor: ['#00d2ff', '#3a7bd5', '#141E30', '#dc3545']
+                    }]
+                },
+                options: { responsive: true, animation: false }
+            });
+
+            // 3. Chart Status
+            chartStatusInst = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: dados.status.map(s => s.status.toUpperCase()),
+                    datasets: [{
+                        data: dados.status.map(s => s.total),
+                        backgroundColor: ['#ffc107', '#007bff', '#28a745', '#dc3545', '#6f42c1'] 
+                    }]
+                },
+                options: { responsive: true, animation: false }
+            });
+        }
+
+        // --- FUNÇÕES DE AÇÃO ---
+
         async function aceitar(id) { await fetch(`/api/chamados/${id}/aceitar`, { method: 'PUT' }); carregarTudo(); }
         
         async function concluir(id) {
@@ -167,10 +411,86 @@
         }
 
         async function aprovar(id, decisao) {
-            if(!confirm(decisao ? "Aprovar Projeto?" : "Rejeitar?")) return;
+            if(!confirm(decisao ? "Aprovar Projeto e iniciar?" : "Rejeitar projeto?")) return;
             await fetch(`/api/chamados/${id}/aprovar`, { 
                 method: 'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({aprovado: decisao}) 
             });
+            carregarTudo();
+        }
+
+        // --- LOGICA DO MODAL DE PROJETOS ---
+        
+        async function abrirModalProjeto(id, titulo, objetivo, impacto) {
+            projetoAtualId = id;
+            document.getElementById('modalProjeto').style.display = 'block';
+            document.getElementById('modalTitle').innerText = `Gestão: ${titulo}`;
+            document.getElementById('modalContent').innerHTML = `
+                <strong>Objetivo:</strong> ${objetivo || '--'}<br>
+                <strong>Impacto Esperado:</strong> ${impacto || '--'}
+            `;
+            carregarLogs(id);
+        }
+
+        function fecharModal() {
+            document.getElementById('modalProjeto').style.display = 'none';
+            projetoAtualId = null;
+        }
+
+        async function carregarLogs(id) {
+            const res = await fetch(`/api/chamados/${id}/logs`);
+            const logs = await res.json();
+            const div = document.getElementById('modalLogs');
+            div.innerHTML = '';
+            
+            if(logs.length === 0) div.innerHTML = '<p style="color:#999; text-align:center;">Nenhum registro ainda.</p>';
+
+            logs.forEach(l => {
+                const dataFormat = new Date(l.data_log).toLocaleString('pt-BR');
+                let icon = '📌';
+                if(l.tipo === 'progresso') icon = '✅';
+                if(l.tipo === 'reuniao') icon = '🤝';
+                if(l.tipo === 'impedimento') icon = '⚠️';
+
+                div.innerHTML += `
+                    <div style="border-bottom:1px solid #ddd; padding:10px 0;">
+                        <div style="font-size:0.8rem; color:#888;">${dataFormat} ${icon}</div>
+                        <div style="font-weight:bold; margin-bottom:5px;">${l.descricao}</div>
+                        ${l.proximos_passos ? `<div style="font-size:0.85rem; color:#555;">🔜 <em>Próx: ${l.proximos_passos}</em></div>` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        async function salvarLog() {
+            if(!projetoAtualId) return;
+            const tipo = document.getElementById('novoLogTipo').value;
+            const desc = document.getElementById('novoLogDesc').value;
+            const prox = document.getElementById('novoLogProx').value;
+
+            if(!desc) return alert("Descreva o que foi feito.");
+
+            await fetch(`/api/chamados/${projetoAtualId}/logs`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ tipo, descricao: desc, proximos_passos: prox })
+            });
+
+            document.getElementById('novoLogDesc').value = '';
+            document.getElementById('novoLogProx').value = '';
+            carregarLogs(projetoAtualId);
+        }
+
+        async function concluirProjeto() {
+            if(!projetoAtualId) return;
+            if(!confirm("Tem certeza que deseja concluir este projeto? Ele sairá da lista de andamento.")) return;
+            
+            await fetch(`/api/chamados/${projetoAtualId}/concluir`, { 
+                method: 'PUT', 
+                headers:{'Content-Type':'application/json'}, 
+                body: JSON.stringify({resolucao: 'Projeto Concluído com sucesso (Ver Logs).'}) 
+            });
+            
+            fecharModal();
             carregarTudo();
         }
 

@@ -1,0 +1,62 @@
+<div id="formacao" class="tab-content">
+    <h2>🎓 Incentivo à Formação e Desenvolvimento</h2>
+    <div class="split-container">
+        <div class="pdf-viewer">
+            <embed src="/uploads/politica_formacao.pdf" type="application/pdf" />
+        </div>
+        <div class="form-box">
+            <h3>Termo de Solicitação de Cursos</h3>
+            <p style="font-size: 0.8rem;">Preencha os dados do evento/curso para análise.</p>
+            
+            <form action="/solicitar/formacao" method="POST">
+                <label>Colaborador:</label>
+                <input type="text" value="<%= user.username %>" disabled>
+
+                <div class="row">
+                    <div class="col">
+                        <label>Nome do Curso/Evento:</label>
+                        <input type="text" name="nome_curso" required>
+                    </div>
+                    <div class="col">
+                        <label>Instituição/Organizador:</label>
+                        <input type="text" name="instituicao" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label>Início:</label>
+                        <input type="date" name="data_inicio" required>
+                    </div>
+                    <div class="col">
+                        <label>Fim:</label>
+                        <input type="date" name="data_fim" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label>Carga Horária Total:</label>
+                        <input type="text" name="carga_horaria" placeholder="Ex: 40h" required>
+                    </div>
+                    <div class="col">
+                        <label>Local (Se presencial):</label>
+                        <input type="text" name="local_formacao" placeholder="Ex: São Paulo / Online">
+                    </div>
+                </div>
+
+                <label>Justificativa de Relevância:</label>
+                <textarea name="justificativa" rows="4" placeholder="Descreva como este curso agrega às suas funções..." required></textarea>
+
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="concordo" required id="check_formacao">
+                    <label for="check_formacao" style="font-size: 0.8rem;">
+                        Declaro que as informações são verdadeiras e aguardo aprovação.
+                    </label>
+                </div>
+
+                <button type="submit" class="btn">Enviar Solicitação</button>
+            </form>
+        </div>
+    </div>
+</div>
