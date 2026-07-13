@@ -134,10 +134,8 @@ window.loadData = async () => {
             localStorage.setItem('neurochat_user', JSON.stringify(currentUser)); 
             window.updateMyInfo();
             window.updateMyInfo(); 
-            const b = document.querySelector('.new-group-btn');
-            if(b) b.style.display = currentUser.is_super_admin ? 'block' : 'none';
-            const bUser = document.getElementById('btn-show-user-modal');
-            if(bUser) bUser.style.display = currentUser.is_super_admin ? 'block' : 'none';
+            const bAdmin = document.getElementById('btn-admin-panel');
+            if(bAdmin) bAdmin.style.display = currentUser.is_super_admin ? 'block' : 'none';
         }
         allUsers = (data.users||[]).map(u => ({...u, last_activity: u.last_interaction })); 
         allGroups = data.groups||[];
@@ -181,7 +179,7 @@ window.renderLists = () => {
         if(u.unread > 0) uUnread += u.unread;
         const isOnline = onlineIds.includes(u.id);
         const badge = u.unread > 0 ? 'block' : 'none';
-        let adminBtn = currentUser.is_super_admin ? `<button onclick="event.stopPropagation(); window.openAdminControl(${u.id})" style="background:none;border:none;cursor:pointer;color:#999;">⚙️</button>` : '';
+        let adminBtn = '';
         
         const photoUrl = getAvatarUrl(u.photo);
         const li = document.createElement('li');
@@ -903,7 +901,18 @@ window.openAdminControl=async function(tid){
         if(b)b.textContent=d.user.is_super_admin?"🔽 Remover Admin":"👑 Tornar Admin";
         const l=document.getElementById('admin-sector-list');
         l.innerHTML="";
-        (d.availableSectors||[]).sort().forEach(s=>{l.innerHTML+=`<div><input type="checkbox" ${d.restrictedList.includes(s)?'checked':''} onchange="toggleRestriction('${s}',this.checked)"> ${s}</div>`})
+        (d.availableSectors||[]).sort().forEach(s=>{l.innerHTML+=`<div><input type="checkbox" ${d.restrictedList.includes(s)?'checked':''} onchange="toggleRestriction('${s}',this.checked)"> ${s}</div>`});
+
+        // Popula o select de setor na central do admin
+        const sectorSelect = document.getElementById('admin-user-sector');
+        if (sectorSelect) {
+            sectorSelect.innerHTML = '<option value="" disabled>Selecione um Setor</option>';
+            let optionsHtml = '<option value="">Sem Setor</option>';
+            (d.allSectors || []).forEach(sec => {
+                optionsHtml += `<option value="${sec.id}" ${d.user.setor_id === sec.id ? 'selected' : ''}>${sec.nome}</option>`;
+            });
+            sectorSelect.innerHTML = optionsHtml;
+        }
     }
 };
 window.deleteUser = async function(tid) {
@@ -918,6 +927,30 @@ window.deleteUser = async function(tid) {
     }
 };
 window.toggleRestriction=async function(d,c){await fetch('/admin/toggle-restriction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminId:currentUser.id,targetUserId:document.getElementById('admin-target-id').value,department:d,action:c?'add':'remove'})})};
+window.updateUserSector=async function(){
+    const targetId = document.getElementById('admin-target-id').value;
+    const sectorId = document.getElementById('admin-user-sector').value;
+    try {
+        const res = await fetch('/admin/update-sector', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                targetUserId: targetId,
+                setorId: sectorId ? parseInt(sectorId) : null
+            })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert('✅ Setor do usuário atualizado com sucesso!');
+        } else {
+            alert('❌ Erro: ' + (data.message || 'Falha ao atualizar setor.'));
+        }
+    } catch(e) {
+        console.error(e);
+        alert('❌ Erro de conexão.');
+    }
+};
 window.toggleAdminRole=async function(){if(confirm("Mudar Admin?"))await fetch('/admin/toggle-admin-role',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminId:currentUser.id,targetUserId:document.getElementById('admin-target-id').value})});window.openAdminControl(document.getElementById('admin-target-id').value)};
 window.openFullAudit=function(){window.open(`/audit.html?target=${document.getElementById('admin-target-id').value}`,'_blank')};
 
@@ -1400,6 +1433,10 @@ window.loadDepartmentsForProfile = async function() {
 window.openProfileModal = function() { 
     document.getElementById('profile-username').value = currentUser.username; 
     
+    // Exibe o setor legível
+    const displayDept = document.getElementById('profile-department-display');
+    if(displayDept) displayDept.value = currentUser.setor_nome || currentUser.department || 'Sem Setor';
+
     // Store current dept to set as selected after loading
     const s = document.getElementById('profile-department');
     if(s) s.setAttribute('data-value', currentUser.department || "");
@@ -1887,12 +1924,97 @@ document.addEventListener('DOMContentLoaded',()=>{
         }
     });
 
-    if(window.EmojiButton){
-        const p=new EmojiButton({position:'top-start',rootElement:document.body,theme:'light',autoHide:false,zIndex:999999});
-        const t=document.getElementById('emoji-btn');
-        p.on('emoji',s=>{i.value+=(s.emoji||s);i.focus()});
-        if(t)t.addEventListener('click',()=>p.togglePicker(t))
+    // --- EMOJI PICKER INIT (V122 - FORCE POSITION) ---
+    function initEmojiPicker() {
+        if(!window.EmojiButton) {
+            console.warn('[EMOJI] Biblioteca não encontrada. Retry em 2s...');
+            setTimeout(initEmojiPicker, 2000);
+            return;
+        }
+        try {
+            const picker = new EmojiButton({
+                position: 'top',
+                rootElement: document.body,
+                theme: 'light',
+                autoHide: false,
+                zIndex: 2147483647
+            });
+            const emojiBtn = document.getElementById('emoji-btn');
+            const inputEl = document.getElementById('input');
+
+            picker.on('emoji', selection => {
+                if(inputEl) {
+                    inputEl.value += (selection.emoji || selection);
+                    inputEl.focus();
+                }
+            });
+
+            // Função para forçar posição do picker
+            function forcePickerPosition() {
+                const wrapperEl = document.querySelector('.wrapper[data-popper-placement]');
+                const pickerEl = document.querySelector('.emoji-picker');
+                
+                if(wrapperEl) {
+                    // Calcular centro do formulário
+                    const formEl = document.getElementById('form');
+                    let centerX = window.innerWidth / 2;
+                    if(formEl) {
+                        const r = formEl.getBoundingClientRect();
+                        centerX = r.left + r.width / 2;
+                    }
+                    
+                    // Limpar TODOS os estilos inline primeiro (remove o que Popper.js colocou)
+                    wrapperEl.removeAttribute('style');
+                    
+                    // Aplicar posição fixa centralizada acima do form
+                    Object.assign(wrapperEl.style, {
+                        position: 'fixed',
+                        top: 'auto',
+                        right: 'auto',
+                        bottom: '90px',
+                        left: centerX + 'px',
+                        transform: 'translateX(-50%)',
+                        zIndex: '2147483647',
+                        width: 'auto',
+                        height: 'auto',
+                        display: 'block',
+                        overflow: 'visible'
+                    });
+                }
+                
+                if(pickerEl) {
+                    pickerEl.style.setProperty('display', 'flex', 'important');
+                    pickerEl.style.setProperty('visibility', 'visible', 'important');
+                    pickerEl.style.setProperty('opacity', '1', 'important');
+                    pickerEl.style.setProperty('width', '350px', 'important');
+                    pickerEl.style.setProperty('height', 'auto', 'important');
+                    pickerEl.style.setProperty('min-height', '300px', 'important');
+                    pickerEl.style.setProperty('pointer-events', 'auto', 'important');
+                    console.log('[EMOJI] ✅ Picker estilizado!');
+                }
+                
+                if(!wrapperEl && !pickerEl) {
+                    console.log('[EMOJI] ❌ Nenhum elemento encontrado');
+                }
+            }
+
+            if(emojiBtn) {
+                emojiBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    picker.togglePicker(emojiBtn);
+                    // Forçar posição após um pequeno delay para o DOM renderizar
+                    setTimeout(forcePickerPosition, 50);
+                    setTimeout(forcePickerPosition, 200);
+                    setTimeout(forcePickerPosition, 500);
+                });
+                console.log('[EMOJI] ✅ Inicializado com sucesso!');
+            }
+        } catch(err) {
+            console.error('[EMOJI] ❌ Erro:', err);
+        }
     }
+    initEmojiPicker();
 
 
 });

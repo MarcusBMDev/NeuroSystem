@@ -160,20 +160,19 @@
                     // Armazena dados do usuário localmente
                     localStorage.setItem('user', JSON.stringify(data.user));
 
-                    // Redireciona baseado no departamento
+                    // Redireciona baseado no departamento/setor
                     const dept = (data.user.department || '').toLowerCase().trim();
-                    if (dept === 'controle interno' || dept === 'ci') {
+                    if (dept.includes('controle interno') || dept === 'ci') {
                         window.location.href = '/dashboard_ci.html';
-                    } else if (dept === 'faturamento') {
+                    } else if (dept.includes('faturamento') && !dept.includes('coordenação') && !dept.includes('coordenaçao')) {
                         window.location.href = '/dashboard_faturamento.html';
-                    } else if (dept === 'recepção' || dept === 'recepcao') {
+                    } else if (dept.includes('recepção') || dept.includes('recepcao')) {
                         window.location.href = '/dashboard_recepcao.html';
-                    } else if (dept === 'agendamento' || dept === 'solicitação' || dept === 'solicitacao') {
+                    } else if (dept.includes('agendamento') || dept.includes('solicitação') || dept.includes('solicitacao') || dept.includes('coordenação') || dept.includes('coordenaçao') || dept.includes('operacional')) {
                         window.location.href = '/dashboard_operacional.html';
-                    } else if (dept === 'diretoria' || dept === 'administração' || dept === 'gerência') {
+                    } else if (dept.includes('diretoria') || dept.includes('financeiro') || dept.includes('super')) {
                         window.location.href = '/dashboard_faturamento.html'; // Visão executiva completa
                     } else {
-                        // Roteamento padrão para faturamento
                         window.location.href = '/dashboard_faturamento.html';
                     }
                 } else {

@@ -32,6 +32,7 @@ const authController = require('./src/controllers/auth/authController');
 const userRoutes = require('./src/routes/user.routes');
 const chatRoutes = require('./src/routes/chat.routes');
 const groupRoutes = require('./src/routes/group.routes');
+const adminRoutes = require('./src/routes/admin.routes');
 // const authRoutes = require('./src/routes/auth.routes'); // (Opcional se usarmos o controller direto abaixo)
 
 // --- 3. DEFINIÇÃO DE ROTAS (A CORREÇÃO ESTÁ AQUI) ---
@@ -79,6 +80,7 @@ app.get('/api/departments', (req, res) => {
 app.use(userRoutes);
 app.use(chatRoutes);
 app.use(groupRoutes);
+app.use(adminRoutes);
 
 // --- 4. SOCKET.IO ---
 // Tenta carregar, mas não trava se o arquivo ainda não existir ou tiver erro

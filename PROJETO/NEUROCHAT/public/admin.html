@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroChat - Painel de Administração</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0d47a1;
+            --primary-light: #1565c0;
+            --accent: #00d2ff;
+            --accent-light: #e0f7fa;
+            --success: #2e7d32;
+            --success-light: #e8f5e9;
+            --danger: #c62828;
+            --danger-light: #ffebee;
+            --background: #f0f4f8;
+            --panel: #ffffff;
+            --text: #1a252f;
+            --text-muted: #7f8c8d;
+            --border: #dcdde1;
+            --radius: 14px;
+            --shadow: 0 8px 24px rgba(13, 71, 161, 0.08);
+            --gradient: linear-gradient(135deg, #0d47a1, #00d2ff);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Montserrat', 'Inter', -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #0d47a1, #002d72);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            flex-shrink: 0;
+            box-shadow: 4px 0 15px rgba(13, 71, 161, 0.15);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: var(--accent);
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .logo-text span {
+            font-size: 11px;
+            color: #90caf9;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+        }
+
+        .nav-item button {
+            width: 100%;
+            background: none;
+            border: none;
+            color: #90caf9;
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .nav-item.active button, .nav-item button:hover {
+            background-color: rgba(255, 255, 255, 0.12);
+            color: var(--accent);
+            border-left: 4px solid var(--accent);
+        }
+
+        .user-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-footer span {
+            font-size: 13px;
+            color: #90caf9;
+            font-weight: 600;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex-grow: 1;
+            padding: 40px;
+            overflow-y: auto;
+            max-width: calc(100vw - 260px);
+        }
+
+        .header-title {
+            margin-bottom: 32px;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .header-title p {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* KPIS GRID */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .kpi-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .kpi-data h3 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .kpi-data p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* PANELS */
+        .panel-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* TABLES */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .data-table th, .data-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background-color: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .data-table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        /* BUTTONS & FORMS */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(0, 210, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: white;
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background-color: #f1f5f9;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-light);
+            color: var(--danger);
+            border-color: var(--danger-light);
+        }
+
+        .btn-danger:hover {
+            background-color: #fee2e2;
+            border-color: var(--danger);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: #fff;
+            color: var(--text);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.15);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        /* BADGES */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-success { background: var(--success-light); color: var(--success); }
+        .badge-info { background: var(--accent-light); color: var(--accent); }
+        .badge-danger { background: var(--danger-light); color: var(--danger); }
+
+        /* VIEW TOGGLE */
+        .admin-view {
+            display: none;
+        }
+
+        .admin-view.active {
+            display: block;
+        }
+
+        /* MODAL */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s;
+        }
+
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius);
+            width: 450px;
+            padding: 24px;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="logo-area">
+            <div class="logo-icon"><i class="fa-solid fa-lock"></i></div>
+            <div class="logo-text">
+                <h3>NeuroChat Admin</h3>
+                <span>Central de Segurança</span>
+            </div>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item active" id="tab-dashboard"><button onclick="switchTab('dashboard')"><i class="fa-solid fa-chart-pie"></i> Indicadores</button></li>
+            <li class="nav-item" id="tab-users"><button onclick="switchTab('users')"><i class="fa-solid fa-users"></i> Usuários</button></li>
+            <li class="nav-item" id="tab-groups"><button onclick="switchTab('groups')"><i class="fa-solid fa-comments"></i> Grupos</button></li>
+            <li class="nav-item" id="tab-sectors"><button onclick="switchTab('sectors')"><i class="fa-solid fa-building"></i> Setores</button></li>
+            <li class="nav-item" id="tab-audit"><button onclick="switchTab('audit')"><i class="fa-solid fa-receipt"></i> Auditoria Chats</button></li>
+            <li class="nav-item" id="tab-files"><button onclick="switchTab('files')"><i class="fa-solid fa-folder-open"></i> Arquivos Compartilhados</button></li>
+        </ul>
+
+        <div class="user-footer">
+            <span id="adminName">Admin</span>
+            <button class="btn btn-secondary" onclick="voltarAoChat()" style="padding: 4px 8px; font-size:11px;"><i class="fa-solid fa-arrow-left"></i> Chat</button>
+        </div>
+    </div>
+
+    <!-- MAIN WRAPPER -->
+    <div class="main-content">
+        
+        <!-- ==================== VIEW INDICADORES ==================== -->
+        <div id="view-dashboard" class="admin-view active">
+            <div class="header-title" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h1>Painel de Indicadores</h1>
+                    <p>Métricas de utilização e volumes de banco de dados do NeuroChat</p>
+                </div>
+                <button class="btn btn-primary" onclick="baixarBackupBanco()" style="padding: 10px 20px;"><i class="fa-solid fa-file-zipper"></i> 📦 Gerar Backup Completo</button>
+            </div>
+
+            <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+                <div class="kpi-card" onclick="verUsuariosFiltrados('ativos')" style="cursor:pointer;">
+                    <div class="kpi-icon" style="background-color: var(--success-light); color: var(--success);"><i class="fa-solid fa-user-check"></i></div>
+                    <div class="kpi-data">
+                        <h3 id="kpiUsers">0</h3>
+                        <p>Colaboradores Ativos</p>
+                    </div>
+                </div>
+                <div class="kpi-card" onclick="verUsuariosFiltrados('inativos')" style="cursor:pointer;">
+                    <div class="kpi-icon" style="background-color: var(--danger-light); color: var(--danger);"><i class="fa-solid fa-user-slash"></i></div>
+                    <div class="kpi-data">
+                        <h3 id="kpiUsersInativos">0</h3>
+                        <p>Colaboradores Inativos</p>
+                    </div>
+                </div>
+                <div class="kpi-card" onclick="switchTab('groups')" style="cursor:pointer;">
+                    <div class="kpi-icon" style="background-color: #f3e8ff; color: #7e22ce;"><i class="fa-solid fa-comments"></i></div>
+                    <div class="kpi-data">
+                        <h3 id="kpiGroups">0</h3>
+                        <p>Grupos Cadastrados</p>
+                    </div>
+                </div>
+                <div class="kpi-card" onclick="switchTab('audit')" style="cursor:pointer;">
+                    <div class="kpi-icon" style="background-color: #fef3c7; color: #d97706;"><i class="fa-solid fa-paper-plane"></i></div>
+                    <div class="kpi-data">
+                        <h3 id="kpiMessages">0</h3>
+                        <p>Mensagens Enviadas</p>
+                    </div>
+                </div>
+                <div class="kpi-card" onclick="switchTab('files')" style="cursor:pointer;">
+                    <div class="kpi-icon" style="background-color: var(--accent-light); color: var(--primary);"><i class="fa-solid fa-file-invoice"></i></div>
+                    <div class="kpi-data">
+                        <h3 id="kpiFiles">0</h3>
+                        <p>Arquivos Enviados</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="panel-title"><i class="fa-solid fa-circle-info"></i> Informações do Sistema</div>
+                </div>
+                <p style="font-size:13px; color: var(--text-muted); line-height: 1.6;">
+                    Este é o painel de governança do NeuroChat. Toda a base de dados de mensagens, grupos e arquivos é auditada de forma restrita pela diretoria para garantir a confidencialidade e segurança das informações clínicas dos pacientes.
+                </p>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW USUÁRIOS ==================== -->
+        <div id="view-users" class="admin-view">
+            <div class="header-title">
+                <h1>Gerenciamento de Usuários</h1>
+                <p>Criação de novos acessos, redefinição de senhas e atribuição de setores</p>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="panel-title"><i class="fa-solid fa-users"></i> Colaboradores Cadastrados</div>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <label style="font-size:11px; font-weight:700; color:var(--text-muted);">Status:</label>
+                        <select id="userStatusFilter" class="form-control" style="width:150px; padding: 6px 12px;" onchange="filtrarUsuariosTabela(this.value)">
+                            <option value="ativos">Apenas Ativos</option>
+                            <option value="inativos">Apenas Inativos</option>
+                            <option value="todos">Todos</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="abrirNovoUsuarioModal()"><i class="fa-solid fa-user-plus"></i> Novo Colaborador</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Nome de Usuário</th>
+                                <th>Setor Vinculado (NeuroControl)</th>
+                                <th>Papel</th>
+                                <th>Ações Administrativas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW GRUPOS ==================== -->
+        <div id="view-groups" class="admin-view">
+            <div class="header-title">
+                <h1>Criação e Gestão de Grupos</h1>
+                <p>Criação de canais de transmissão e de conversas gerais do NeuroChat</p>
+            </div>
+
+            <div class="content-grid" style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><i class="fa-solid fa-folder-plus"></i> Criar Novo Grupo</div>
+                    </div>
+                    <form id="grupoForm" onsubmit="criarGrupoAPI(event)">
+                        <div class="form-group">
+                            <label for="grupoNome">Nome do Grupo</label>
+                            <input type="text" class="form-control" id="grupoNome" required placeholder="Ex: Avisos Gerais">
+                        </div>
+                        <div class="form-group">
+                            <label for="grupoTipo">Tipo de Canal</label>
+                            <select class="form-control" id="grupoTipo" required>
+                                <option value="0">Geral (Membros conversam)</option>
+                                <option value="1">Canal de Transmissão (Apenas Admins publicam)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;"><i class="fa-solid fa-floppy-disk"></i> Salvar Grupo</button>
+                    </form>
+                </div>
+
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><i class="fa-solid fa-comments"></i> Grupos Ativos</div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="groupsTable">
+                            <thead>
+                                <tr>
+                                    <th>Nome do Grupo</th>
+                                    <th>Tipo de Canal</th>
+                                    <th>Criador</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW AUDITORIA CHATS ==================== -->
+        <div id="view-audit" class="admin-view">
+            <div class="header-title">
+                <h1>Auditoria de Conversas</h1>
+                <p>Visualização e auditoria em tempo real das mensagens trocadas por usuários e grupos</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 2.5fr; gap:24px;">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><i class="fa-solid fa-search"></i> Selecionar Destino</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="auditType">Tipo de Auditoria</label>
+                        <select class="form-control" id="auditType" onchange="toggleAuditSelection()">
+                            <option value="private">Conversa Privada</option>
+                            <option value="group">Grupo</option>
+                        </select>
+                    </div>
+
+                    <!-- Seletor de Grupo -->
+                    <div class="form-group" id="auditGroupSelectorContainer" style="display:none;">
+                        <label for="auditGroupSelect">Selecione o Grupo</label>
+                        <select class="form-control" id="auditGroupSelect" onchange="carregarAuditoriaMensagens()">
+                            <!-- Preenchido via JS -->
+                        </select>
+                    </div>
+
+                    <!-- Seletor de Conversa Privada -->
+                    <div id="auditPrivateSelectorContainer">
+                        <div class="form-group">
+                            <label for="auditUser1Select">Remetente</label>
+                            <select class="form-control" id="auditUser1Select" onchange="carregarAuditoriaMensagens()">
+                                <!-- Preenchido via JS -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="auditUser2Select">Destinatário</label>
+                            <select class="form-control" id="auditUser2Select" onchange="carregarAuditoriaMensagens()">
+                                <!-- Preenchido via JS -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-card" style="display:flex; flex-direction:column; height: 500px;">
+                    <div class="panel-header">
+                        <div class="panel-title"><i class="fa-solid fa-envelope-open-text"></i> Histórico de Mensagens Auditadas</div>
+                    </div>
+                    <div id="auditMessagesHistory" style="flex-grow: 1; overflow-y: auto; background-color: #f1f5f9; border-radius: 8px; padding: 16px; font-size:12.5px; border: 1px solid var(--border);">
+                        <p style="text-align: center; color: var(--text-muted); margin-top: 150px;">Selecione os usuários ou o grupo para auditar.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW ARQUIVOS COMPARTILHADOS ==================== -->
+        <div id="view-files" class="admin-view">
+            <div class="header-title">
+                <h1>Auditoria de Arquivos Enviados</h1>
+                <p>Lista de todos os documentos e imagens transmitidos pelo chat com rastreabilidade</p>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="panel-title"><i class="fa-solid fa-paperclip"></i> Repositório de Documentos Auditados</div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="auditFilesTable">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Enviado Por</th>
+                                <th>Nome do Arquivo</th>
+                                <th>Tipo de Destino</th>
+                                <th>Download</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW SETORES ==================== -->
+        <div id="view-sectors" class="admin-view">
+            <div class="header-title">
+                <h1>Gerenciamento de Setores</h1>
+                <p>Criação e monitoramento dos setores vinculados do NeuroControl e NeuroChat</p>
+            </div>
+
+            <div class="content-grid" style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><i class="fa-solid fa-circle-plus"></i> Cadastrar Novo Setor</div>
+                    </div>
+                    <form id="setorForm" onsubmit="criarSetorAPI(event)">
+                        <div class="form-group">
+                            <label for="setorNome">Nome do Setor</label>
+                            <input type="text" class="form-control" id="setorNome" required placeholder="Ex: Recepção Unidade 4">
+                        </div>
+                        <div class="form-group">
+                            <label for="setorDescricao">Descrição / Observações</label>
+                            <textarea class="form-control" id="setorDescricao" rows="3" placeholder="Funções ou permissões deste setor..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;"><i class="fa-solid fa-floppy-disk"></i> Salvar Setor</button>
+                    </form>
+                </div>
+
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><i class="fa-solid fa-building-user"></i> Setores Cadastrados</div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="sectorsTable">
+                            <thead>
+                                <tr>
+                                    <th>Nome do Setor</th>
+                                    <th>Descrição</th>
+                                    <th>Colaboradores Ativos</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL: REDEFINIR SENHA -->
+    <div class="modal" id="modalResetPassword">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-key"></i> Redefinir Senha</h3>
+                <button class="modal-close" onclick="fecharModalResetPassword()">&times;</button>
+            </div>
+            <input type="hidden" id="resetTargetUserId">
+            <div class="form-group">
+                <label>Usuário</label>
+                <input type="text" class="form-control" id="resetTargetUserName" readonly style="background:#eee;">
+            </div>
+            <div class="form-group">
+                <label for="resetNewPassword">Nova Senha</label>
+                <input type="password" class="form-control" id="resetNewPassword" placeholder="Digite a nova senha..." required>
+            </div>
+            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button class="btn btn-secondary" onclick="fecharModalResetPassword()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmarResetSenha()">Salvar Nova Senha</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ALTERAR SETOR -->
+    <div class="modal" id="modalChangeSector">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-building"></i> Alterar Setor</h3>
+                <button class="modal-close" onclick="fecharModalChangeSector()">&times;</button>
+            </div>
+            <input type="hidden" id="changeSectorUserId">
+            <div class="form-group">
+                <label>Usuário</label>
+                <input type="text" class="form-control" id="changeSectorUserName" readonly style="background:#eee;">
+            </div>
+            <div class="form-group">
+                <label for="changeSectorSelect">Novo Setor de Acesso</label>
+                <select class="form-control" id="changeSectorSelect" required>
+                    <!-- Preenchido dinamicamente via JS -->
+                </select>
+            </div>
+            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button class="btn btn-secondary" onclick="fecharModalChangeSector()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmarAlterarSetor()">Salvar Novo Setor</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: NOVO USUÁRIO -->
+    <div class="modal" id="modalNewUser">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-plus"></i> Novo Usuário</h3>
+                <button class="modal-close" onclick="fecharNovoUsuarioModal()">&times;</button>
+            </div>
+            <form onsubmit="salvarNovoUsuario(event)">
+                <div class="form-group">
+                    <label for="newUsername">Nome de Usuário</label>
+                    <input type="text" class="form-control" id="newUsername" required placeholder="Digite o login...">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Senha</label>
+                    <input type="password" class="form-control" id="newPassword" required placeholder="Digite a senha inicial...">
+                </div>
+                <div class="form-group">
+                    <label for="newSetorSelect">Setor de Acesso</label>
+                    <select class="form-control" id="newSetorSelect" required>
+                        <!-- Preenchido dinamicamente via JS -->
+                    </select>
+                </div>
+                <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" onclick="fecharNovoUsuarioModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Colaborador</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR SETOR -->
+    <div class="modal" id="modalEditSector">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen-to-square"></i> Editar Setor</h3>
+                <button class="modal-close" onclick="fecharModalEditSector()">&times;</button>
+            </div>
+            <input type="hidden" id="editSectorId">
+            <div class="form-group">
+                <label for="editSectorNome">Nome do Setor</label>
+                <input type="text" class="form-control" id="editSectorNome" required placeholder="Ex: Recepção Unidade 4">
+            </div>
+            <div class="form-group">
+                <label for="editSectorDescricao">Descrição / Observações</label>
+                <textarea class="form-control" id="editSectorDescricao" rows="3" placeholder="Funções ou permissões deste setor..."></textarea>
+            </div>
+            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button class="btn btn-secondary" onclick="fecharModalEditSector()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmarEditarSetor()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="js/admin.js"></script>
+</body>
+</html>

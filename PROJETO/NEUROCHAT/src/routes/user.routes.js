@@ -14,5 +14,6 @@ router.post('/admin/user-control-data', userController.getUserControlData);
 router.post('/admin/toggle-restriction', userController.toggleRestriction);
 router.post('/admin/toggle-admin-role', userController.toggleAdminRole);
 router.post('/admin/delete-user', userController.deleteUser);
+router.post('/admin/update-sector', userController.updateSector);
 
 module.exports = router;

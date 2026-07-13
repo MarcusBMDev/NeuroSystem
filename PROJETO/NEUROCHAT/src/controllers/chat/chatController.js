@@ -32,6 +32,15 @@ class ChatController {
     // 2. Upload
     async uploadFile(req, res) {
         if (!req.file) return res.status(400).json({ success: false });
+
+        try {
+            const { compressImageInPlace } = require('../../utils/compressor');
+            // Compacta a imagem em tempo real de forma síncrona/espera antes de retornar
+            await compressImageInPlace(req.file.path);
+        } catch (err) {
+            console.error('Erro ao compactar arquivo no upload:', err);
+        }
+
         res.json({ success: true, filename: req.file.filename, originalName: req.file.originalname });
     }
 

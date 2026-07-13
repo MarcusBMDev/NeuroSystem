@@ -28,8 +28,9 @@ class UserService {
         // 3. Busca restrições e setores disponíveis (AGORA FUNCIONA)
         const restrictedList = await userRepository.getRestrictions(targetId);
         const availableSectors = await userRepository.getAllDepartments();
+        const allSectors = await userRepository.getAllSectors();
         
-        return { user: targetUser, restrictedList, availableSectors };
+        return { user: targetUser, restrictedList, availableSectors, allSectors };
     }
 
     async toggleRestriction(adminId, targetId, department, action) {
@@ -53,6 +54,12 @@ class UserService {
         const admin = await userRepository.findById(adminId);
         if (!admin.is_super_admin) throw new Error('Sem permissão');
         await userRepository.deleteComplete(targetId);
+    }
+
+    async updateSector(adminId, targetId, setorId) {
+        const admin = await userRepository.findById(adminId);
+        if (!admin.is_super_admin) throw new Error('Sem permissão');
+        await userRepository.updateSector(targetId, setorId);
     }
 }
 

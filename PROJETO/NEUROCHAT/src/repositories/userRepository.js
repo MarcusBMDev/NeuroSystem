@@ -14,7 +14,10 @@ class UserRepository {
     // Busca usuário pelo ID (usado na Sessão)
     async findById(id) {
         const [rows] = await pool.execute(
-            "SELECT id, username, department, photo, is_super_admin FROM users WHERE id = ?", 
+            `SELECT u.id, u.username, u.department, u.photo, u.is_super_admin, u.setor_id, s.nome as setor_nome 
+             FROM users u 
+             LEFT JOIN setores s ON u.setor_id = s.id 
+             WHERE u.id = ?`, 
             [id]
         );
         return rows[0];
@@ -50,9 +53,17 @@ class UserRepository {
     // Atualiza perfil
     async update(id, data) {
         // Monta query dinâmica (só atualiza o que foi enviado)
-        let sql = "UPDATE users SET username = ?, department = ?";
-        let params = [data.username, data.department];
+        let sql = "UPDATE users SET username = ?";
+        let params = [data.username];
 
+        if (data.department !== undefined) {
+            sql += ", department = ?";
+            params.push(data.department);
+        }
+        if (data.setor_id !== undefined) {
+            sql += ", setor_id = ?";
+            params.push(data.setor_id);
+        }
         if (data.password) {
             sql += ", password = ?";
             params.push(data.password);
@@ -127,6 +138,29 @@ class UserRepository {
             "UPDATE users SET is_super_admin = NOT is_super_admin WHERE id = ?", 
             [userId]
         );
+    }
+
+    // Busca todos os setores reais cadastrados
+    async getAllSectors() {
+        const [rows] = await pool.execute("SELECT id, nome FROM setores ORDER BY nome ASC");
+        return rows;
+    }
+
+    // Atualiza o setor do usuário e sincroniza a coluna department
+    async updateSector(userId, setorId) {
+        if (setorId) {
+            const [rows] = await pool.execute("SELECT nome FROM setores WHERE id = ?", [setorId]);
+            const sectorName = rows[0] ? rows[0].nome : null;
+            await pool.execute(
+                "UPDATE users SET setor_id = ?, department = ? WHERE id = ?", 
+                [setorId, sectorName, userId]
+            );
+        } else {
+            await pool.execute(
+                "UPDATE users SET setor_id = NULL, department = NULL WHERE id = ?", 
+                [userId]
+            );
+        }
     }
 
 }

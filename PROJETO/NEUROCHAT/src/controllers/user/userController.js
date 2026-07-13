@@ -85,6 +85,19 @@ class UserController {
             res.json({ success: false, message: error.message });
         }
     }
+
+    async updateSector(req, res) {
+        try {
+            const adminId = cleanId(req.body.adminId);
+            const targetId = cleanId(req.body.targetUserId);
+            const setorId = req.body.setorId ? cleanId(req.body.setorId) : null;
+
+            await userService.updateSector(adminId, targetId, setorId);
+            res.json({ success: true });
+        } catch (error) {
+            res.json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new UserController();

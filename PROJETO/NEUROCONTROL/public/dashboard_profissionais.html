@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroControl - Profissionais</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👥</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebarContainer">
+        <div class="logo-container">
+            <div class="logo-icon"><i class="fa-solid fa-users-line"></i></div>
+            <div class="logo-text">
+                <h3>NeuroControl</h3>
+                <span style="font-size: 10px; color: #38bdf8; display:block;">Profissionais</span>
+            </div>
+        </div>
+        <ul class="nav-links" id="sidebarNavLinks">
+            <!-- Gerado dinamicamente com base nas permissões para ocultar links indevidos -->
+        </ul>
+
+        <div class="user-profile-sidebar">
+            <div class="user-avatar" id="userAvatar">OP</div>
+            <div class="user-info-side">
+                <span class="user-name-side" id="userNameSide">Operador</span>
+                <span class="user-dept-side" id="userDeptSide">Geral</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div class="search-container">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" class="search-input" id="searchProfissional" placeholder="Buscar profissional...">
+            </div>
+            <div class="top-bar-right">
+                <div class="user-profile-header">
+                    <span style="font-size: 13px; font-weight: 600;" id="userHeaderName">Colaborador</span>
+                    <div class="user-avatar" style="background-color: #0284c7; color: white;">OP</div>
+                    <button class="btn btn-secondary" onclick="logout()" style="padding: 6px 12px; font-size: 11px;"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN TITLE AREA -->
+        <div class="dashboard-title-area">
+            <div>
+                <h2>Equipe de Profissionais</h2>
+                <p>Status, especialidade e carga de agendamentos no NEUROGESTÃO</p>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="carregarProfissionais()"><i class="fa-solid fa-rotate"></i> Atualizar Lista</button>
+            </div>
+        </div>
+
+        <!-- GRID DE PROFISSIONAIS -->
+        <div class="panel-card">
+            <div class="panel-card-header">
+                <div class="panel-card-title"><i class="fa-solid fa-user-doctor"></i> Integrantes da Equipe Clínica</div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="profissionaisTable">
+                    <thead>
+                        <tr>
+                            <th>Nome do Profissional</th>
+                            <th>Especialidade</th>
+                            <th>Status de Atividade</th>
+                            <th>Consultas Confirmadas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted);">Carregando equipe...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SCRIPT DE PERMISSÕES DO SIDEBAR -->
+    <script src="js/menu_permissao.js"></script>
+    <script src="js/dashboard_profissionais.js"></script>
+</body>
+</html>

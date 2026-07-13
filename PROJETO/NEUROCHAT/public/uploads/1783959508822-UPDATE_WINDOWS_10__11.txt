@@ -1,0 +1,14 @@
+Set-ExecutionPolicy RemoteSigned -Force
+
+
+# Instalar o módulo de Windows Update
+Install-Module -Name PSWindowsUpdate -Force -SkipPublisherCheck
+
+# Importar o módulo de Windows Update
+Import-Module PSWindowsUpdate
+
+# Verificar se há atualizações disponíveis
+Get-WindowsUpdate
+
+# Instalar todas as atualizações disponíveis
+Install-WindowsUpdate -AcceptAll

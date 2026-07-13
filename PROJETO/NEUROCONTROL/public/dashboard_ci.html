@@ -39,11 +39,8 @@
                 <span style="font-size: 10px; color: #f43f5e; display:block;">Controle Interno</span>
             </div>
         </div>
-        <ul class="nav-links">
-            <li class="nav-item active"><a href="#"><i class="fa-solid fa-clipboard-check"></i> Dashboard CI</a></li>
-            <li class="nav-item"><a href="/dashboard_operacional.html"><i class="fa-solid fa-file-signature"></i> Solicitação/Agenda</a></li>
-            <li class="nav-item"><a href="/dashboard_faturamento.html"><i class="fa-solid fa-chart-line"></i> Painel Geral</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-sliders"></i> Configurações</a></li>
+        <ul class="nav-links" id="sidebarNavLinks">
+            <!-- Gerado dinamicamente via menu_permissao.js -->
         </ul>
 
         <div class="user-profile-sidebar">
@@ -191,6 +188,7 @@
         </div>
     </div>
 
+    <script src="js/menu_permissao.js"></script>
     <script src="js/dashboard_ci.js"></script>
 </body>
 </html>
