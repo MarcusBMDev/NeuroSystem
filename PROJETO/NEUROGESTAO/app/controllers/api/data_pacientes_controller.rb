@@ -26,6 +26,14 @@ class Api::DataPacientesController < ApplicationController
         pacientes_query = pacientes_query.where(id: paciente_ids)
       end
 
+      if params[:convenio_id].present?
+        if params[:convenio_id] == 'particular'
+          pacientes_query = pacientes_query.where(convenio_id: nil)
+        else
+          pacientes_query = pacientes_query.where(convenio_id: params[:convenio_id])
+        end
+      end
+
       total_registros = pacientes_query.count
       pacientes = pacientes_query.offset(offset).limit(per_page)
       

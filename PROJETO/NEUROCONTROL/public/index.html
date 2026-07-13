@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEUROCONTROL - Login Unificado</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #f8fafc;
+        }
+        .login-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .logo-box {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        p {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 32px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+            outline: none;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        input:focus {
+            border-color: #0284c7;
+            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.3);
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background-color: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+        .btn-submit:hover {
+            background-color: #0369a1;
+        }
+        .error-message {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 16px;
+            display: none;
+        }
+        .portal-link {
+            display: inline-block;
+            margin-top: 24px;
+            font-size: 12px;
+            color: #38bdf8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .portal-link:hover {
+            color: #7dd3fc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="logo-box">🧠🛡️</div>
+        <h1>NeuroControl</h1>
+        <p>Acesse o painel integrado de auditoria e faturamento</p>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Usuário</label>
+                <input type="text" id="username" required placeholder="Digite seu usuário">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" required placeholder="Digite sua senha">
+            </div>
+            <button type="submit" class="btn-submit">Entrar</button>
+        </form>
+
+        <div id="errorMsg" class="error-message"></div>
+
+        <a href="#" id="backToPortal" class="portal-link">← Voltar ao Portal Unificado</a>
+    </div>
+
+    <script>
+        // Configura link de retorno ao portal de acordo com o host dinâmico
+        const host = window.location.hostname;
+        const protocol = window.location.protocol;
+        document.getElementById('backToPortal').href = `${protocol}//${host}:3011`; // NeuroGestão / Portal porta anterior
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('errorMsg');
+
+            errorMsg.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Armazena dados do usuário localmente
+                    localStorage.setItem('user', JSON.stringify(data.user));
+
+                    // Redireciona baseado no departamento
+                    const dept = (data.user.department || '').toLowerCase().trim();
+                    if (dept === 'controle interno' || dept === 'ci') {
+                        window.location.href = '/dashboard_ci.html';
+                    } else if (dept === 'faturamento') {
+                        window.location.href = '/dashboard_faturamento.html';
+                    } else if (dept === 'recepção' || dept === 'recepcao') {
+                        window.location.href = '/dashboard_recepcao.html';
+                    } else if (dept === 'agendamento' || dept === 'solicitação' || dept === 'solicitacao') {
+                        window.location.href = '/dashboard_operacional.html';
+                    } else if (dept === 'diretoria' || dept === 'administração' || dept === 'gerência') {
+                        window.location.href = '/dashboard_faturamento.html'; // Visão executiva completa
+                    } else {
+                        // Roteamento padrão para faturamento
+                        window.location.href = '/dashboard_faturamento.html';
+                    }
+                } else {
+                    errorMsg.textContent = data.error || 'Credenciais inválidas.';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                console.error(err);
+                errorMsg.textContent = 'Erro ao conectar ao servidor.';
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

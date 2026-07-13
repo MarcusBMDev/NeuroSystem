@@ -73,4 +73,16 @@ Rails.application.configure do
 
   # Silenciar os logs no prompt/terminal e jogar TUDO para o arquivo log/development.log
   config.logger = ActiveSupport::Logger.new(Rails.root.join("log", "development.log"))
+
+  # Remove o broadcast para o terminal (STDOUT/STDERR), mantendo os logs exclusivamente no arquivo
+  config.after_initialize do
+    if Rails.logger.respond_to?(:broadcasts)
+      Rails.logger.broadcasts.each do |logger|
+        logdev = logger.instance_variable_get(:@logdev)
+        if logdev && (logdev.dev == $stdout || logdev.dev == STDOUT || logdev.dev == $stderr || logdev.dev == STDERR)
+          Rails.logger.stop_broadcasting_to(logger)
+        end
+      end
+    end
+  end
 end

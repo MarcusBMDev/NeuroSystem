@@ -1,5 +1,10 @@
 /* public/css/neurogestao.css */
 body {
+    background-image: url('/imagens/NEUROGESTAO.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     background-color: #f8fafc;
     min-height: 100vh;
 }
@@ -43,4 +48,29 @@ table tbody tr:hover {
 /* Forçar nomes e textos críticos */
 .text-slate-900, .text-slate-800 {
     color: #0f172a !important; /* Slate-900 puro */
+}
+
+/* Sidebar scroll adjustments */
+aside {
+    overflow-y: auto !important;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+aside::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+
+/* Thin scrollbar for lists */
+.scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3); /* Slate-400 with opacity */
+    border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
 }

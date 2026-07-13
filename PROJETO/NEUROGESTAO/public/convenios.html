@@ -50,7 +50,10 @@
                 <h1 class="text-4xl font-black text-slate-900 tracking-tight">Gestão de <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Convênios</span></h1>
                 <p class="text-slate-500 mt-2 font-medium">Controle de planos de saúde atendidos pela clínica.</p>
             </div>
-            <button onclick="abrirModalConvenio()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black transition-all text-xs uppercase shadow-xl shadow-blue-500/20 active:scale-95">+ Novo Convênio</button>
+            <div class="flex gap-4">
+                <button onclick="abrirModalMesclar()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-8 py-4 rounded-2xl font-black transition-all text-xs uppercase active:scale-95">🔗 Unificar Convênios</button>
+                <button onclick="abrirModalConvenio()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black transition-all text-xs uppercase shadow-xl shadow-blue-500/20 active:scale-95">+ Novo Convênio</button>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="lista-convenios">
@@ -101,13 +104,45 @@
         </div>
     </div>
 
+    <!-- Modal de Unificar Convênios -->
+    <div id="modal-mesclar" class="fixed inset-0 bg-slate-900/60 hidden flex items-center justify-center p-6 z-50 backdrop-blur-md" onclick="if(event.target === this) fecharModalMesclar()">
+        <div class="bg-white w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl animate-fade relative">
+            <button onclick="fecharModalMesclar()" class="absolute top-8 right-10 text-slate-400 hover:text-slate-600 font-black text-2xl transition-all hover:scale-110">×</button>
+            <h2 class="text-2xl font-black text-slate-900 mb-2">Unificar Convênios</h2>
+            <p class="text-xs text-slate-500 font-medium mb-6">Transfere todos os pacientes e agendamentos do convênio duplicado para o convênio principal.</p>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Convênio Duplicado (Será REMOVIDO)</label>
+                    <select id="mesclar-origem" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 transition-all uppercase">
+                        <option value="">Selecione o convênio duplicado...</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Convênio Principal (Será MANTIDO)</label>
+                    <select id="mesclar-destino" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 transition-all uppercase">
+                        <option value="">Selecione o convênio principal...</option>
+                    </select>
+                </div>
+                
+                <div class="flex gap-4 pt-4">
+                    <button onclick="fecharModalMesclar()" class="flex-1 py-4 text-slate-500 font-bold">Cancelar</button>
+                    <button onclick="executarMescla()" class="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all uppercase tracking-wider text-xs">Unificar Convênios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let conveniosGlobais = [];
         async function carregarConvenios() {
             try {
                 const res = await fetch('/api/convenios?_=' + new Date().getTime());
                 if (!res.ok) throw new Error("Erro HTTP: " + res.status);
                 
                 const dados = await res.json();
+                conveniosGlobais = dados;
                 const container = document.getElementById('lista-convenios');
                 
                 container.innerHTML = dados.map(c => {
@@ -143,6 +178,24 @@
                             <div>
                                 <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Exigências</p>
                                 <p class="text-[10px] text-slate-600 font-medium line-clamp-3 italic">"${exigenciasSujas}"</p>
+                            </div>
+
+                            <div>
+                                <p class="text-[9px] font-black text-slate-400 uppercase mb-1.5 flex justify-between items-center">
+                                    <span>Pacientes Vinculados</span>
+                                    <span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md text-[7px] font-black">${c.pacientes ? c.pacientes.length : 0}</span>
+                                </p>
+                                <div class="max-h-28 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+                                    ${(c.pacientes && c.pacientes.length > 0) 
+                                        ? c.pacientes.map(p => `
+                                            <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl hover:bg-white transition-colors">
+                                                <a href="/pacientes?busca=${encodeURIComponent(p.nome)}" class="text-[9px] font-bold text-slate-700 hover:text-blue-600 truncate max-w-[85%]" title="Ver paciente">${p.nome.toUpperCase()}</a>
+                                                <span class="text-[7px] text-slate-400 font-bold">ID #${p.id}</span>
+                                            </div>
+                                          `).join('')
+                                        : '<p class="text-[9px] text-slate-400 font-bold italic py-2">Nenhum paciente vinculado</p>'
+                                    }
+                                </div>
                             </div>
 
                             ${c.documento_url ? `
@@ -266,7 +319,94 @@
             }
         }
 
-        carregarConvenios();
+        function initAccess() {
+            const isReadOnly = getNivelAcesso() === 'neurochat';
+            if (isReadOnly) {
+                const btnMesclar = document.querySelector('button[onclick="abrirModalMesclar()"]');
+                const btnNovo = document.querySelector('button[onclick="abrirModalConvenio()"]');
+                if (btnMesclar) btnMesclar.style.display = 'none';
+                if (btnNovo) btnNovo.style.display = 'none';
+            }
+        }
+
+        async function abrirModalMesclar() {
+            const orig = document.getElementById('mesclar-origem');
+            const dest = document.getElementById('mesclar-destino');
+            
+            orig.innerHTML = '<option value="">Carregando convênios...</option>';
+            dest.innerHTML = '<option value="">Carregando convênios...</option>';
+            document.getElementById('modal-mesclar').classList.remove('hidden');
+
+            try {
+                // Filtra os convênios ativos
+                const ativos = conveniosGlobais.filter(c => c.ativo !== false);
+                
+                // Ordena por nome
+                ativos.sort((a, b) => a.nome.localeCompare(b.nome));
+
+                const optionsHtml = '<option value="">Selecione o convênio...</option>' + 
+                    ativos.map(c => `<option value="${c.id}">${c.nome.toUpperCase()} (ID: ${c.id})</option>`).join('');
+                    
+                orig.innerHTML = optionsHtml;
+                dest.innerHTML = optionsHtml;
+            } catch(e) {
+                orig.innerHTML = '<option value="">Erro ao carregar</option>';
+                dest.innerHTML = '<option value="">Erro ao carregar</option>';
+            }
+        }
+        
+        function fecharModalMesclar() {
+            document.getElementById('modal-mesclar').classList.add('hidden');
+        }
+        
+        async function executarMescla() {
+            const idOrigem = document.getElementById('mesclar-origem').value;
+            const idDestino = document.getElementById('mesclar-destino').value;
+            
+            if(!idOrigem || !idDestino) {
+                return alert("Selecione ambos os convênios para realizar a unificação.");
+            }
+            
+            if(idOrigem === idDestino) {
+                return alert("O convênio duplicado deve ser diferente do convênio principal.");
+            }
+            
+            const origNome = document.getElementById('mesclar-origem').options[document.getElementById('mesclar-origem').selectedIndex].text;
+            const destNome = document.getElementById('mesclar-destino').options[document.getElementById('mesclar-destino').selectedIndex].text;
+            
+            if(!confirm(`⚠️ ATENÇÃO: Tem certeza que deseja unificar o convênio "${origNome}" no convênio "${destNome}"?\n\nEsta ação moverá todos os pacientes/agendamentos e DELETARÁ o convênio "${origNome}". Esta ação não pode ser desfeita.`)) {
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/convenios/mesclar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id_origem: idOrigem, id_destino: idDestino })
+                });
+                
+                const data = await res.json();
+                
+                if(res.ok) {
+                    alert("Convênios unificados com sucesso!");
+                    fecharModalMesclar();
+                    carregarConvenios();
+                } else {
+                    alert("Erro: " + (data.error || "Ocorreu um erro ao unificar."));
+                }
+            } catch(e) {
+                alert("Erro de conexão ao unificar convênios.");
+            }
+        }
+
+        async function init() {
+            await carregarConvenios();
+            initAccess();
+        }
+
+        init();
     </script>
 </body>
 </html>

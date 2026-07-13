@@ -15,6 +15,7 @@ Rails.application.routes.draw do
     post 'pacientes', to: 'data_pacientes#create'
     put  'pacientes/:id', to: 'data_pacientes#update'
     patch 'pacientes/:id', to: 'data_pacientes#update'
+    delete 'pacientes/:id', to: 'data_pacientes#destroy'
 
     resources :profissionais do
       collection do
@@ -24,8 +25,11 @@ Rails.application.routes.draw do
       post 'share_curriculo', on: :member
     end
 
-    resources :convenios
-    resources :users, only: [:index]
+    resources :convenios do
+      post 'mesclar', on: :collection
+    end
+    resources :users, only: [:index, :create, :update, :destroy]
+    resources :solicitantes, only: [:index, :create, :destroy]
     resources :lista_esperas, only: [:index, :create, :update, :destroy]
     resources :auditorias, only: [:index]
     
@@ -47,6 +51,7 @@ Rails.application.routes.draw do
         get  :sugerir
         post :transferir
         get  'por_profissional/:id', action: :por_profissional, as: :por_profissional
+        get  :historico_slot
       end
       # Rotas de membro (com :id do resource)
       member do
@@ -66,6 +71,7 @@ Rails.application.routes.draw do
   get '/convenios_view', to: 'application#renderizar_convenios'
   get '/auditoria', to: 'application#renderizar_auditoria'
   get '/primeiros', to: 'application#renderizar_primeiros'
+  get '/admin',     to: 'application#renderizar_admin'
   
   post '/login', to: 'auth#login'
 end

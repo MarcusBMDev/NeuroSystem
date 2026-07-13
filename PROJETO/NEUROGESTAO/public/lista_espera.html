@@ -501,7 +501,7 @@
 
         async function verGradePaciente(pacienteId) {
             try {
-                const res = await fetch(`/api/pacientes`);
+                const res = await fetch(`/api/pacientes?per_page=10000`);
                 const pacientes = await res.json();
                 const p = pacientes.find(p => p.id == pacienteId);
                 
@@ -775,7 +775,7 @@
                 if (pacienteId && nome) {
                     // Tenta buscar as especialidades/frequências reais do paciente em vez de confiar apenas na URL
                     try {
-                        const res = await fetch(`/api/pacientes`);
+                        const res = await fetch(`/api/pacientes?per_page=10000`);
                         const pacientes = await res.json();
                         const p = pacientes.find(p => p.id == pacienteId);
                         if (p && p.planned_specialties) {

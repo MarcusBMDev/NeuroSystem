@@ -1,11 +1,18 @@
 # app/services/auditoria_service.rb
 class AuditoriaService
   def self.log(request, acao, entidade, detalhes = nil)
-    # Extrai informações dos headers (injetadas pelo auth.js no front)
-    user_id   = request.headers['X-User-Id']
-    user_name = NeurochatService.clean_str(request.headers['X-User-Name'] || 'Sistema')
-    setor     = NeurochatService.clean_str(request.headers['X-User-Role'] || 'Desconhecido')
-    ip        = request.remote_ip
+    if request.is_a?(Hash)
+      user_id   = request[:user_id]
+      user_name = NeurochatService.clean_str(request[:user_name] || 'Sistema')
+      setor     = NeurochatService.clean_str(request[:setor] || 'Desconhecido')
+      ip        = request[:ip_address]
+    else
+      # Extrai informações dos headers (injetadas pelo auth.js no front)
+      user_id   = request&.headers&.[]('X-User-Id')
+      user_name = NeurochatService.clean_str(request&.headers&.[]('X-User-Name') || 'Sistema')
+      setor     = NeurochatService.clean_str(request&.headers&.[]('X-User-Role') || 'Desconhecido')
+      ip        = request&.remote_ip
+    end
 
     # Se 'entidade' for um objeto ActiveRecord, extraímos o tipo e ID
     tipo = entidade.is_a?(String) ? entidade : entidade.class.name

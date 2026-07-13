@@ -11,7 +11,8 @@ const pool = mysql.createPool({
     port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 15, // Quantas conexões simultâneas o Node pode manter
-    queueLimit: 0
+    queueLimit: 0,
+    timezone: '-03:00'
 });
 
 // Converte para usar Promises (Async/Await)

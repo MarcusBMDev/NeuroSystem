@@ -95,7 +95,7 @@ function logout() { localStorage.removeItem('agendaUser'); window.location.href 
 
 // --- AGENDA PRINCIPAL ---
 let currentRoom = 1;
-let currentDate = new Date().toISOString().split('T')[0];
+let currentDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 let selectedTimeSlot = null;
 let refreshInterval = null; // Variável para controlar a atualização
 

@@ -12,7 +12,8 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10, // Aguenta até 10 conexões simultâneas
     queueLimit: 0,
-    charset: 'utf8mb4'
+    charset: 'utf8mb4',
+    timezone: '-03:00'
 });
 
 // Função para testar se o banco ligou (usaremos no server.js)

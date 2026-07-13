@@ -185,6 +185,10 @@ class Api::AgendamentosController < ApplicationController
       return render json: { error: "Usuários do Neurochat não têm permissão para agendar ou bloquear vagas diretamente." }, status: :forbidden
     end
 
+    if request.headers['X-User-Name'].present?
+      params[:agendamento][:atualizado_por] = request.headers['X-User-Name'].upcase
+    end
+
     agendamento = Agendamento.new(agendamento_params)
 
     # Se for um bloqueio, garantimos que o nome do bloqueador está correto.
@@ -204,7 +208,19 @@ class Api::AgendamentosController < ApplicationController
     
     # Se vem da lista de espera, o status padrão pode ser pendente se o front enviar
     if agendamento.save
-      AuditoriaService.log(request, 'CRIAR_AGENDAMENTO', agendamento, "Status: #{agendamento.status}, Paciente: #{agendamento.paciente&.nome}")
+      detalhes_log = {
+        profissional_id: agendamento.profissional_id,
+        profissional_nome: agendamento.profissional&.nome,
+        dia_semana: agendamento.dia_semana,
+        horario: agendamento.horario,
+        paciente_id: agendamento.paciente_id,
+        paciente_nome: agendamento.paciente&.nome,
+        status: agendamento.status,
+        observacoes: agendamento.observacoes,
+        motivo_bloqueio: agendamento.motivo_bloqueio,
+        atualizado_por: agendamento.atualizado_por || agendamento.bloqueado_por
+      }
+      AuditoriaService.log(request, 'CRIAR_AGENDAMENTO', agendamento, detalhes_log)
       if agendamento.status == 'pendente'
         # Notifica o grupo que há um agendamento aguardando aprovação
         setor = request.headers['X-User-Role'] || 'Recepção'
@@ -230,7 +246,8 @@ class Api::AgendamentosController < ApplicationController
     end
 
     Agendamento.transaction do
-      agendamento.update!(status: 'confirmado')
+      nome_usuario = request.headers['X-User-Name'].presence || 'GESTÃO'
+      agendamento.update!(status: 'confirmado', atualizado_por: nome_usuario.upcase)
       
       # Se houver um item na lista de espera vinculado, removemos ou marcamos como concluído
       if agendamento.lista_espera_id.present?
@@ -247,7 +264,17 @@ class Api::AgendamentosController < ApplicationController
     end
 
     setor = request.headers['X-User-Role'] || 'Gestão'
-    AuditoriaService.log(request, 'APROVAR_AGENDAMENTO', agendamento, "Aprovado por #{setor}")
+    detalhes_log = {
+      profissional_id: agendamento.profissional_id,
+      profissional_nome: agendamento.profissional&.nome,
+      dia_semana: agendamento.dia_semana,
+      horario: agendamento.horario,
+      paciente_id: agendamento.paciente_id,
+      paciente_nome: agendamento.paciente&.nome,
+      status: 'confirmado',
+      aprovado_por: request.headers['X-User-Name'] || 'GESTÃO'
+    }
+    AuditoriaService.log(request, 'APROVAR_AGENDAMENTO', agendamento, detalhes_log)
     NeurochatService.notificar_aprovacao_agendamento(agendamento, setor)
 
     render json: { message: "Agendamento aprovado com sucesso!", agendamento: agendamento }
@@ -256,7 +283,13 @@ class Api::AgendamentosController < ApplicationController
   # PATCH/PUT /agendamentos/:id
   def update
     if request.headers['X-User-Access-Level'] == 'neurochat' && !user_is_gestao?
-      return render json: { error: "Usuários do Neurochat não têm permissão para alterar agendamentos diretamente." }, status: :forbidden
+      # Permite que usuários do Neurochat editem APENAS as observações e/ou cor (e atualizado_por)
+      agendamento_params_keys = params.require(:agendamento).keys.map(&:to_s)
+      allowed_keys = ['observacoes', 'cor', 'atualizado_por']
+      
+      if (agendamento_params_keys - allowed_keys).any?
+        return render json: { error: "Usuários do Neurochat não têm permissão para alterar dados estruturais de agendamentos." }, status: :forbidden
+      end
     end
 
     agendamento = Agendamento.find(params[:id])
@@ -264,6 +297,10 @@ class Api::AgendamentosController < ApplicationController
     old_dia = agendamento.dia_semana
     old_horario = agendamento.horario
     old_prof = agendamento.profissional
+    
+    if request.headers['X-User-Name'].present?
+      params[:agendamento][:atualizado_por] = request.headers['X-User-Name'].upcase
+    end
     
     if agendamento.update(agendamento_params)
       # Verifica se trocou horário ou profissional
@@ -278,7 +315,19 @@ class Api::AgendamentosController < ApplicationController
         )
       end
       
-      AuditoriaService.log(request, 'EDITAR_AGENDAMENTO', agendamento, "Novos dados: #{agendamento_params.to_h}")
+      detalhes_log = {
+        profissional_id: agendamento.profissional_id,
+        profissional_nome: agendamento.profissional&.nome,
+        dia_semana: agendamento.dia_semana,
+        horario: agendamento.horario,
+        paciente_id: agendamento.paciente_id,
+        paciente_nome: agendamento.paciente&.nome,
+        status: agendamento.status,
+        observacoes: agendamento.observacoes,
+        motivo_bloqueio: agendamento.motivo_bloqueio,
+        atualizado_por: agendamento.atualizado_por
+      }
+      AuditoriaService.log(request, 'EDITAR_AGENDAMENTO', agendamento, detalhes_log)
       render json: agendamento
     else
       render json: { errors: agendamento.errors.full_messages }, status: :unprocessable_entity
@@ -316,8 +365,20 @@ class Api::AgendamentosController < ApplicationController
     hora         = agendamento.horario
     motivo       = agendamento.motivo_bloqueio.presence || "Remoção direta na grade"
     setor        = request.headers['X-User-Role'] || 'Gestão'
+    operador_nome = request.headers['X-User-Name']
     
-    AuditoriaService.log(request, 'EXCLUIR_AGENDAMENTO', agendamento, "Paciente: #{paciente&.nome}, Horário: #{dia} #{hora}")
+    detalhes_log = {
+      profissional_id: agendamento.profissional_id,
+      profissional_nome: profissional&.nome,
+      dia_semana: dia,
+      horario: hora,
+      paciente_id: agendamento.paciente_id,
+      paciente_nome: paciente&.nome,
+      status: agendamento.status,
+      motivo: motivo,
+      operador: operador_nome || setor
+    }
+    AuditoriaService.log(request, 'EXCLUIR_AGENDAMENTO', agendamento, detalhes_log)
     agendamento.destroy
 
     # Notifica o Grupo 14 (Retiradas) ou o grupo de Agendamento sobre a remoção
@@ -365,7 +426,8 @@ class Api::AgendamentosController < ApplicationController
           erros << "Horário #{ag.dia_semana} às #{ag.horario} ocupado no profissional de destino."
           raise ActiveRecord::Rollback
         else
-          ag.update!(profissional_id: para_prof_id, encaixe: params[:encaixe] == true)
+          nome_usuario = request.headers['X-User-Name'].presence || 'AGENDAMENTO'
+          ag.update!(profissional_id: para_prof_id, encaixe: params[:encaixe] == true, atualizado_por: nome_usuario.upcase)
         end
       end
     end
@@ -431,10 +493,68 @@ class Api::AgendamentosController < ApplicationController
     }
   end
 
+  # GET /api/agendamentos/historico_slot
+  def historico_slot
+    profissional_id = params[:profissional_id]
+    dia_semana = params[:dia_semana].to_s.upcase.strip
+    horario = params[:horario].to_s.strip
+
+    if profissional_id.blank? || dia_semana.blank? || horario.blank?
+      return render json: { error: "Parâmetros insuficientes" }, status: :bad_request
+    end
+
+    agendamento = Agendamento.find_by(profissional_id: profissional_id, dia_semana: dia_semana, horario: horario)
+    agendamento_id = agendamento&.id
+
+    conditions = []
+    values = []
+
+    if agendamento_id
+      conditions << "entidade_id = ?"
+      values << agendamento_id
+    end
+
+    conditions << "(detalhes LIKE ? AND detalhes LIKE ? AND detalhes LIKE ?)"
+    values += ["%\"profissional_id\":#{profissional_id}%", "%\"dia_semana\":\"#{dia_semana}\"%", "%\"horario\":\"#{horario}\"%"]
+
+    prof = Profissional.find_by(id: profissional_id)
+    if prof
+      conditions << "(detalhes LIKE ? AND detalhes LIKE ?)"
+      values += ["%#{prof.nome}%", "%Horário: #{dia_semana} #{horario}%"]
+    end
+
+    query = Auditoria.where(entidade_tipo: 'Agendamento')
+                     .where(conditions.join(" OR "), *values)
+                     .order(created_at: :desc)
+                     .limit(10)
+
+    historico = query.map do |aud|
+      {
+        id: aud.id,
+        acao: aud.acao,
+        created_at: aud.created_at,
+        setor: aud.setor,
+        user_name: aud.user_name || 'Sistema',
+        detalhes: parse_detalhes_log(aud.detalhes)
+      }
+    end
+
+    render json: historico
+  end
+
   private
 
+  def parse_detalhes_log(detalhes_str)
+    return {} if detalhes_str.blank?
+    begin
+      JSON.parse(detalhes_str)
+    rescue JSON::ParserError
+      { text: detalhes_str }
+    end
+  end
+
   def agendamento_params
-    params.require(:agendamento).permit(:profissional_id, :paciente_id, :convenio_id, :dia_semana, :horario, :observacoes, :status, :lista_espera_id, :motivo_bloqueio, :bloqueado_por, :bloqueado_por_id, :encaixe, :data_encaixe, :terapia_grupo, :cor)
+    params.require(:agendamento).permit(:profissional_id, :paciente_id, :convenio_id, :dia_semana, :horario, :observacoes, :status, :lista_espera_id, :motivo_bloqueio, :bloqueado_por, :bloqueado_por_id, :encaixe, :data_encaixe, :terapia_grupo, :cor, :atualizado_por)
   end
 
   # Interpreta o campo planned_specialties que pode ser JSON ou texto separado por vírgulas

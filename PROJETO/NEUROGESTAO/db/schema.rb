@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_28_215800) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_07_103000) do
   create_table "active_storage_attachments", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -40,6 +40,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_215800) do
   end
 
   create_table "agendamentos", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.string "atualizado_por"
     t.string "bloqueado_por"
     t.integer "bloqueado_por_id"
     t.bigint "convenio_id"
@@ -144,6 +145,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_215800) do
     t.string "especialidade"
     t.integer "max_age"
     t.integer "min_age"
+    t.string "nome"
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "solicitantes", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.datetime "created_at", null: false
     t.string "nome"
     t.datetime "updated_at", null: false
   end

@@ -4,6 +4,7 @@ class Api::ConveniosController < ApplicationController
     convenios = Convenio.all.order(:nome)
     render json: convenios.map { |c| 
       json = c.as_json(only: [:id, :nome, :ativo, :exigencias, :especialidades_atendidas])
+      json[:pacientes] = c.pacientes.ativos.order(:nome).map { |p| { id: p.id, nome: p.nome } }
       begin
         json[:documento_url] = c.documento.attached? ? rails_blob_url(c.documento, only_path: true) : nil
         json[:documento_nome] = c.documento.attached? ? c.documento.filename.to_s : nil
@@ -48,10 +49,51 @@ class Api::ConveniosController < ApplicationController
     end
   end
 
+  def mesclar
+    id_origem = params[:id_origem]
+    id_destino = params[:id_destino]
+
+    if id_origem.blank? || id_destino.blank?
+      return render json: { error: "Os convênios de origem e destino são obrigatórios." }, status: :unprocessable_entity
+    end
+
+    if id_origem == id_destino
+      return render json: { error: "Os convênios de origem e destino devem ser diferentes." }, status: :unprocessable_entity
+    end
+
+    convenio_origem = Convenio.find_by(id: id_origem)
+    convenio_destino = Convenio.find_by(id: id_destino)
+
+    if convenio_origem.nil? || convenio_destino.nil?
+      return render json: { error: "Convênio de origem ou destino não localizado." }, status: :not_found
+    end
+
+    begin
+      Convenio.transaction do
+        # 1. Atualizar convenio_id de todos os pacientes que usam o convenio_origem
+        Paciente.where(convenio_id: id_origem).update_all(convenio_id: id_destino)
+
+        # 2. Atualizar convenio_id de todos os agendamentos que usam o convenio_origem
+        Agendamento.where(convenio_id: id_origem).update_all(convenio_id: id_destino)
+
+        # 3. Remover o convênio de origem
+        convenio_origem.destroy!
+      end
+
+      # Registra em auditoria
+      AuditoriaService.log(request, 'MESCLAR_CONVENIOS', convenio_destino, "Mesclou convênio #{convenio_origem.nome} (ID: #{id_origem}) para #{convenio_destino.nome} (ID: #{id_destino})")
+
+      render json: { success: true, message: "Convênios unificados com sucesso!" }
+    rescue => e
+      render json: { error: "Erro ao mesclar convênios: #{e.message}" }, status: :unprocessable_entity
+    end
+  end
+
   private
 
   def convenio_json(c)
     json = c.as_json(only: [:id, :nome, :ativo, :exigencias, :especialidades_atendidas])
+    json[:pacientes] = c.pacientes.ativos.order(:nome).map { |p| { id: p.id, nome: p.nome } }
     begin
       json[:documento_url] = c.documento.attached? ? rails_blob_url(c.documento, only_path: true) : nil
       json[:documento_nome] = c.documento.attached? ? c.documento.filename.to_s : nil

@@ -246,7 +246,8 @@ class NeurochatService
       # Garante modo escrita na sessão do MySQL (redundância de segurança)
       conn.execute("SET SESSION TRANSACTION READ WRITE") rescue nil
       
-      sanitized_sql = ActiveRecord::Base.send(:sanitize_sql_array, [sql, sender_id, texto, grupo_id, Time.current])
+      local_time = Time.current.in_time_zone("America/Sao_Paulo").strftime("%Y-%m-%d %H:%M:%S")
+      sanitized_sql = ActiveRecord::Base.send(:sanitize_sql_array, [sql, sender_id, texto, grupo_id, local_time])
       conn.execute(sanitized_sql)
     end
   rescue => e
@@ -261,7 +262,8 @@ class NeurochatService
       conn = NeurochatRecord.connection
       conn.execute("SET SESSION TRANSACTION READ WRITE") rescue nil
       
-      sanitized_sql = ActiveRecord::Base.send(:sanitize_sql_array, [sql, SYSTEM_USER_ID, target_id, texto, Time.current])
+      local_time = Time.current.in_time_zone("America/Sao_Paulo").strftime("%Y-%m-%d %H:%M:%S")
+      sanitized_sql = ActiveRecord::Base.send(:sanitize_sql_array, [sql, SYSTEM_USER_ID, target_id, texto, local_time])
       conn.execute(sanitized_sql)
       
       # Retorna o ID do último insert para o webhook

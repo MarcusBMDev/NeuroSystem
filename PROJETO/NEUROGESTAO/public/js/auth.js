@@ -55,6 +55,15 @@ function aplicarRestricoesNavegacao() {
     // Outras páginas administrativas (/equipe, /convenios_view, /espera) e pacientes: gestores locais OU neurochat
     const canAccessOutrosAdmin = isGestor || isNeurochat;
 
+    // Apenas Ester (ID 1) pode acessar a aba de administração
+    const canAccessAdmin = (localStorage.getItem('userId') === '1');
+
+    if (path.includes('/admin') && !canAccessAdmin) {
+        console.warn("Acesso negado à Administração: Redirecionando para Grade...");
+        window.location.href = '/grade';
+        return;
+    }
+
     // Se tentar acessar a Central de Aprovação (/transferencias) sem permissão, redireciona para a grade
     if (path.includes('/transferencias') && !canAccessTransferencias) {
         console.warn("Acesso negado à Central de Aprovação: Redirecionando para Grade...");
@@ -101,6 +110,22 @@ function aplicarRestricoesNavegacao() {
                 }
             }
         });
+
+        // Injeta link de Administração se for ID 1 (Ester)
+        if (canAccessAdmin && !sidebar.querySelector('a[href="/admin"]')) {
+            const adminLink = document.createElement('a');
+            adminLink.href = '/admin';
+            
+            const isCurrent = path.includes('/admin');
+            if (isCurrent) {
+                adminLink.className = 'flex items-center gap-6 px-3 py-4 rounded-2xl transition-all duration-300 font-bold bg-gradient-to-r from-blue-600/20 to-transparent text-blue-400 border-l-4 border-blue-500';
+            } else {
+                adminLink.className = 'flex items-center gap-6 px-3 py-4 rounded-2xl transition-all duration-300 font-bold text-slate-400 hover:text-white hover:bg-slate-800/50';
+            }
+            
+            adminLink.innerHTML = `⚙️ <span class="opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Administração</span>`;
+            sidebar.appendChild(adminLink);
+        }
     }
 }
 

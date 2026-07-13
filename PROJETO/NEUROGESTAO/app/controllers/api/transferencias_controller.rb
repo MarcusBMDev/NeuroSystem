@@ -2,6 +2,7 @@ class Api::TransferenciasController < ApplicationController
   before_action :validar_acesso_gestao!, except: [:create]
   before_action :validar_acesso_exclusivo_agendamento!, except: [:create]
   before_action :validar_usuario_logado!, only: [:create]
+  before_action :validar_autorizador!, only: [:aprovar, :rejeitar]
   # GET /transferencias
   def index
     status_filter = params[:status].presence || 'pendente'
@@ -111,16 +112,37 @@ class Api::TransferenciasController < ApplicationController
 
   private
 
+  def validar_autorizador!
+    user_name = request.headers['X-User-Name']&.to_s&.downcase&.strip
+    unless ['ester', 'camila'].include?(user_name)
+      render json: { errors: ["Acesso Negado. Apenas Ester e Camila podem autorizar solicitações."] }, status: :forbidden
+    end
+  end
+
   def processar_aprovacao_transferencia(t)
     if t.agendamento_origem_id.present? && t.novo_horario.present? && t.novo_dia_semana.present?
       # Caso 1: Transferência para horário específico escolhido no modal
       ag = Agendamento.find(t.agendamento_origem_id)
       
       # Verifica conflitos (ignora se o pedido de transferência for marcado como encaixe)
-      if !t.encaixe && Agendamento.exists?(profissional_id: t.para_profissional_id, dia_semana: t.novo_dia_semana, horario: t.novo_horario)
+      if !t.encaixe && Agendamento.where.not(id: ag.id).exists?(profissional_id: t.para_profissional_id, dia_semana: t.novo_dia_semana, horario: t.novo_horario)
         raise "Horário #{t.novo_dia_semana} às #{t.novo_horario} já está ocupado no profissional de destino."
       end
       
+      detalhes_log = {
+        profissional_id: t.para_profissional_id,
+        profissional_nome: t.para_profissional&.nome,
+        dia_semana: t.novo_dia_semana,
+        horario: t.novo_horario,
+        paciente_id: ag.paciente_id,
+        paciente_nome: ag.paciente&.nome,
+        status: ag.status,
+        motivo: t.motivo,
+        origem_profissional_id: t.de_profissional_id,
+        operador: request.headers['X-User-Name'] || t.solicitante
+      }
+      AuditoriaService.log(request, 'TRANSFERENCIA_DIRETA', ag, detalhes_log)
+
       ag.update!(
         profissional_id: t.para_profissional_id,
         dia_semana: t.novo_dia_semana,
@@ -134,9 +156,24 @@ class Api::TransferenciasController < ApplicationController
       raise "Nenhum agendamento encontrado para transferência." if agendamentos.empty?
 
       agendamentos.each do |ag|
-        if Agendamento.exists?(profissional_id: t.para_profissional_id, dia_semana: ag.dia_semana, horario: ag.horario)
+        if Agendamento.where.not(id: ag.id).exists?(profissional_id: t.para_profissional_id, dia_semana: ag.dia_semana, horario: ag.horario)
           raise "Horário #{ag.dia_semana} às #{ag.horario} ocupado no profissional de destino."
         end
+        
+        detalhes_log = {
+          profissional_id: t.para_profissional_id,
+          profissional_nome: t.para_profissional&.nome,
+          dia_semana: ag.dia_semana,
+          horario: ag.horario,
+          paciente_id: ag.paciente_id,
+          paciente_nome: ag.paciente&.nome,
+          status: ag.status,
+          motivo: t.motivo,
+          origem_profissional_id: t.de_profissional_id,
+          operador: request.headers['X-User-Name'] || t.solicitante
+        }
+        AuditoriaService.log(request, 'TRANSFERENCIA_DIRETA', ag, detalhes_log)
+
         ag.update!(profissional_id: t.para_profissional_id)
       end
     end
@@ -145,9 +182,29 @@ class Api::TransferenciasController < ApplicationController
   def processar_aprovacao_remocao(t)
     ids = JSON.parse(t.agendamento_ids || "[]")
     agendamentos = Agendamento.includes(:profissional).where(id: ids)
-    raise "Nenhum agendamento encontrado para remoção." if agendamentos.empty?
+    
+    if agendamentos.empty?
+      Rails.logger.warn "Aviso: Agendamentos para remoção (IDs: #{ids}) já não existem no banco."
+      return
+    end
 
     setor = t.solicitante.presence || 'Gestão'
+
+    # Log das remoções individuais para auditoria estruturada
+    agendamentos.each do |ag|
+      detalhes_log = {
+        profissional_id: ag.profissional_id,
+        profissional_nome: ag.profissional&.nome,
+        dia_semana: ag.dia_semana,
+        horario: ag.horario,
+        paciente_id: ag.paciente_id,
+        paciente_nome: ag.paciente&.nome,
+        status: ag.status,
+        motivo: t.motivo.presence || 'Remoção aprovada pela gestão',
+        operador: request.headers['X-User-Name'] || t.solicitante
+      }
+      AuditoriaService.log(request, 'EXCLUIR_AGENDAMENTO', ag, detalhes_log)
+    end
 
     # Notifica o Grupo 14 com TODOS os agendamentos de uma só vez antes de destruir
     begin
@@ -168,13 +225,33 @@ class Api::TransferenciasController < ApplicationController
   def processar_aprovacao_reducao(t)
     ids = JSON.parse(t.agendamento_ids || "[]")
     agendamentos = Agendamento.includes(:profissional).where(id: ids)
-    raise "Nenhum agendamento encontrado para redução." if agendamentos.empty?
+    
+    if agendamentos.empty?
+      Rails.logger.warn "Aviso: Agendamentos para redução (IDs: #{ids}) já não existem no banco."
+      return
+    end
     
     # Quantidade de sessões removidas
     removidas = agendamentos.count
     
     setor = t.solicitante.presence || 'Gestão'
     
+    # Log das reduções individuais para auditoria estruturada
+    agendamentos.each do |ag|
+      detalhes_log = {
+        profissional_id: ag.profissional_id,
+        profissional_nome: ag.profissional&.nome,
+        dia_semana: ag.dia_semana,
+        horario: ag.horario,
+        paciente_id: ag.paciente_id,
+        paciente_nome: ag.paciente&.nome,
+        status: ag.status,
+        motivo: t.motivo.presence || 'Redução aprovada pela gestão',
+        operador: request.headers['X-User-Name'] || t.solicitante
+      }
+      AuditoriaService.log(request, 'EXCLUIR_AGENDAMENTO', ag, detalhes_log)
+    end
+
     # Notifica o Grupo 14 com TODOS os agendamentos de uma só vez antes de destruir
     begin
       NeurochatService.notificar_reducao_grade(

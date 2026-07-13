@@ -4,12 +4,21 @@ module Api
       especialidades_count = Profissional.where.not(especialidade: [nil, '', 'PENDENTE']).distinct.count(:especialidade)
       pacientes_count = Paciente.ativos.count
       profissionais_count = Profissional.count
-      agendamentos_count = Agendamento.where(status: ['confirmado', 'pendente']).count
+      agendamentos_count = Agendamento.joins(:profissional, :paciente)
+                                      .where(profissionais: { ativo: true })
+                                      .where(pacientes: { deleted_at: nil })
+                                      .where(status: ['confirmado', 'pendente'])
+                                      .count
       espera_count = ListaEspera.count rescue 0
 
       # Calcular a ocupação rigorosamente pelo tempo
       slots_ocupados_globais = 0
-      Agendamento.where(status: ['confirmado', 'pendente', 'bloqueado']).each do |ag|
+      Agendamento.joins(:profissional)
+                 .left_outer_joins(:paciente)
+                 .where(profissionais: { ativo: true })
+                 .where(status: ['confirmado', 'pendente', 'bloqueado'])
+                 .where("agendamentos.status = 'bloqueado' OR (pacientes.id IS NOT NULL AND pacientes.deleted_at IS NULL)")
+                 .each do |ag|
         if ag.horario.to_s.include?('-')
           p1, p2 = ag.horario.split('-')
           h1, m1 = p1.to_s.downcase.gsub('h',':').split(':')

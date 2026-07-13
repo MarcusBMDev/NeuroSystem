@@ -108,6 +108,9 @@
                     <select id="filtro-profissional" class="px-5 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium text-slate-700 max-w-[200px]" onchange="filtrarTabela()">
                         <option value="">TODOS PROFISSIONAIS</option>
                     </select>
+                    <select id="filtro-convenio" class="px-5 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium text-slate-700 max-w-[200px]" onchange="filtrarTabela()">
+                        <option value="">TODOS CONVÊNIOS</option>
+                    </select>
                 </div>
                 <div class="flex gap-3">
                     <button onclick="exportarPacientes()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-6 py-3 rounded-xl font-bold transition-all text-[12px] uppercase active:scale-95 flex items-center gap-2">📥 Exportar Excel</button>
@@ -251,14 +254,14 @@
                 <div class="mt-6">
                     <label class="text-[10px] font-black text-slate-400 uppercase">Solicitado por</label>
                     <select id="reducao-setor" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
-                        <option value="Vitória">VITÓRIA</option>
-                        <option value="Aurélia">AURÉLIA</option>
-                        <option value="Nathalí">NATHALÍ</option>
-                        <option value="Responsável/Paciente">RESPONSÁVEL/PACIENTE</option>
-                        <option value="Marismar">MARISMAR</option>
-                        <option value="Larissa">LARISSA</option>
                         <option value="Ester">ESTER</option>
-                        <option value="Sâmya">SÂMYA</option>
+                        <option value="Camila">CAMILA</option>
+                        <option value="Vitória">VITÓRIA</option>
+                        <option value="Nathali">NATHALI</option>
+                        <option value="Responsável/Paciente">RESPONSÁVEL/PACIENTE</option>
+                        <option value="Sâmia">SÂMIA</option>
+                        <option value="Bruno">BRUNO</option>
+                        <option value="Júnior">JÚNIOR</option>
                     </select>
                 </div>
                 <div>
@@ -288,14 +291,14 @@
                 <div class="mt-6">
                     <label class="text-[10px] font-black text-slate-400 uppercase">Solicitado por</label>
                     <select id="remocao-setor" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
-                        <option value="Vitória">VITÓRIA</option>
-                        <option value="Aurélia">AURÉLIA</option>
-                        <option value="Nathalí">NATHALÍ</option>
-                        <option value="Responsável/Paciente">RESPONSÁVEL/PACIENTE</option>
-                        <option value="Marismar">MARISMAR</option>
-                        <option value="Larissa">LARISSA</option>
                         <option value="Ester">ESTER</option>
-                        <option value="Sâmya">SÂMYA</option>
+                        <option value="Camila">CAMILA</option>
+                        <option value="Vitória">VITÓRIA</option>
+                        <option value="Nathali">NATHALI</option>
+                        <option value="Responsável/Paciente">RESPONSÁVEL/PACIENTE</option>
+                        <option value="Sâmia">SÂMIA</option>
+                        <option value="Bruno">BRUNO</option>
+                        <option value="Júnior">JÚNIOR</option>
                     </select>
                 </div>
                 <div>
@@ -403,6 +406,16 @@
                 conveniosGlobais.filter(c => c.ativo !== false).forEach(c => {
                     sel.innerHTML += `<option value="${c.id}">${c.nome.toUpperCase()}</option>`;
                 });
+
+                // Preenche o filtro de convênios na tela principal
+                const selFiltro = document.getElementById('filtro-convenio');
+                if (selFiltro) {
+                    selFiltro.innerHTML = '<option value="">TODOS CONVÊNIOS</option>';
+                    selFiltro.innerHTML += '<option value="particular">PARTICULAR / DIRETO</option>';
+                    conveniosGlobais.filter(c => c.ativo !== false).forEach(c => {
+                        selFiltro.innerHTML += `<option value="${c.id}">${c.nome.toUpperCase()}</option>`;
+                    });
+                }
             } catch (error) {
                 console.error("Erro ao carregar convênios:", error);
                 // alert("Erro ao carregar lista de convênios: " + error.message);
@@ -411,30 +424,31 @@
 
         async function carregarUsuarios() {
             try {
-                const res = await fetch('/api/users');
-                const users = await res.json();
+                const res = await fetch('/api/solicitantes');
+                if (!res.ok) throw new Error("Status: " + res.status);
+                const solicitantes = await res.json();
+                
+                if (!Array.isArray(solicitantes)) {
+                    console.warn("Solicitantes não retornou um array:", solicitantes);
+                    return;
+                }
                 
                 const selectReducao = document.getElementById('reducao-setor');
                 const selectRemocao = document.getElementById('remocao-setor');
                 
                 [selectReducao, selectRemocao].forEach(select => {
                     if (select) {
-                        const existingValues = Array.from(select.options).map(opt => opt.value.toUpperCase().trim());
-                        users.forEach(u => {
-                            if (u.nome) {
-                                const nameUpper = u.nome.toUpperCase().trim();
-                                if (!existingValues.includes(nameUpper)) {
-                                    const option = document.createElement('option');
-                                    option.value = u.nome;
-                                    option.textContent = u.nome.toUpperCase();
-                                    select.appendChild(option);
-                                }
-                            }
+                        select.innerHTML = '';
+                        solicitantes.forEach(s => {
+                            const option = document.createElement('option');
+                            option.value = s.nome;
+                            option.textContent = s.nome.toUpperCase();
+                            select.appendChild(option);
                         });
                     }
                 });
-            } catch(e) {
-                console.error("Erro ao carregar usuários:", e);
+            } catch (error) {
+                console.error("Erro ao carregar solicitantes:", error);
             }
         }
 
@@ -476,10 +490,12 @@
                 paginaAtual = pagina;
                 const termo = document.getElementById('busca-paciente').value;
                 const profId = document.getElementById('filtro-profissional').value;
+                const convenioId = document.getElementById('filtro-convenio').value;
                 
                 let url = `/api/data_pacientes.json?page=${pagina}&per_page=100`;
                 if(termo) url += `&busca=${encodeURIComponent(termo)}`;
                 if(profId) url += `&profissional_id=${profId}`;
+                if(convenioId) url += `&convenio_id=${convenioId}`;
 
                 console.log("Buscando pacientes em " + url);
                 document.getElementById('tabela-pacientes').innerHTML = '<tr><td colspan="5" class="p-10 text-center text-slate-400 font-medium">Carregando dados...</td></tr>';
@@ -622,6 +638,9 @@
             const weekly_frequency = Object.values(plannedObj).reduce((a, b) => a + b, 0);
 
             if(!nome) return alert('O nome é obrigatório.');
+            if (adicionarAEspera && weekly_frequency === 0) {
+                return alert('Selecione pelo menos uma especialidade e frequência para salvar e agendar.');
+            }
 
             const paciente = {
                 nome,

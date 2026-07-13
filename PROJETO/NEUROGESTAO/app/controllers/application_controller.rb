@@ -39,13 +39,19 @@ class ApplicationController < ActionController::API
     render html: File.read(Rails.root.join('public', 'primeiros.html')).html_safe
   end
 
+  def renderizar_admin
+    render html: File.read(Rails.root.join('public', 'admin.html')).html_safe
+  end
+
   def dashboard_stats
     p_count = Profissional.ativos.count
     
-    # Contamos apenas agendamentos de profissionais ativos e pacientes ativos
-    a_count = Agendamento.joins(:profissional, :paciente)
+    # Contamos agendamentos de profissionais ativos e pacientes ativos, mais bloqueados
+    a_count = Agendamento.joins(:profissional)
+                         .left_outer_joins(:paciente)
                          .where(profissionais: { ativo: true })
-                         .where(pacientes: { deleted_at: nil })
+                         .where(status: ['confirmado', 'pendente', 'bloqueado'])
+                         .where("agendamentos.status = 'bloqueado' OR (pacientes.id IS NOT NULL AND pacientes.deleted_at IS NULL)")
                          .count
                          
     e_count = ListaEspera.count
@@ -95,10 +101,14 @@ class ApplicationController < ActionController::API
     
     # Se for um super_admin no Neurochat, tem acesso total
     if user_id.present?
-      is_super = NeurochatRecord.connection.select_value(
-        ActiveRecord::Base.send(:sanitize_sql_array, ["SELECT is_super_admin FROM users WHERE id = ?", user_id])
-      )
-      return true if is_super == 1 || is_super == true || is_super.to_s == '1' || is_super.to_s == 'true'
+      begin
+        is_super = NeurochatRecord.connection.select_value(
+          ActiveRecord::Base.send(:sanitize_sql_array, ["SELECT is_super_admin FROM users WHERE id = ?", user_id])
+        )
+        return true if is_super == 1 || is_super == true || is_super.to_s == '1' || is_super.to_s == 'true'
+      rescue => e
+        Rails.logger.error "Erro ao verificar super admin no Neurochat: #{e.message}"
+      end
     end
 
     setores_normalizados = SETORES_GESTAO.map { |s| ActiveSupport::Inflector.transliterate(s.dup.force_encoding('UTF-8')).downcase }
@@ -116,6 +126,13 @@ class ApplicationController < ActionController::API
   def validar_usuario_logado!
     if request.headers['X-User-Id'].blank?
       render json: { error: "Acesso Negado. Usuário não autenticado." }, status: :unauthorized
+    end
+  end
+
+  def validar_admin!
+    user_id = request.headers['X-User-Id']&.to_s&.strip
+    unless user_id == "1"
+      render json: { error: "Acesso Negado. Esta funcionalidade é restrita ao administrador geral." }, status: :forbidden
     end
   end
 

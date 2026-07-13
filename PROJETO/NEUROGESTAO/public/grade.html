@@ -15,6 +15,8 @@
         .slot-blocked { background: #fffbeb; border: 2px solid #f59e0b; box-shadow: 0 10px 15px -3px rgb(245 158 11 / 0.1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade { animation: fadeIn 0.5s ease-out; }
+        .rotate-180 { transform: rotate(180deg); }
+        .custom-select-dropdown { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
 <body class="flex min-h-screen border-x-hidden">
@@ -70,10 +72,19 @@
             </div>
         </header>
 
-        <div data-html2canvas-ignore="true">
-            <select id="select-prof" onchange="carregarGradeProfissional()" class="w-full p-4 bg-white border border-slate-200 rounded-2xl shadow-sm font-bold text-slate-800 mb-10 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                <option value="">Selecione o Profissional para Exibir a Grade...</option>
-            </select>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10" data-html2canvas-ignore="true">
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Filtrar por Especialidade</label>
+                <select id="filtro-especialidade" onchange="filtrarProfissionaisPorEspecialidade()" class="w-full p-4 bg-white border border-slate-200 rounded-2xl shadow-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    <option value="">Todas as Especialidades</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Selecionar Profissional</label>
+                <select id="select-prof" onchange="carregarGradeProfissional()" class="w-full p-4 bg-white border border-slate-200 rounded-2xl shadow-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    <option value="">Selecione o Profissional para Exibir a Grade...</option>
+                </select>
+            </div>
         </div>
 
         <div class="overflow-x-auto w-full rounded-[2rem] border border-slate-150 shadow-sm bg-slate-50/50 p-3">
@@ -108,11 +119,12 @@
 
     <div id="modal-bloqueio" class="fixed inset-0 bg-slate-900/40 hidden flex items-center justify-center p-6 z-50 backdrop-blur-sm">
         <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
-            <h2 class="text-2xl font-black text-slate-900 mb-6">Bloquear Horário</h2>
+            <h2 id="modal-bloqueio-titulo" class="text-2xl font-black text-slate-900 mb-6">Bloquear Horário</h2>
             <div class="space-y-4">
                 <input type="hidden" id="block-prof-id">
                 <input type="hidden" id="block-dia">
                 <input type="hidden" id="block-hora">
+                <input type="hidden" id="block-agendamento-id">
                 
                 <p id="block-info" class="text-xs font-bold text-slate-500 uppercase mb-4"></p>
 
@@ -125,8 +137,15 @@
                     <textarea id="block-motivo" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold text-sm" rows="3" placeholder="Ex: Paciente aguardando confirmação..."></textarea>
                 </div>
                 <div class="flex gap-4 pt-4">
-                    <button onclick="fecharModais()" class="flex-1 py-4 text-slate-500 font-bold">Cancelar</button>
-                    <button onclick="salvarBloqueio()" class="flex-1 py-4 bg-amber-500 text-white font-bold rounded-2xl shadow-lg shadow-amber-500/20">Bloquear Vaga</button>
+                    <button onclick="fecharModais()" class="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-all">Cancelar</button>
+                    <button id="btn-salvar-bloqueio" onclick="salvarBloqueio()" class="flex-1 py-4 bg-amber-500 text-white font-bold rounded-2xl shadow-lg shadow-amber-500/20">Bloquear Vaga</button>
+                    <button id="btn-desbloquear-vaga" onclick="desbloquearVagaPeloModal()" class="hidden flex-1 py-4 bg-red-500 text-white font-bold rounded-2xl shadow-lg shadow-red-500/20 uppercase tracking-wider text-xs">Desbloquear Vaga</button>
+                </div>
+                <div class="mt-6 border-t border-slate-100 pt-6">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Histórico de Ações neste Horário</h3>
+                    <div id="block-historico-lista" class="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar text-xs text-slate-600">
+                        Carregando histórico...
+                    </div>
                 </div>
             </div>
         </div>
@@ -134,8 +153,8 @@
 
     <div id="modal-encaixe" class="fixed inset-0 bg-slate-900/40 hidden flex items-center justify-center p-6 z-50 backdrop-blur-sm">
         <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
-            <h2 class="text-2xl font-black text-slate-900 mb-2">⚡ Encaixe Direto</h2>
-            <p class="text-[10px] font-black text-purple-600 uppercase mb-6 tracking-widest">Adicionar paciente extra no horário</p>
+            <h2 class="text-2xl font-black text-slate-900 mb-2">⚡ Agendamento / Encaixe</h2>
+            <p class="text-[10px] font-black text-purple-600 uppercase mb-6 tracking-widest">Adicionar paciente no horário</p>
             
             <div class="space-y-4">
                 <input type="hidden" id="enc-prof-id">
@@ -144,25 +163,54 @@
                 
                 <p id="enc-info" class="text-xs font-bold text-slate-500 uppercase mb-4"></p>
 
-                <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase">Paciente</label>
-                    <select id="enc-paciente" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
-                        <option value="">Carregando pacientes...</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase">Convênio</label>
-                    <select id="enc-convenio" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
-                        <option value="">Selecione o convênio...</option>
-                    </select>
-                </div>
-
                 <div class="flex items-center gap-4 p-4 bg-purple-50 rounded-2xl border border-purple-100">
-                    <label class="flex items-center gap-2 cursor-pointer">
+                    <label id="lbl-terapia-grupo" class="flex items-center gap-2 cursor-pointer w-full">
                         <input type="checkbox" id="enc-terapia-grupo" class="w-5 h-5 rounded accent-purple-600" onchange="toggleTipoEncaixe()">
-                        <span class="text-[10px] font-black text-purple-700 uppercase">👥 Terapia em Grupo (permanente)</span>
+                        <span class="text-[10px] font-black text-purple-700 uppercase">👥 Terapia em Grupo</span>
                     </label>
+                </div>
+
+                <div id="container-single-patient">
+                    <div class="mb-3">
+                        <label class="text-[10px] font-black text-slate-400 uppercase">Paciente</label>
+                        <select id="enc-paciente" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
+                            <option value="">Carregando pacientes...</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase">Convênio</label>
+                        <select id="enc-convenio" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
+                            <option value="">Selecione o convênio...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="container-group-patients" class="hidden">
+                    <div class="p-4 bg-slate-50 border rounded-2xl mb-4">
+                        <div class="flex gap-2 mb-3">
+                            <div class="flex-1">
+                                <label class="text-[9px] font-black text-slate-400 uppercase">Selecionar Paciente</label>
+                                <select id="enc-grupo-paciente" class="w-full p-2 bg-white border rounded-xl font-bold text-sm">
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="w-1/3">
+                                <label class="text-[9px] font-black text-slate-400 uppercase">Convênio</label>
+                                <select id="enc-grupo-convenio" class="w-full p-2 bg-white border rounded-xl font-bold text-sm">
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button type="button" onclick="adicionarPacienteGrupo()" class="p-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs hover:bg-purple-700">Add</button>
+                            </div>
+                        </div>
+
+                        <label class="text-[9px] font-black text-slate-400 uppercase">Pacientes no Grupo</label>
+                        <div id="enc-lista-grupo" class="flex flex-wrap gap-2 mt-2 min-h-[40px] p-2 bg-white border rounded-xl">
+                            <span class="text-[10px] text-slate-400 italic">Nenhum paciente adicionado ainda...</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="enc-data-container">
@@ -173,7 +221,13 @@
 
                 <div class="flex gap-4 pt-4">
                     <button onclick="fecharModais()" class="flex-1 py-4 text-slate-500 font-bold">Cancelar</button>
-                    <button onclick="salvarEncaixeDireto()" class="flex-1 py-4 bg-purple-600 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/20">Confirmar Encaixe</button>
+                    <button onclick="salvarEncaixeDireto()" class="flex-1 py-4 bg-purple-600 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/20">Confirmar</button>
+                </div>
+                <div class="mt-6 border-t border-slate-100 pt-6">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Histórico de Ações neste Horário</h3>
+                    <div id="enc-historico-lista" class="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar text-xs text-slate-600">
+                        Carregando histórico...
+                    </div>
                 </div>
             </div>
         </div>
@@ -194,14 +248,14 @@
                 <div>
                     <label class="text-[10px] font-black text-slate-400 uppercase">Solicitado por</label>
                     <select id="remocao-setor" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
-                        <option value="Vitória">VITÓRIA</option>
-                        <option value="Aurélia">AURÉLIA</option>
-                        <option value="Nathalí">NATHALÍ</option>
-                        <option value="Responsável/Paciente">RESPONSÁVEL/PACIENTE</option>
-                        <option value="Marismar">MARISMAR</option>
-                        <option value="Larissa">LARISSA</option>
                         <option value="Ester">ESTER</option>
-                        <option value="Sâmya">SÂMYA</option>
+                        <option value="Camila">CAMILA</option>
+                        <option value="Vitória">VITÓRIA</option>
+                        <option value="Nathali">NATHALI</option>
+                        <option value="Responsável/Paciente">RESPONSÁVEL/PACIENTE</option>
+                        <option value="Sâmia">SÂMIA</option>
+                        <option value="Bruno">BRUNO</option>
+                        <option value="Júnior">JÚNIOR</option>
                     </select>
                 </div>
                 <div>
@@ -222,7 +276,8 @@
                 <div class="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center text-xl">📝</div>
                 <h2 class="text-2xl font-black text-slate-900">Observação do Atendimento</h2>
             </div>
-            <div id="obs-info-header" class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-6"></div>
+            <div id="obs-info-header" class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2"></div>
+            <div id="obs-editor-info" class="text-[9px] font-black text-slate-400 uppercase mb-6 hidden"></div>
             <div class="space-y-4">
                 <input type="hidden" id="obs-agendamento-id">
                 <div>
@@ -253,6 +308,12 @@
                     <button onclick="fecharModais()" class="flex-1 py-4 text-slate-500 font-bold hover:text-slate-800 transition-colors">Cancelar</button>
                     <button onclick="salvarObservacao()" class="flex-1 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-colors">💾 Salvar Observação</button>
                 </div>
+                <div class="mt-6 border-t border-slate-100 pt-6">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Histórico de Ações neste Horário</h3>
+                    <div id="obs-historico-lista" class="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar text-xs text-slate-600">
+                        Carregando histórico...
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -260,41 +321,131 @@
     <script>
         let profissionaisGlobais = [];
         let especialidadesGlobais = [];
+        let pacientesGlobaisModal = [];
+
+        async function carregarHistoricoSlot(profId, dia, hora, elementId) {
+            const listContainer = document.getElementById(elementId);
+            if (!listContainer) return;
+            listContainer.innerHTML = '<p class="text-slate-400 italic text-[11px]">Carregando histórico...</p>';
+            try {
+                const url = `/api/agendamentos/historico_slot?profissional_id=${profId}&dia_semana=${encodeURIComponent(dia)}&horario=${encodeURIComponent(hora)}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("Status: " + res.status);
+                const data = await res.json();
+                
+                if (data.length === 0) {
+                    listContainer.innerHTML = '<p class="text-slate-400 italic text-[11px]">Nenhuma ação registrada para este horário.</p>';
+                    return;
+                }
+                
+                listContainer.innerHTML = data.map(item => {
+                    const dataStr = new Date(item.created_at).toLocaleString('pt-BR');
+                    let detalhesTexto = '';
+                    if (item.detalhes && typeof item.detalhes === 'object') {
+                        if (item.detalhes.text) {
+                            detalhesTexto = item.detalhes.text;
+                        } else {
+                            const d = item.detalhes;
+                            if (item.acao === 'CRIAR_AGENDAMENTO') {
+                                if (d.status === 'bloqueado') {
+                                    detalhesTexto = `Bloqueou o horário. Motivo: ${d.motivo_bloqueio || 'Sem motivo'}`;
+                                } else {
+                                    detalhesTexto = `Agendou paciente: ${d.paciente_name || d.paciente_nome || 'Sem nome'}`;
+                                }
+                            } else if (item.acao === 'EXCLUIR_AGENDAMENTO') {
+                                const tipoAcao = d.status === 'bloqueado' ? 'Desbloqueou' : 'Removeu';
+                                const pac = d.paciente_nome ? ` (Paciente: ${d.paciente_nome})` : '';
+                                detalhesTexto = `${tipoAcao} o horário.${pac} Motivo: ${d.motivo || 'Sem motivo'}`;
+                            } else if (item.acao === 'EDITAR_AGENDAMENTO') {
+                                detalhesTexto = `Editou dados do agendamento. Paciente: ${d.paciente_nome || 'Sem nome'}. Obs: ${d.observacoes || ''}`;
+                            } else if (item.acao === 'TRANSFERENCIA_DIRETA') {
+                                detalhesTexto = `Transferiu paciente ${d.paciente_nome || ''} para este profissional. Motivo: ${d.motivo || ''}`;
+                            } else {
+                                detalhesTexto = JSON.stringify(d);
+                            }
+                        }
+                    } else {
+                        detalhesTexto = item.detalhes || '';
+                    }
+                    
+                    let acaoBadge = '';
+                    if (item.acao === 'CRIAR_AGENDAMENTO') {
+                        acaoBadge = '<span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Agendar/Bloquear</span>';
+                    } else if (item.acao === 'EXCLUIR_AGENDAMENTO') {
+                        acaoBadge = '<span class="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Remover/Liberar</span>';
+                    } else if (item.acao === 'EDITAR_AGENDAMENTO') {
+                        acaoBadge = '<span class="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Editar</span>';
+                    } else if (item.acao === 'TRANSFERENCIA_DIRETA') {
+                        acaoBadge = '<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Transferir</span>';
+                    } else {
+                        acaoBadge = `<span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">${item.acao}</span>`;
+                    }
+
+                    return `
+                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100/80 flex flex-col gap-1">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-1.5">
+                                    ${acaoBadge}
+                                    <span class="font-bold text-slate-800 text-[10px]">${item.user_name} (${item.setor})</span>
+                                </div>
+                                <span class="text-[9px] text-slate-400 font-bold">${dataStr}</span>
+                            </div>
+                            <p class="text-slate-600 font-medium text-[11px] leading-relaxed">${detalhesTexto}</p>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                listContainer.innerHTML = `<p class="text-red-400 font-bold text-[11px]">Erro ao carregar histórico: ${e.message}</p>`;
+            }
+        }
 
         async function init() {
-            const [resP, resE, resU] = await Promise.all([
+            const [resP, resE, resS] = await Promise.all([
                 fetch('/api/profissionais'),
                 fetch('/api/profissionais/especialidades'),
-                fetch('/api/users')
+                fetch('/api/solicitantes')
             ]);
             profissionaisGlobais = await resP.json();
             especialidadesGlobais = await resE.json();
             
             try {
-                const usersGlobais = await resU.json();
-                popularUsuariosSelect(usersGlobais);
+                const solicitantes = await resS.json();
+                const selectRemocao = document.getElementById('remocao-setor');
+                if (selectRemocao) {
+                    selectRemocao.innerHTML = '';
+                    solicitantes.forEach(s => {
+                        const option = document.createElement('option');
+                        option.value = s.nome;
+                        option.textContent = s.nome.toUpperCase();
+                        selectRemocao.appendChild(option);
+                    });
+                }
             } catch(e) {
-                console.error("Erro ao carregar usuários:", e);
+                console.error("Erro ao carregar solicitantes:", e);
             }
             
-            // Popula o seletor principal
-            const select = document.getElementById('select-prof');
-            select.innerHTML = '<option value="">Escolha um profissional...</option>';
+            // Popula o seletor de especialidades
+            const filtroEsp = document.getElementById('filtro-especialidade');
+            if (filtroEsp) {
+                filtroEsp.innerHTML = '<option value="">Todas as Especialidades</option>';
+                especialidadesGlobais.forEach(esp => {
+                    const option = document.createElement('option');
+                    option.value = esp;
+                    option.textContent = esp.toUpperCase();
+                    filtroEsp.appendChild(option);
+                });
+            }
+
+            // Popula o seletor de profissionais
+            filtrarProfissionaisPorEspecialidade();
             
+            const select = document.getElementById('select-prof');
             const isGestor = leadsGestao();
             const loggedUserName = (localStorage.getItem('userName') || '').toUpperCase();
             let profEncontrado = null;
 
             profissionaisGlobais.forEach(p => {
                 let label = p.nome.toUpperCase();
-                if (p.ativo === false) label = `[INATIVO] ${label}`;
-                
-                const option = document.createElement('option');
-                option.value = p.id;
-                option.textContent = label;
-                select.appendChild(option);
-
-                // Se não é gestor, tenta encontrar o profissional correspondente ao usuário logado
                 if (!isGestor && loggedUserName && label.includes(loggedUserName)) {
                     profEncontrado = p.id;
                 }
@@ -313,10 +464,12 @@
                 if (profEncontrado) {
                     select.value = profEncontrado;
                     select.disabled = true;
+                    if (filtroEsp) filtroEsp.disabled = true;
                     carregarGradeProfissional();
                 } else {
                     select.innerHTML = '<option value="">Profissional não vinculado ao seu usuário.</option>';
                     select.disabled = true;
+                    if (filtroEsp) filtroEsp.disabled = true;
                 }
                 
                 // Oculta botões de gestão na grade
@@ -326,28 +479,59 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const profIdParam = urlParams.get('profissionalId') || urlParams.get('profId');
                 if (profIdParam && profissionaisGlobais.some(p => p.id == profIdParam)) {
+                    if (filtroEsp) {
+                        filtroEsp.value = "";
+                        filtrarProfissionaisPorEspecialidade();
+                    }
                     select.value = profIdParam;
                     carregarGradeProfissional();
                 }
             }
+
+            // Inicializa os seletores customizados com busca integrada
+            initSearchableSelect('enc-paciente', 'Selecione o paciente...');
+            initSearchableSelect('enc-grupo-paciente', 'Selecione o paciente...');
+        }
+
+        function filtrarProfissionaisPorEspecialidade() {
+            const select = document.getElementById('select-prof');
+            if (!select) return;
+            
+            const valorAtual = select.value;
+            const filtroEsp = document.getElementById('filtro-especialidade');
+            const espSelecionada = (filtroEsp ? filtroEsp.value : '').toUpperCase().trim();
+            
+            select.innerHTML = '<option value="">Escolha um profissional...</option>';
+            
+            profissionaisGlobais.forEach(p => {
+                if (espSelecionada) {
+                    const esps = p.especialidade ? p.especialidade.toUpperCase().split(',').map(s => s.trim()) : [];
+                    if (!esps.includes(espSelecionada)) {
+                        return;
+                    }
+                }
+                
+                let label = p.nome.toUpperCase();
+                if (p.ativo === false) label = `[INATIVO] ${label}`;
+                if (p.especialidade) label += ` (${p.especialidade.toUpperCase()})`;
+                
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = label;
+                select.appendChild(option);
+            });
+            
+            if (valorAtual && select.querySelector(`option[value="${valorAtual}"]`)) {
+                select.value = valorAtual;
+            } else {
+                select.value = "";
+                const container = document.getElementById('grid-container');
+                if (container) container.classList.add('hidden');
+            }
         }
 
         function popularUsuariosSelect(users) {
-            const selectRemocao = document.getElementById('remocao-setor');
-            if (selectRemocao) {
-                const existingValues = Array.from(selectRemocao.options).map(opt => opt.value.toUpperCase().trim());
-                users.forEach(u => {
-                    if (u.nome) {
-                        const nameUpper = u.nome.toUpperCase().trim();
-                        if (!existingValues.includes(nameUpper)) {
-                            const option = document.createElement('option');
-                            option.value = u.nome;
-                            option.textContent = u.nome.toUpperCase();
-                            selectRemocao.appendChild(option);
-                        }
-                    }
-                });
-            }
+            // Desativado para manter apenas a lista estática definida pela gestão
         }
 
         function abrirModalTransferir() {
@@ -460,17 +644,18 @@
                 });
 
                 if (agsNoSlot.length === 0) {
-                    const borderStyle = isBlueDay
-                        ? 'border: 2px dashed #93c5fd; background-color: rgba(239, 246, 255, 0.5);'
-                        : 'border: 2px dashed #cbd5e1; background-color: #ffffff;';
+                    const borderStyle = 'border: 2px dashed #cbd5e1; background-color: #ffffff;';
                     const textClass = 'text-slate-400';
                     const labelClass = 'text-slate-500';
                     
                     return `
-                        <div class="slot-free p-3 rounded-2xl text-center flex flex-col justify-center min-h-[90px] border-2 transition-all cursor-pointer hover:border-blue-500 hover:bg-blue-50" style="${borderStyle}"
-                             onclick="abrirModalBloqueio(${id}, '${diaObj.db}', '${hStr}')">
+                        <div class="slot-free p-3 rounded-2xl text-center flex flex-col justify-center min-h-[90px] border-2 transition-all relative group/slotfree" style="${borderStyle}">
                             <p class="text-[9px] font-black ${labelClass} uppercase mb-0.5">${hStr}</p>
                             <p class="text-[8px] font-black ${textClass} tracking-wider">DISPONÍVEL</p>
+                            <div class="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-900/5 backdrop-blur-[1px] opacity-0 group-hover/slotfree:opacity-100 transition-opacity rounded-2xl" onclick="event.stopPropagation()">
+                                <button onclick="abrirModalBloqueio(${id}, '${diaObj.db}', '${hStr}')" class="px-2 py-1.5 bg-amber-500 text-white rounded-xl text-[8px] font-black uppercase hover:bg-amber-600 transition-colors shadow-sm">🔒 Bloquear</button>
+                                ${!isNeurochat ? `<button onclick="abrirEncaixeDireto(${id}, '${diaObj.db}', '${hStr}')" class="px-2 py-1.5 bg-blue-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-blue-700 transition-colors shadow-sm">➕ Agendar</button>` : ''}
+                            </div>
                         </div>
                     `;
                 }
@@ -493,7 +678,7 @@
                     const ag = agsNoSlot[0];
                     return `
                         <div class="slot-blocked p-3 rounded-2xl cursor-pointer hover:scale-[1.02] transition-transform h-full min-h-[90px] flex flex-col justify-center text-center bg-amber-50 border border-amber-200" 
-                             onclick="desbloquearVaga(${ag.id}, ${id}, '${diaObj.db}', '${hStr}')">
+                             onclick="abrirModalBloqueado(${ag.id}, ${id}, '${diaObj.db}', '${hStr}', '${(ag.bloqueado_por || '').replace(/'/g, "\\'")}', '${(ag.motivo_bloqueio || '').replace(/'/g, "\\'")}')">
                             <p class="text-[9px] font-black text-amber-600 uppercase mb-0.5">${tagHora} - BLOQUEADO</p>
                             <p class="font-bold text-slate-800 text-[11px] truncate w-full" title="${ag.motivo_bloqueio}">${ag.motivo_bloqueio || 'Sem motivo'}</p>
                             <p class="text-[8px] font-black text-amber-700 uppercase mt-1.5 pt-1 border-t border-amber-100">
@@ -526,7 +711,10 @@
                         <div class="p-2.5 rounded-2xl h-full min-h-[90px] border-2 border-purple-500 bg-purple-50 shadow-md relative overflow-hidden flex flex-col justify-between text-center">
                             <div class="flex justify-between items-center mb-1">
                                 <p class="text-[9px] font-black text-purple-700 uppercase">${tagHora} 👥 GRUPO</p>
-                                <span class="text-[8px] font-black bg-purple-600 text-white px-1.5 py-0.5 rounded-full">${pacsGrupo.length}</span>
+                                <div class="flex gap-1 items-center">
+                                    <span class="text-[8px] font-black bg-purple-600 text-white px-1.5 py-0.5 rounded-full">${pacsGrupo.length}</span>
+                                    ${!isNeurochat ? `<button onclick="abrirEncaixeDireto(${id}, '${diaObj.db}', '${tagHora}', true)" class="w-4 h-4 bg-purple-200 text-purple-700 rounded flex items-center justify-center font-bold text-xs hover:bg-purple-600 hover:text-white" title="Adicionar paciente ao grupo">+</button>` : ''}
+                                </div>
                             </div>
                             <div class="space-y-0 flex-1">${listaPacientes}</div>
                             ${profAtual?.especialidade ? `<div class="mt-1.5 pt-0.5 border-t border-purple-200"><span class="text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full inline-block max-w-full truncate">${profAtual.especialidade}</span></div>` : ''}
@@ -581,12 +769,14 @@
                     const customColor = corMap[ag.cor];
                     const cardStyle = customColor
                         ? `background-color: ${customColor.bg}; border-color: ${customColor.border};`
-                        : (isBlueDay ? 'background-color: #dbeafe; border-color: #60a5fa;' : 'background-color: #ffffff; border-color: #cbd5e1;');
+                        : 'background-color: #ffffff; border-color: #cbd5e1;';
                     const styleAttr = isEncaixe && !ag.cor ? '' : `style="${cardStyle}"`;
 
+                    const editorNameEscaped = (ag.atualizado_por || '').replace(/'/g, "\\'");
+                    const editorLabel = ag.atualizado_por ? `\n(Última ed.: ${ag.atualizado_por})` : '';
                     html += `
-                        <div class="slot-occupied p-3 rounded-2xl group/slot relative border-2 ${(isEncaixe && !ag.cor) ? 'border-purple-500 bg-purple-50/20' : ''} shadow-md cursor-pointer flex flex-col justify-center text-center h-full min-h-[90px]" ${styleAttr}
-                             onclick="abrirModalObservacao(${ag.id}, '${nomePaciente.replace(/'/g, "\\'")}',' ${diaObj.db}', '${tagHora}', '${obsTitle}', '${ag.cor || ''}')">
+                        <div class="slot-occupied p-3 rounded-2xl group/slot relative border-2 ${(isEncaixe && !ag.cor) ? 'border-purple-500 bg-purple-50/20' : ''} shadow-md cursor-pointer flex flex-col justify-center text-center h-full min-h-[90px]" ${styleAttr} title="${nomePaciente}${editorLabel}"
+                             onclick="abrirModalObservacao(${ag.id}, '${nomePaciente.replace(/'/g, "\\'")}',' ${diaObj.db}', '${tagHora}', '${obsTitle}', '${ag.cor || ''}', '${editorNameEscaped}')">
                             <div class="flex justify-between items-start mb-0.5">
                                 <p class="text-[9px] font-black ${isEncaixe ? 'text-purple-600' : 'text-blue-600'} uppercase">
                                     ${tagHora} ${isEncaixe ? '⚡' : ''}
@@ -651,11 +841,8 @@
                 `;
 
                 diasMap.forEach((diaObj, idx) => {
-                    const isBlueDay = idx % 2 === 0; // Segunda, Quarta, Sexta = azul claro
-                    const colStyle = isBlueDay 
-                        ? 'background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1.25rem; padding: 0.5rem;' 
-                        : 'background-color: #ffffff; border: 1px solid #f1f5f9; border-radius: 1.25rem; padding: 0.5rem;';
-                    rowHtml += `<div class="flex flex-col justify-center h-full" style="${colStyle}">${renderCellHtml(min, diaObj, false, isBlueDay)}</div>`;
+                    const colStyle = 'background-color: #ffffff; border: 1px solid #f1f5f9; border-radius: 1.25rem; padding: 0.5rem;';
+                    rowHtml += `<div class="flex flex-col justify-center h-full" style="${colStyle}">${renderCellHtml(min, diaObj, false, false)}</div>`;
                 });
 
                 rowHtml += `</div>`;
@@ -684,11 +871,8 @@
                 `;
 
                 diasMap.forEach((diaObj, idx) => {
-                    const isBlueDay = idx % 2 === 0; // Segunda, Quarta, Sexta = azul claro
-                    const colStyle = isBlueDay 
-                        ? 'background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1.25rem; padding: 0.5rem;' 
-                        : 'background-color: #ffffff; border: 1px solid #f1f5f9; border-radius: 1.25rem; padding: 0.5rem;';
-                    rowHtml += `<div class="flex flex-col justify-center h-full" style="${colStyle}">${renderCellHtml(min, diaObj, false, isBlueDay)}</div>`;
+                    const colStyle = 'background-color: #ffffff; border: 1px solid #f1f5f9; border-radius: 1.25rem; padding: 0.5rem;';
+                    rowHtml += `<div class="flex flex-col justify-center h-full" style="${colStyle}">${renderCellHtml(min, diaObj, false, false)}</div>`;
                 });
 
                 rowHtml += `</div>`;
@@ -885,32 +1069,76 @@
                 alert("Usuários do Neurochat não têm permissão para agendar ou bloquear vagas.");
                 return;
             }
+            document.getElementById('modal-bloqueio-titulo').innerText = "Bloquear Horário";
             document.getElementById('block-prof-id').value = profId;
             document.getElementById('block-dia').value = dia;
             document.getElementById('block-hora').value = hora;
+            document.getElementById('block-agendamento-id').value = '';
             document.getElementById('block-info').innerText = `${dia.split('-')[0]} às ${hora}`;
             
-            // Tenta puxar o nome do usuário logado
             const loggedUserName = localStorage.getItem('userName') || localStorage.getItem('username') || '';
             const inputUser = document.getElementById('block-usuario');
             
+            inputUser.readOnly = false;
+            inputUser.classList.remove('bg-slate-100', 'text-slate-500');
+            inputUser.classList.add('bg-white', 'text-slate-900');
             if (loggedUserName) {
                 inputUser.value = loggedUserName.toUpperCase();
                 inputUser.readOnly = true;
                 inputUser.classList.add('bg-slate-100', 'text-slate-500');
                 inputUser.classList.remove('bg-white', 'text-slate-900');
             } else {
-                // Caso o usuário ainda não tenha feito um novo login após a atualização
                 inputUser.value = '';
-                inputUser.readOnly = false;
-                inputUser.placeholder = "Sua identificação...";
-                inputUser.classList.remove('bg-slate-100', 'text-slate-500');
-                inputUser.classList.add('bg-white', 'text-slate-900');
-                alert("⚠️ Seu usuário não foi identificado automaticamente. Por favor, preencha manualmente desta vez e realize o LOGOUT/LOGIN na próxima vez para automatizar.");
             }
 
-            document.getElementById('block-motivo').value = '';
+            const inputMotivo = document.getElementById('block-motivo');
+            inputMotivo.value = '';
+            inputMotivo.readOnly = false;
+            inputMotivo.classList.remove('bg-slate-100', 'text-slate-500');
+            inputMotivo.classList.add('bg-white', 'text-slate-900');
+
+            document.getElementById('btn-salvar-bloqueio').classList.remove('hidden');
+            document.getElementById('btn-desbloquear-vaga').classList.add('hidden');
+
             document.getElementById('modal-bloqueio').classList.remove('hidden');
+            carregarHistoricoSlot(profId, dia, hora, 'block-historico-lista');
+        }
+
+        function abrirModalBloqueado(agId, profId, dia, hora, bloqueadoPor, motivo) {
+            document.getElementById('modal-bloqueio-titulo').innerText = "Horário Bloqueado";
+            document.getElementById('block-prof-id').value = profId;
+            document.getElementById('block-dia').value = dia;
+            document.getElementById('block-hora').value = hora;
+            document.getElementById('block-agendamento-id').value = agId;
+            document.getElementById('block-info').innerText = `${dia.split('-')[0]} às ${hora}`;
+            
+            const inputUser = document.getElementById('block-usuario');
+            inputUser.value = bloqueadoPor;
+            inputUser.readOnly = true;
+            inputUser.classList.add('bg-slate-100', 'text-slate-500');
+            inputUser.classList.remove('bg-white', 'text-slate-900');
+
+            const inputMotivo = document.getElementById('block-motivo');
+            inputMotivo.value = motivo;
+            inputMotivo.readOnly = true;
+            inputMotivo.classList.add('bg-slate-100', 'text-slate-500');
+            inputMotivo.classList.remove('bg-white', 'text-slate-900');
+
+            document.getElementById('btn-salvar-bloqueio').classList.add('hidden');
+            document.getElementById('btn-desbloquear-vaga').classList.remove('hidden');
+
+            document.getElementById('modal-bloqueio').classList.remove('hidden');
+            carregarHistoricoSlot(profId, dia, hora, 'block-historico-lista');
+        }
+
+        async function desbloquearVagaPeloModal() {
+            const agId = document.getElementById('block-agendamento-id').value;
+            const profId = document.getElementById('block-prof-id').value;
+            const dia = document.getElementById('block-dia').value;
+            const hora = document.getElementById('block-hora').value;
+            if (!agId) return;
+            await desbloquearVaga(agId, profId, dia, hora);
+            fecharModais();
         }
 
         async function salvarBloqueio() {
@@ -929,7 +1157,11 @@
 
             const res = await fetch('/api/agendamentos', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-User-Name': localStorage.getItem('userName') || '',
+                    'X-User-Role': localStorage.getItem('userRole') || ''
+                },
                 body: JSON.stringify({ 
                     agendamento: ag,
                     user_id: localStorage.getItem('userId') // Enviamos o ID para o backend puxar do DB
@@ -967,7 +1199,9 @@
             }
         }
 
-        async function abrirEncaixeDireto(profId, dia, hora) {
+        let pacientesGrupoSelecionados = [];
+
+        async function abrirEncaixeDireto(profId, dia, hora, forcarGrupo = false) {
             if (getNivelAcesso() === 'neurochat') {
                 alert("Usuários do Neurochat não têm permissão para realizar encaixe.");
                 return;
@@ -976,20 +1210,27 @@
             document.getElementById('enc-dia').value = dia;
             document.getElementById('enc-hora').value = hora;
             document.getElementById('enc-info').innerText = `${dia.split('-')[0]} às ${hora}`;
+            carregarHistoricoSlot(profId, dia, hora, 'enc-historico-lista');
             
             const [resPac, resConv] = await Promise.all([
-                fetch('/api/pacientes'),
+                fetch('/api/pacientes?per_page=10000'),
                 fetch('/api/convenios')
             ]);
             
-            const pacientes = await resPac.json();
+            const pacientesRaw = await resPac.json();
+            pacientesGlobaisModal = Array.isArray(pacientesRaw) ? pacientesRaw : (pacientesRaw.pacientes || []);
             const convenios = await resConv.json();
             
-            const selPac = document.getElementById('enc-paciente');
-            selPac.innerHTML = '<option value="">Selecione o paciente...</option>';
-            pacientes.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(p => {
-                selPac.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
-            });
+            // Reseta filtros de busca dos seletores customizados
+            if (window.customSelects && window.customSelects['enc-paciente']) {
+                window.customSelects['enc-paciente'].reset();
+            }
+            if (window.customSelects && window.customSelects['enc-grupo-paciente']) {
+                window.customSelects['enc-grupo-paciente'].reset();
+            }
+
+            // Atualiza os dropdowns de pacientes com base no array obtido
+            atualizarDropdownsPacientes();
             
             const selConv = document.getElementById('enc-convenio');
             selConv.innerHTML = '<option value="">Selecione o convênio...</option>';
@@ -997,65 +1238,240 @@
                 selConv.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
             });
 
+            // Popula também os seletores de grupo
+            const selGrupoConv = document.getElementById('enc-grupo-convenio');
+            if (selGrupoConv) {
+                selGrupoConv.innerHTML = '<option value="">Selecione o convênio...</option>';
+                convenios.forEach(c => {
+                    selGrupoConv.innerHTML += `<option value="${c.id}" data-nome="${c.nome.replace(/'/g, "\\'")}">${c.nome}</option>`;
+                });
+            }
+
+            // Limpa lista de grupo
+            pacientesGrupoSelecionados = [];
+            renderListaGrupo();
+
             // Seta data padrão como hoje no formato YYYY-MM-DD
             const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('enc-data').value = hoje;
+
+            // Configura o checkbox e o toggle
+            const cbGrupo = document.getElementById('enc-terapia-grupo');
+            const lblGrupo = document.getElementById('lbl-terapia-grupo');
+            if (forcarGrupo) {
+                cbGrupo.checked = true;
+                cbGrupo.disabled = true;
+                if (lblGrupo) lblGrupo.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                cbGrupo.checked = false;
+                cbGrupo.disabled = false;
+                if (lblGrupo) lblGrupo.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            toggleTipoEncaixe();
             
             document.getElementById('modal-encaixe').classList.remove('hidden');
+        }
+
+        function atualizarDropdownsPacientes() {
+            // Ordena lista completa alfabeticamente
+            const pacientesOrdenados = [...pacientesGlobaisModal].sort((a, b) => a.nome.localeCompare(b.nome));
+
+            // 1. Dropdown para agendamento individual
+            const selPac = document.getElementById('enc-paciente');
+            if (selPac) {
+                selPac.innerHTML = '<option value="">Selecione o paciente...</option>';
+                pacientesOrdenados.forEach(p => {
+                    selPac.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+                });
+                if (window.customSelects && window.customSelects['enc-paciente']) {
+                    window.customSelects['enc-paciente'].rebuild();
+                }
+            }
+
+            // 2. Dropdown para agendamento em grupo
+            const selGrupoPac = document.getElementById('enc-grupo-paciente');
+            if (selGrupoPac) {
+                selGrupoPac.innerHTML = '<option value="">Selecione o paciente...</option>';
+                pacientesOrdenados.forEach(p => {
+                    selGrupoPac.innerHTML += `<option value="${p.id}" data-nome="${p.nome.replace(/'/g, "\\'")}">${p.nome}</option>`;
+                });
+                if (window.customSelects && window.customSelects['enc-grupo-paciente']) {
+                    window.customSelects['enc-grupo-paciente'].rebuild();
+                }
+            }
+        }
+
+        function adicionarPacienteGrupo() {
+            const selPac = document.getElementById('enc-grupo-paciente');
+            const selConv = document.getElementById('enc-grupo-convenio');
+            
+            const pacId = selPac.value;
+            const convId = selConv.value;
+            
+            if (!pacId || !convId) {
+                alert("Selecione o paciente e o convênio para adicionar ao grupo.");
+                return;
+            }
+            
+            const pacNome = selPac.options[selPac.selectedIndex].getAttribute('data-nome') || selPac.options[selPac.selectedIndex].text;
+            const convNome = selConv.options[selConv.selectedIndex].getAttribute('data-nome') || selConv.options[selConv.selectedIndex].text;
+            
+            if (pacientesGrupoSelecionados.some(item => item.pacienteId == pacId)) {
+                alert("Este paciente já foi adicionado ao grupo.");
+                return;
+            }
+            
+            pacientesGrupoSelecionados.push({
+                pacienteId: pacId,
+                pacienteNome: pacNome,
+                convenioId: convId,
+                convenioNome: convNome
+            });
+            
+            selPac.value = "";
+            if (window.customSelects && window.customSelects['enc-grupo-paciente']) {
+                window.customSelects['enc-grupo-paciente'].sync();
+            }
+            selConv.value = "";
+            
+            renderListaGrupo();
+        }
+
+        function removerPacienteGrupo(idx) {
+            pacientesGrupoSelecionados.splice(idx, 1);
+            renderListaGrupo();
+        }
+
+        function renderListaGrupo() {
+            const listContainer = document.getElementById('enc-lista-grupo');
+            if (!listContainer) return;
+            
+            if (pacientesGrupoSelecionados.length === 0) {
+                listContainer.innerHTML = '<span class="text-[10px] text-slate-400 italic">Nenhum paciente adicionado ainda...</span>';
+                return;
+            }
+            
+            listContainer.innerHTML = pacientesGrupoSelecionados.map((item, idx) => `
+                <span class="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                    <span>${item.pacienteNome} (${item.convenioNome})</span>
+                    <button type="button" onclick="removerPacienteGrupo(${idx})" class="w-3.5 h-3.5 bg-purple-200 text-purple-800 rounded-full flex items-center justify-center font-bold hover:bg-red-500 hover:text-white transition-colors">×</button>
+                </span>
+            `).join('');
         }
 
         function toggleTipoEncaixe() {
             const isGrupo = document.getElementById('enc-terapia-grupo').checked;
             const dataContainer = document.getElementById('enc-data-container');
+            const containerSingle = document.getElementById('container-single-patient');
+            const containerGroup = document.getElementById('container-group-patients');
+            
             if (isGrupo) {
-                dataContainer.classList.add('hidden');
+                if (dataContainer) dataContainer.classList.add('hidden');
+                if (containerSingle) containerSingle.classList.add('hidden');
+                if (containerGroup) containerGroup.classList.remove('hidden');
             } else {
-                dataContainer.classList.remove('hidden');
+                if (dataContainer) dataContainer.classList.remove('hidden');
+                if (containerSingle) containerSingle.classList.remove('hidden');
+                if (containerGroup) containerGroup.classList.add('hidden');
             }
         }
 
         async function salvarEncaixeDireto() {
             const isGrupo = document.getElementById('enc-terapia-grupo').checked;
-            const ag = {
-                profissional_id: document.getElementById('enc-prof-id').value,
-                paciente_id: document.getElementById('enc-paciente').value,
-                convenio_id: document.getElementById('enc-convenio').value,
-                dia_semana: document.getElementById('enc-dia').value,
-                horario: document.getElementById('enc-hora').value,
-                encaixe: !isGrupo,
-                terapia_grupo: isGrupo,
-                status: 'confirmado'
-            };
+            const profId = document.getElementById('enc-prof-id').value;
+            const diaSemana = document.getElementById('enc-dia').value;
+            const horario = document.getElementById('enc-hora').value;
             const dataEncaixe = document.getElementById('enc-data').value;
+            const userId = localStorage.getItem('userId');
 
             if (isGrupo) {
-                // Terapia em grupo: não precisa de data (é permanente)
-                if(!ag.paciente_id || !ag.convenio_id) {
-                    return alert("Paciente e convênio são obrigatórios.");
+                if (pacientesGrupoSelecionados.length === 0) {
+                    return alert("Adicione pelo menos um paciente para a terapia em grupo.");
                 }
-            } else {
-                // Encaixe normal: precisa de data
-                if(!ag.paciente_id || !ag.convenio_id || !dataEncaixe) {
-                    return alert("Paciente, convênio e data são obrigatórios para realizar o encaixe.");
+                
+                // Salva todos sequencialmente
+                let errors = [];
+                for (const item of pacientesGrupoSelecionados) {
+                    const ag = {
+                        profissional_id: profId,
+                        paciente_id: item.pacienteId,
+                        convenio_id: item.convenioId,
+                        dia_semana: diaSemana,
+                        horario: horario,
+                        encaixe: false,
+                        terapia_grupo: true,
+                        status: 'confirmado'
+                    };
+                    
+                    try {
+                        const res = await fetch('/api/agendamentos', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-User-Name': localStorage.getItem('userName') || '',
+                                'X-User-Role': localStorage.getItem('userRole') || ''
+                            },
+                            body: JSON.stringify({ 
+                                agendamento: ag,
+                                data_encaixe: null,
+                                user_id: userId
+                            })
+                        });
+                        
+                        if (!res.ok) {
+                            const data = await res.json();
+                            errors.push(`${item.pacienteNome}: ${data.errors ? data.errors.join(', ') : 'Erro desconhecido'}`);
+                        }
+                    } catch (e) {
+                        errors.push(`${item.pacienteNome}: ${e.message}`);
+                    }
                 }
-            }
-
-            const res = await fetch('/api/agendamentos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    agendamento: ag,
-                    data_encaixe: isGrupo ? null : dataEncaixe,
-                    user_id: localStorage.getItem('userId')
-                })
-            });
-
-            if(res.ok) {
+                
+                if (errors.length > 0) {
+                    alert("Alguns erros ocorreram ao salvar o grupo:\n" + errors.join('\n'));
+                } else {
+                    alert("Agendamento em grupo realizado com sucesso!");
+                }
                 fecharModais();
                 carregarGradeProfissional();
             } else {
-                const data = await res.json();
-                alert("Erro: " + (data.errors ? data.errors.join(', ') : 'Tente novamente.'));
+                // Encaixe normal
+                const ag = {
+                    profissional_id: profId,
+                    paciente_id: document.getElementById('enc-paciente').value,
+                    convenio_id: document.getElementById('enc-convenio').value,
+                    dia_semana: diaSemana,
+                    horario: horario,
+                    encaixe: true,
+                    terapia_grupo: false,
+                    status: 'confirmado'
+                };
+
+                if(!ag.paciente_id || !ag.convenio_id || !dataEncaixe) {
+                    return alert("Paciente, convênio e data são obrigatórios para realizar o encaixe.");
+                }
+
+                const res = await fetch('/api/agendamentos', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-User-Name': localStorage.getItem('userName') || '',
+                        'X-User-Role': localStorage.getItem('userRole') || ''
+                    },
+                    body: JSON.stringify({ 
+                        agendamento: ag,
+                        data_encaixe: dataEncaixe,
+                        user_id: userId
+                    })
+                });
+
+                if(res.ok) {
+                    fecharModais();
+                    carregarGradeProfissional();
+                } else {
+                    const data = await res.json();
+                    alert("Erro: " + (data.errors ? data.errors.join(', ') : 'Tente novamente.'));
+                }
             }
         }
 
@@ -1121,10 +1537,20 @@
             }
         }
 
-        function abrirModalObservacao(agId, pacienteNome, dia, hora, obsAtual, corAtual) {
+        function abrirModalObservacao(agId, pacienteNome, dia, hora, obsAtual, corAtual, atualizadoPor) {
             document.getElementById('obs-agendamento-id').value = agId;
             document.getElementById('obs-info-header').innerText = `${pacienteNome.trim()} · ${dia.trim().split('-')[0]} às ${hora}`;
             document.getElementById('obs-texto').value = obsAtual || '';
+
+            const editorInfo = document.getElementById('obs-editor-info');
+            if (editorInfo) {
+                if (atualizadoPor && atualizadoPor.trim() !== '') {
+                    editorInfo.innerText = `Última edição por: ${atualizadoPor}`;
+                    editorInfo.classList.remove('hidden');
+                } else {
+                    editorInfo.classList.add('hidden');
+                }
+            }
 
             // Pré-seleciona a cor
             const cor = corAtual || '';
@@ -1138,6 +1564,9 @@
 
             document.getElementById('modal-observacao').classList.remove('hidden');
             setTimeout(() => document.getElementById('obs-texto').focus(), 100);
+
+            const profId = document.getElementById('select-prof').value;
+            carregarHistoricoSlot(profId, dia, hora, 'obs-historico-lista');
         }
 
         async function salvarObservacao() {
@@ -1173,6 +1602,154 @@
                 btn.disabled = false;
                 btn.innerHTML = '💾 Salvar Observação';
             }
+        }
+
+        function initSearchableSelect(selectId, placeholder) {
+            const originalSelect = document.getElementById(selectId);
+            if (!originalSelect) return;
+
+            // Remove any existing custom select wrapper to avoid duplicates
+            let wrapper = originalSelect.parentElement.querySelector(`.custom-select-wrapper[data-select-id="${selectId}"]`);
+            if (wrapper) {
+                wrapper.remove();
+            }
+
+            originalSelect.classList.add('hidden');
+
+            wrapper = document.createElement('div');
+            wrapper.className = 'custom-select-wrapper relative w-full mt-1';
+            wrapper.setAttribute('data-select-id', selectId);
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-left flex justify-between items-center text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all';
+            
+            // Set initial text
+            const selectedOption = originalSelect.options[originalSelect.selectedIndex];
+            button.innerHTML = `
+                <span class="custom-select-label truncate">${selectedOption ? selectedOption.text : placeholder}</span>
+                <svg class="w-5 h-5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            `;
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'custom-select-dropdown absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 hidden flex flex-col overflow-hidden max-h-[300px]';
+
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = 'p-3 border-b border-slate-100 font-bold text-sm outline-none focus:bg-slate-50/50 w-full';
+            searchInput.placeholder = 'Digite para buscar...';
+
+            const listContainer = document.createElement('div');
+            listContainer.className = 'overflow-y-auto flex-1 max-h-[220px]';
+
+            dropdown.appendChild(searchInput);
+            dropdown.appendChild(listContainer);
+            wrapper.appendChild(button);
+            wrapper.appendChild(dropdown);
+            
+            // Insert wrapper right after the original select
+            originalSelect.after(wrapper);
+
+            // Toggle dropdown
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Close all other custom selects first
+                document.querySelectorAll('.custom-select-dropdown').forEach(d => {
+                    if (d !== dropdown) d.classList.add('hidden');
+                });
+                document.querySelectorAll('.custom-select-wrapper button svg').forEach(svg => {
+                    if (svg !== button.querySelector('svg')) svg.classList.remove('rotate-180');
+                });
+
+                const isHidden = dropdown.classList.toggle('hidden');
+                const svg = button.querySelector('svg');
+                if (!isHidden) {
+                    svg.classList.add('rotate-180');
+                    searchInput.focus();
+                    searchInput.value = '';
+                    filterOptions('');
+                } else {
+                    svg.classList.remove('rotate-180');
+                }
+            });
+
+            // Close on click outside
+            document.addEventListener('click', (e) => {
+                if (!wrapper.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                    button.querySelector('svg').classList.remove('rotate-180');
+                }
+            });
+
+            // Populate custom items
+            function populateItems() {
+                listContainer.innerHTML = '';
+                const options = Array.from(originalSelect.options);
+                
+                options.forEach((opt, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 hover:bg-purple-50 hover:text-purple-700 cursor-pointer font-bold text-sm text-slate-700 transition-colors truncate';
+                    item.textContent = opt.text;
+                    item.setAttribute('data-value', opt.value);
+                    item.setAttribute('data-index', index);
+
+                    if (originalSelect.value === opt.value) {
+                        item.classList.add('bg-purple-100', 'text-purple-700');
+                    }
+
+                    item.addEventListener('click', () => {
+                        originalSelect.value = opt.value;
+                        originalSelect.selectedIndex = index;
+                        originalSelect.dispatchEvent(new Event('change'));
+                        
+                        button.querySelector('.custom-select-label').textContent = opt.text;
+                        dropdown.classList.add('hidden');
+                        button.querySelector('svg').classList.remove('rotate-180');
+                    });
+
+                    listContainer.appendChild(item);
+                });
+            }
+
+            // Filter items
+            function filterOptions(query) {
+                const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const items = listContainer.querySelectorAll('[data-value]');
+                items.forEach(item => {
+                    const text = item.textContent.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (text.includes(normalizedQuery)) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+            }
+
+            searchInput.addEventListener('input', (e) => {
+                filterOptions(e.target.value);
+            });
+
+            populateItems();
+
+            if (!window.customSelects) window.customSelects = {};
+            window.customSelects[selectId] = {
+                rebuild: () => {
+                    populateItems();
+                    const selectedOpt = originalSelect.options[originalSelect.selectedIndex];
+                    button.querySelector('.custom-select-label').textContent = selectedOpt ? selectedOpt.text : placeholder;
+                },
+                sync: () => {
+                    const selectedOpt = originalSelect.options[originalSelect.selectedIndex];
+                    button.querySelector('.custom-select-label').textContent = selectedOpt ? selectedOpt.text : placeholder;
+                    populateItems();
+                },
+                reset: () => {
+                    searchInput.value = '';
+                    filterOptions('');
+                }
+            };
         }
 
         window.onload = init;

@@ -53,10 +53,7 @@ app.get('/api/agenda/bookings', async (req, res) => {
         const data = await response.json();
 
         // Filtra somente os do dia atual (timezone Brasil -03:00)
-        const now = new Date();
-        const brazilOffset = -3 * 60; // minutos
-        const localNow = new Date(now.getTime() + (brazilOffset - now.getTimezoneOffset()) * 60000);
-        const todayStr = localNow.toISOString().slice(0, 10); // "YYYY-MM-DD"
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
         const todayBookings = data.filter(b => b.date_str === todayStr);
         res.json(todayBookings);

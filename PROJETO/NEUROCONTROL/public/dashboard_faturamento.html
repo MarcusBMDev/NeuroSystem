@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faturamento Amigo - Controle de Faturamento</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖨️</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            <div class="logo-text">
+                <h3>Faturamento</h3>
+                <span style="font-size: 10px; color: #38bdf8; display:block;">Terapias · v1.0</span>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item active"><a href="#"><i class="fa-solid fa-chart-line"></i> Painel</a></li>
+            <li class="nav-item"><a href="/dashboard_operacional.html"><i class="fa-solid fa-file-invoice"></i> Guias</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-users"></i> Pacientes</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-user-doctor"></i> Profissionais</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-handshake"></i> Convênios</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-calculator"></i> Faturamento</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-receipt"></i> Contas a Receber</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-file-lines"></i> Relatórios</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-sliders"></i> Configurações</a></li>
+        </ul>
+
+        <div class="user-profile-sidebar">
+            <div class="user-avatar" id="userAvatar">MR</div>
+            <div class="user-info-side">
+                <span class="user-name-side" id="userNameSide">Marina Ribeiro</span>
+                <span class="user-dept-side" id="userDeptSide">Coord. Faturamento</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div class="search-container">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" class="search-input" id="searchGlobal" placeholder="Buscar guia, paciente ou convênio...">
+            </div>
+            <div class="top-bar-right">
+                <div class="notification-bell">
+                    <i class="fa-regular fa-bell"></i>
+                    <div class="notification-badge"></div>
+                </div>
+                <div class="user-profile-header">
+                    <span style="font-size: 13px; font-weight: 600;" id="userHeaderName">Marina Ribeiro</span>
+                    <div class="user-avatar" style="background-color: #0284c7; color: white;">MR</div>
+                    <button class="btn btn-secondary" onclick="logout()" style="padding: 6px 12px; font-size: 11px;"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN TITLE AREA -->
+        <div class="dashboard-title-area">
+            <div>
+                <h2>Controle de Faturamento</h2>
+                <p id="cicloSubtitulo">Ciclo atual: 01/07 - 31/07/2026 • 12 convênios ativos</p>
+            </div>
+            <div>
+                <button class="btn btn-secondary"><i class="fa-solid fa-download"></i> Exportar</button>
+                <button class="btn btn-primary" onclick="abrirModalNovaGuia()"><i class="fa-solid fa-plus"></i> Nova guia</button>
+            </div>
+        </div>
+
+        <!-- KPI CARDS -->
+        <div class="kpi-container">
+            <div class="kpi-card">
+                <div class="kpi-card-info">
+                    <h4>Faturado no Mês</h4>
+                    <div class="kpi-card-value" id="kpiFaturado">R$ 0</div>
+                    <div class="kpi-card-trend up"><i class="fa-solid fa-trend-up"></i> <span>+12,4%</span> vs. mês anterior</div>
+                </div>
+                <div class="kpi-icon success"><i class="fa-solid fa-dollar-sign"></i></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-card-info">
+                    <h4>Guias em Aberto</h4>
+                    <div class="kpi-card-value" id="kpiAberto">0</div>
+                    <div class="kpi-card-trend neutral"><span>32 vencendo</span> próximos 7 dias</div>
+                </div>
+                <div class="kpi-icon primary"><i class="fa-solid fa-file-invoice"></i></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-card-info">
+                    <h4>Sessões Realizadas</h4>
+                    <div class="kpi-card-value" id="kpiSessoes">0</div>
+                    <div class="kpi-card-trend up"><i class="fa-solid fa-trend-up"></i> <span>+184</span> esta semana</div>
+                </div>
+                <div class="kpi-icon primary"><i class="fa-solid fa-calendar-check"></i></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-card-info">
+                    <h4>Pendências C.I.</h4>
+                    <div class="kpi-card-value" id="kpiPendencias">0</div>
+                    <div class="kpi-card-trend down"><i class="fa-solid fa-circle-exclamation"></i> <span>9 críticas</span> aguardando cadastro</div>
+                </div>
+                <div class="kpi-icon danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
+
+        <!-- GRID DE CONTEÚDO -->
+        <div class="content-grid">
+            
+            <!-- SEÇÃO DE GUIAS -->
+            <div>
+                <div class="panel-card">
+                    <div class="panel-card-header">
+                        <div class="panel-card-title">Guias em processamento</div>
+                        <div style="display: flex; gap: 8px;">
+                            <select class="form-control" id="filterStatusSelect" style="width: 150px; padding: 6px 12px; font-size: 12px;">
+                                <option value="">Todos os status</option>
+                                <option value="aguardando_agendamento">Aguardando Agenda</option>
+                                <option value="p_assinar">P/ Assinar</option>
+                                <option value="p_faturar">Pronto P/ Faturar</option>
+                                <option value="finalizado">Faturado</option>
+                                <option value="inconsistente">Glosada / Inconsistente</option>
+                            </select>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;"><i class="fa-solid fa-filter"></i> Filtros</button>
+                        </div>
+                    </div>
+
+                    <!-- Abas de Filtro de Terapia -->
+                    <div class="tab-container">
+                        <button class="tab-btn active" onclick="filtrarTerapia('todas')">Todas (0)</button>
+                        <button class="tab-btn" onclick="filtrarTerapia('ABA')">ABA (0)</button>
+                        <button class="tab-btn" onclick="filtrarTerapia('Convencionais')">Convencionais (0)</button>
+                    </div>
+
+                    <!-- Tabela de Guias -->
+                    <div class="table-responsive">
+                        <table class="data-table" id="guiasTable">
+                            <thead>
+                                <tr>
+                                    <th>Guia</th>
+                                    <th>Paciente</th>
+                                    <th>Convênio</th>
+                                    <th>Terapia</th>
+                                    <th>Aut./Real./Fat.</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Preenchido via Javascript -->
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted);">Carregando guias...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEÇÃO DE CONVÊNIOS / PRODUÇÃO -->
+            <div class="production-panel">
+                <div class="panel-card">
+                    <div class="panel-card-header">
+                        <div class="panel-card-title">Convênios · Produção</div>
+                    </div>
+                    <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 20px;">% faturado sobre o autorizado</p>
+                    
+                    <div id="producaoConvenioList">
+                        <!-- Carregado via JS -->
+                        <p style="font-size: 12px; text-align: center; color: var(--text-muted);">Carregando produção...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL DE NOVA GUIA (OPCIONAL/FACILITADOR PARA DIRETORIA/FATURAMENTO) -->
+    <div class="modal" id="novaGuiaModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cadastrar Guia</h3>
+                <button class="modal-close" onclick="fecharModalNovaGuia()">&times;</button>
+            </div>
+            <form id="novaGuiaForm">
+                <div class="form-group">
+                    <label for="modalPacienteInput">Paciente</label>
+                    <input type="text" class="form-control" id="modalPacienteInput" placeholder="Comece a digitar o nome..." autocomplete="off">
+                    <input type="hidden" id="modalPacienteId">
+                    <div id="autocompleteList" style="position: absolute; background: white; border: 1px solid #ccc; width: calc(100% - 48px); display: none; z-index: 999; max-height: 150px; overflow-y: auto; border-radius: 4px; box-shadow: var(--shadow);"></div>
+                </div>
+                <div class="form-group">
+                    <label for="modalNumeroGuia">Número da Guia</label>
+                    <input type="text" class="form-control" id="modalNumeroGuia" required placeholder="Ex: GUI-12345">
+                </div>
+                <div class="form-group">
+                    <label for="modalQtdAutorizada">Quantidade Autorizada</label>
+                    <input type="number" class="form-control" id="modalQtdAutorizada" required placeholder="Ex: 10">
+                </div>
+                <div class="form-group">
+                    <label for="modalTerapia">Terapia</label>
+                    <select class="form-control" id="modalTerapia" required>
+                        <option value="Psico">Psicologia</option>
+                        <option value="Fono">Fonoaudiologia</option>
+                        <option value="TO">Terapia Ocupacional (T.O)</option>
+                        <option value="Fisio">Fisioterapia</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="modalDataPedido">Data de Emissão do Pedido Médico</label>
+                    <input type="date" class="form-control" id="modalDataPedido" required>
+                </div>
+                <div class="form-group">
+                    <label for="modalMesVigente">Mês de Competência</label>
+                    <input type="month" class="form-control" id="modalMesVigente" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalNovaGuia()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Guia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/dashboard_faturamento.js"></script>
+</body>
+</html>

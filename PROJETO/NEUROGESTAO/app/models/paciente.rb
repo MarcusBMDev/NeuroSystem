@@ -11,7 +11,7 @@ class Paciente < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 0 },
             allow_nil: true
   validates :weekly_frequency,
-            numericality: { only_integer: true, greater_than_or_equal_to: 1, less_than_or_equal_to: 100 },
+            numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
             allow_nil: true
 
   scope :ativos,   -> { where(deleted_at: nil) }
