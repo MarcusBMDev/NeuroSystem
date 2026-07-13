@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroControl - Painel Operacional</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .previsao-box {
+            background-color: #f1f5f9;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: var(--radius);
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .inconsistencia-banner {
+            border-left: 4px solid var(--danger);
+            background-color: var(--danger-light);
+            color: var(--danger);
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .flashing {
+            animation: flash 1.5s infinite;
+        }
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon" style="background-color: var(--primary);"><i class="fa-solid fa-gears"></i></div>
+            <div class="logo-text">
+                <h3>NeuroControl</h3>
+                <span style="font-size: 10px; color: #38bdf8; display:block;">Painel Operacional</span>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item active"><a href="#"><i class="fa-solid fa-gears"></i> Setores Operacionais</a></li>
+            <li class="nav-item"><a href="/dashboard_recepcao.html"><i class="fa-solid fa-hotel"></i> Recepção</a></li>
+            <li class="nav-item"><a href="/dashboard_ci.html"><i class="fa-solid fa-shield-halved"></i> Controle Interno</a></li>
+            <li class="nav-item"><a href="/dashboard_faturamento.html"><i class="fa-solid fa-chart-line"></i> Painel Geral</a></li>
+        </ul>
+
+        <div class="user-profile-sidebar">
+            <div class="user-avatar" id="userAvatar">OP</div>
+            <div class="user-info-side">
+                <span class="user-name-side" id="userNameSide">Operacional</span>
+                <span class="user-dept-side" id="userDeptSide">Solicitação / Agendamento</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div>
+                <span style="font-size: 13px; font-weight:600; color:var(--text-muted);">Painel Integrado</span>
+            </div>
+            <div class="top-bar-right">
+                <div class="user-profile-header">
+                    <span style="font-size: 13px; font-weight: 600;" id="userHeaderName">Colaborador</span>
+                    <div class="user-avatar" style="background-color: var(--primary); color: white;">OP</div>
+                    <button class="btn btn-secondary" onclick="logout()" style="padding: 6px 12px; font-size: 11px;"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABS DOS SETORES -->
+        <div class="tab-container" style="border-bottom: 2px solid var(--border-color); margin-bottom: 24px;">
+            <button class="tab-btn active" id="tabSolicitacaoBtn" onclick="switchSetor('solicitacao')" style="font-size: 15px; padding: 10px 24px;"><i class="fa-solid fa-file-invoice"></i> Setor de Solicitação (Nagilla)</button>
+            <button class="tab-btn" id="tabAgendamentoBtn" onclick="switchSetor('agendamento')" style="font-size: 15px; padding: 10px 24px;"><i class="fa-solid fa-calendar-plus"></i> Setor de Agendamento (Camila/Bruno/Petronio)</button>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- VIEW SOLICITAÇÃO (NAGILLA) -->
+        <!-- ============================================== -->
+        <div id="viewSolicitacao">
+            <div class="content-grid" style="grid-template-columns: 1.2fr 1.8fr;">
+                
+                <!-- FORMULÁRIO DE CADASTRO -->
+                <div class="panel-card">
+                    <div class="panel-card-header">
+                        <div class="panel-card-title"><i class="fa-solid fa-plus-circle"></i> Cadastrar Nova Guia</div>
+                    </div>
+                    <form id="solicitacaoForm">
+                        <div class="form-group" style="position:relative;">
+                            <label for="solPacInput">Paciente (NEUROGESTÃO)</label>
+                            <input type="text" class="form-control" id="solPacInput" required placeholder="Comece a digitar o nome do paciente..." autocomplete="off">
+                            <input type="hidden" id="solPacId">
+                            <div id="solAutocompleteList" style="position: absolute; background: white; border: 1px solid #ccc; width: 100%; display: none; z-index: 999; max-height: 150px; overflow-y: auto; border-radius: 4px; box-shadow: var(--shadow); margin-top:2px;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="solNumeroGuia">Número da Guia Autorizada</label>
+                            <input type="text" class="form-control" id="solNumeroGuia" required placeholder="Ex: GUI-12345">
+                        </div>
+                        <div class="form-group">
+                            <label for="solTerapia">Terapia/Especialidade</label>
+                            <select class="form-control" id="solTerapia" required>
+                                <option value="Psico">Psicologia</option>
+                                <option value="Fono">Fonoaudiologia</option>
+                                <option value="TO">Terapia Ocupacional (T.O)</option>
+                                <option value="Fisio">Fisioterapia</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="solDataPedido">Data de Emissão do Pedido Médico</label>
+                            <input type="date" class="form-control" id="solDataPedido" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="solMesVigente">Mês de Competência</label>
+                            <input type="month" class="form-control" id="solMesVigente" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="solQtdAutorizada">Quantidade Autorizada</label>
+                            <input type="number" class="form-control" id="solQtdAutorizada" required placeholder="Quantidade aprovada pelo convênio">
+                        </div>
+
+                        <!-- Caixa de Previsão Calculada -->
+                        <div class="previsao-box" id="previsaoBox" style="display: none;">
+                            <i class="fa-solid fa-calculator" style="color: var(--primary);"></i> Previsão calculada pela agenda: <strong id="previsaoCalculadaText">0 sessões</strong>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;"><i class="fa-solid fa-floppy-disk"></i> Autorizar e Liberar para Agendamento</button>
+                    </form>
+                </div>
+
+                <!-- ALERTAS DE SLA / OCIOSIDADE -->
+                <div class="panel-card">
+                    <div class="panel-card-header">
+                        <div class="panel-card-title"><i class="fa-solid fa-clock-rotate-left"></i> Monitor de SLA (Alertas de Ociosidade)</div>
+                    </div>
+                    <div style="font-size:12px; color: var(--text-muted); margin-bottom: 16px;">
+                        Exibe as guias emitidas há mais de 3 dias que ainda não foram vinculadas à grade de atendimento.
+                    </div>
+                    <div id="slaList">
+                        <!-- Carregado via JS -->
+                        <p style="text-align: center; color: var(--text-muted);">Nenhum alerta de ociosidade ativo.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- VIEW AGENDAMENTO (CAMILA / BRUNO / PETRONIO) -->
+        <!-- ============================================== -->
+        <div id="viewAgendamento" style="display: none;">
+            
+            <!-- LISTA DE GUIAS INCONSISTENTES DEVOLVIDAS PELO CI (Urgente) -->
+            <div id="guiasDevolvidasContainer">
+                <!-- Inserido dinamicamente se houver inconsistências de rasuras -->
+            </div>
+
+            <div class="content-grid" style="grid-template-columns: 1.8fr 1.2fr;">
+                
+                <!-- PROTOCOLO CHECKLIST -->
+                <div class="panel-card">
+                    <div class="panel-card-header">
+                        <div class="panel-card-title"><i class="fa-solid fa-list-check"></i> Checklist e Geração de Protocolo para CI</div>
+                    </div>
+                    <div style="font-size:12px; color: var(--text-muted); margin-bottom: 16px;">
+                        Selecione as guias físicas assinadas que você tem em mãos para gerar o Protocolo Digital de trânsito e entregar ao Controle Interno.
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table" id="checklistTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"><input type="checkbox" id="selectAllChecklist" onclick="toggleSelectAllChecklist(this)"></th>
+                                    <th>Paciente</th>
+                                    <th>Guia</th>
+                                    <th>Terapia</th>
+                                    <th>Qtd. Sessões</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted);">Buscando guias aptas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button class="btn btn-primary" style="margin-top: 16px; background-color: var(--success);" onclick="gerarProtocoloDigital()"><i class="fa-solid fa-receipt"></i> Emitir Protocolo Digital e Enviar ao CI</button>
+                </div>
+
+                <!-- FILA DE AGENDAMENTO -->
+                <div class="panel-card">
+                    <div class="panel-card-header">
+                        <div class="panel-card-title"><i class="fa-solid fa-clock"></i> Guias Aguardando Agendamento</div>
+                    </div>
+                    <div style="font-size:12px; color: var(--text-muted); margin-bottom: 16px;">
+                        Guias liberadas pela Solicitação que aguardam agendamento na grade do NEUROGESTÃO.
+                    </div>
+                    <div id="aguardandoAgendaList">
+                        <!-- Carregado via JS -->
+                        <p style="text-align: center; color: var(--text-muted);">Nenhuma guia pendente de agenda.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL DE TRAVA DE SEGURANÇA (QTD AUTORIZADA < EXPECTATIVA) -->
+    <div class="modal" id="divergenciaModal">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom: 2px solid var(--danger);">
+                <h3 style="color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Trava de Segurança</h3>
+                <button class="modal-close" onclick="fecharDivergenciaModal()">&times;</button>
+            </div>
+            <div style="font-size:14px; margin: 20px 0; line-height: 1.5;">
+                Atenção: A quantidade autorizada é <strong>inferior</strong> à quantidade prevista pela agenda da clínica.
+                <br><br>
+                Necessidade da Agenda: <strong id="lockPrevisaoText">X sessões</strong>
+                <br>Digitado pela equipe: <strong id="lockAutorizadoText">Y sessões</strong>
+                <br><br>
+                Tem certeza que deseja prosseguir com este cadastro?
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="fecharDivergenciaModal()">Não, ajustar valor</button>
+                <button class="btn btn-primary" onclick="confirmarSalvarGuiaDivergente()" style="background-color: var(--danger);">Sim, desejo prosseguir</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dashboard_operacional.js"></script>
+</body>
+</html>

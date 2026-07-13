@@ -235,7 +235,7 @@ const guiaController = {
     atualizarStatus: async (req, res) => {
         try {
             const { id } = req.params;
-            const { status, observacao_inconsistencia } = req.body;
+            const { status, observacao_inconsistencia, assinatura_pendente_flag } = req.body;
 
             const updateData = [status];
             let sql = `UPDATE neurocontrol_guias SET status = ?`;
@@ -247,6 +247,11 @@ const guiaController = {
             if (observacao_inconsistencia !== undefined) {
                 sql += `, observacao_inconsistencia = ?`;
                 updateData.push(observacao_inconsistencia);
+            }
+
+            if (assinatura_pendente_flag !== undefined) {
+                sql += `, assinatura_pendente_flag = ?`;
+                updateData.push(assinatura_pendente_flag);
             }
 
             sql += ` WHERE id = ?`;

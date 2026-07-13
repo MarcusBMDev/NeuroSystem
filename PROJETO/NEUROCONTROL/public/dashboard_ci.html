@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroControl - Painel Controle Interno</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .alert-bar {
+            background-color: var(--danger-light);
+            border-left: 4px solid var(--danger);
+            color: var(--danger);
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.95; }
+            50% { opacity: 1; transform: scale(1.002); }
+            100% { opacity: 0.95; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon" style="background-color: var(--danger);"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="logo-text">
+                <h3>NeuroControl</h3>
+                <span style="font-size: 10px; color: #f43f5e; display:block;">Controle Interno</span>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item active"><a href="#"><i class="fa-solid fa-clipboard-check"></i> Dashboard CI</a></li>
+            <li class="nav-item"><a href="/dashboard_operacional.html"><i class="fa-solid fa-file-signature"></i> Solicitação/Agenda</a></li>
+            <li class="nav-item"><a href="/dashboard_faturamento.html"><i class="fa-solid fa-chart-line"></i> Painel Geral</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-sliders"></i> Configurações</a></li>
+        </ul>
+
+        <div class="user-profile-sidebar">
+            <div class="user-avatar" id="userAvatar" style="background-color: var(--danger); color: white;">CI</div>
+            <div class="user-info-side">
+                <span class="user-name-side" id="userNameSide">Talita / Natan</span>
+                <span class="user-dept-side" id="userDeptSide">Controle Interno</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div class="search-container">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" class="search-input" placeholder="Buscar no Controle Interno...">
+            </div>
+            <div class="top-bar-right">
+                <div class="user-profile-header">
+                    <span style="font-size: 13px; font-weight: 600;" id="userHeaderName">Talita</span>
+                    <div class="user-avatar" style="background-color: var(--danger); color: white;">CI</div>
+                    <button class="btn btn-secondary" onclick="logout()" style="padding: 6px 12px; font-size: 11px;"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALERTA DA RECEPÇÃO -->
+        <div id="receptionAlertsContainer">
+            <!-- Inserido dinamicamente se houver alertas ativos -->
+        </div>
+
+        <!-- MAIN TITLE AREA -->
+        <div class="dashboard-title-area">
+            <div>
+                <h2>Painel do Controle Interno</h2>
+                <p>Auditoria de guias físicas, protocolos digitais e status de assinaturas</p>
+            </div>
+            <div>
+                <select class="form-control" id="mesFiltroGlobal" style="width: 150px; display:inline-block; margin-right:8px;">
+                    <option value="2026-07">Julho / 2026</option>
+                    <option value="2026-08">Agosto / 2026</option>
+                </select>
+                <button class="btn btn-secondary" onclick="carregarDadosCI()"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+            </div>
+        </div>
+
+        <!-- SEÇÃO OPERACIONAL -->
+        <div class="content-grid" style="grid-template-columns: 1.2fr 1.8fr;">
+            
+            <!-- CAIXA DE ENTRADA DE PROTOCOLOS -->
+            <div>
+                <div class="panel-card" style="height: 100%;">
+                    <div class="panel-card-header">
+                        <div class="panel-card-title"><i class="fa-solid fa-inbox"></i> Entrada de Lotes (Protocolos Digitais)</div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="protocolosTable">
+                            <thead>
+                                <tr>
+                                    <th>Nº Protocolo</th>
+                                    <th>Emissor</th>
+                                    <th>Data Envio</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" style="text-align: center; color: var(--text-muted);">Buscando protocolos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABELA DE RISCO DIÁRIO -->
+            <div>
+                <div class="panel-card">
+                    <div class="panel-card-header">
+                        <div class="panel-card-title"><i class="fa-solid fa-triangle-exclamation"></i> Visão Diária de Risco (Hoje)</div>
+                        <span style="font-size: 11px; background-color: var(--danger-light); color: var(--danger); padding: 4px 8px; border-radius: 12px; font-weight: 600;">Vermelho = Sem Guia Válida</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="gradeRiscoTable">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Paciente</th>
+                                    <th>Profissional</th>
+                                    <th>Terapia</th>
+                                    <th>Guia</th>
+                                    <th>Sessão Assinada</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">Buscando grade de risco...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL DE AUDITORIA DE PROTOCOLO -->
+    <div class="modal" id="auditarProtocoloModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 id="auditarModalTitle">Auditar Protocolo #0001</h3>
+                <button class="modal-close" onclick="fecharModalAuditoria()">&times;</button>
+            </div>
+            
+            <div style="font-size:12px; color: var(--text-muted); margin-bottom: 16px;">
+                Por favor, verifique se os papéis físicos correspondem exatamente a cada guia descrita abaixo.
+            </div>
+
+            <div class="table-responsive" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Paciente</th>
+                            <th>Nº Guia</th>
+                            <th>Terapia</th>
+                            <th>Auditoria Física</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditarItensList">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="fecharModalAuditoria()">Cancelar</button>
+                <button class="btn btn-primary" onclick="finalizarAuditoria()" style="background-color: var(--success);"><i class="fa-solid fa-check"></i> Concluir e Registrar Custódia</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dashboard_ci.js"></script>
+</body>
+</html>

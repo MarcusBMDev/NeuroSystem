@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroControl - Painel Recepção</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📞</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .override-warning-box {
+            background-color: var(--warning-light);
+            border-left: 4px solid var(--warning);
+            color: var(--warning);
+            padding: 16px;
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon" style="background-color: var(--success);"><i class="fa-solid fa-hotel"></i></div>
+            <div class="logo-text">
+                <h3>NeuroControl</h3>
+                <span style="font-size: 10px; color: #4ade80; display:block;">Recepção</span>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item active"><a href="#"><i class="fa-solid fa-calendar-days"></i> Grade Diária</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-folder-open"></i> Pastas Físicas</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-sliders"></i> Configurações</a></li>
+        </ul>
+
+        <div class="user-profile-sidebar">
+            <div class="user-avatar" id="userAvatar" style="background-color: var(--success); color: white;">RC</div>
+            <div class="user-info-side">
+                <span class="user-name-side" id="userNameSide">Recepção</span>
+                <span class="user-dept-side">Secretária</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div>
+                <span style="font-size: 13px; font-weight:600; color:var(--text-muted);">Status da Recepção: <strong>Online</strong></span>
+            </div>
+            <div class="top-bar-right">
+                <div class="user-profile-header">
+                    <span style="font-size: 13px; font-weight: 600;" id="userHeaderName">Secretária</span>
+                    <div class="user-avatar" style="background-color: var(--success); color: white;">RC</div>
+                    <button class="btn btn-secondary" onclick="logout()" style="padding: 6px 12px; font-size: 11px;"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALERTAS CRÍTICOS DO CI (GUIAS OVERRIDDEN SEM ASSINATURA) -->
+        <div id="ciOverridesWarningContainer">
+            <!-- Inserido dinamicamente se houver guias faturadas sem assinatura (overrides) -->
+        </div>
+
+        <!-- MAIN TITLE AREA -->
+        <div class="dashboard-title-area">
+            <div>
+                <h2>Grade Diária de Atendimentos</h2>
+                <p>Ordem de chegada e controle de assinaturas em tempo real</p>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="carregarGradeRecepcao()"><i class="fa-solid fa-rotate"></i> Atualizar Grade</button>
+            </div>
+        </div>
+
+        <!-- GRADE DE ATENDIMENTO -->
+        <div class="panel-card">
+            <div class="table-responsive">
+                <table class="data-table" id="recepcaoTable">
+                    <thead>
+                        <tr>
+                            <th>Horário</th>
+                            <th>Paciente</th>
+                            <th>Profissional</th>
+                            <th>Terapia</th>
+                            <th>Guia Vinculada</th>
+                            <th>Status Assinatura</th>
+                            <th>Ações Rápidas por Paciente</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted);">Carregando grade diária...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL DE DIGITAÇÃO DE TOKEN (BRADESCO / SERVIR) -->
+    <div class="modal" id="tokenModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Validação Exigida (Token do Plano)</h3>
+                <button class="modal-close" onclick="fecharTokenModal()">&times;</button>
+            </div>
+            <div style="font-size:12px; color: var(--text-muted); margin-bottom: 16px;">
+                Os planos <strong style="color: var(--primary);">BRADESCO</strong> e <strong style="color: var(--primary);">SERVIR</strong> exigem validação de token por sessão.
+            </div>
+            <div class="form-group">
+                <label for="tokenInput">Número do Token</label>
+                <input type="text" class="form-control" id="tokenInput" placeholder="Digite o token gerado pelo paciente..." required>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="fecharTokenModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmarAssinaturaComToken()">Validar e Assinar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE SINALIZAR PENDÊNCIA (PROBLEMA) -->
+    <div class="modal" id="problemaModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Sinalizar Problema ao C.I.</h3>
+                <button class="modal-close" onclick="fecharProblemaModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="problemaInput">Descrição da Ocorrência</label>
+                <textarea class="form-control" id="problemaInput" placeholder="Ex: Guia não está na pasta física ou foi perdida..." rows="4" required></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="fecharProblemaModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmarSinalizarProblema()" style="background-color: var(--danger);">Enviar Alerta Urgente</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dashboard_recepcao.js"></script>
+</body>
+</html>
