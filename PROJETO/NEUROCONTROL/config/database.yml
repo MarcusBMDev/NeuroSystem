@@ -1,0 +1,38 @@
+default: &default
+  adapter: mysql2
+  encoding: utf8mb4
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  username: <%= ENV.fetch("MYSQL_USERNAME") { "root" } %>
+  password: <%= ENV.fetch("MYSQL_PASSWORD") { "" } %>
+  host: <%= ENV.fetch("MYSQL_HOST") { "127.0.0.1" } %>
+  port: <%= ENV.fetch("MYSQL_PORT") { 3306 } %>
+  default_file: <%= Rails.root.join('config/my.cnf') %>
+  ssl_mode: :disabled
+
+development:
+  primary:
+    <<: *default
+    database: agendamentos_clinica_dev
+  neurochat:
+    <<: *default
+    database: neurochat_db
+
+test:
+  primary:
+    <<: *default
+    database: agendamentos_clinica_test
+  neurochat:
+    <<: *default
+    database: neurochat_db_test
+
+production:
+  primary:
+    <<: *default
+    database: <%= ENV.fetch("PRODUCTION_DB") { "agendamentos_clinica_prod" } %>
+    username: <%= ENV.fetch("PRODUCTION_DB_USER") { "root" } %>
+    password: <%= ENV.fetch("PRODUCTION_DB_PASSWORD") { "" } %>
+  neurochat:
+    <<: *default
+    database: <%= ENV.fetch("NEUROCHAT_DB") { "neurochat_db_prod" } %>
+    username: <%= ENV.fetch("NEUROCHAT_DB_USER") { "root" } %>
+    password: <%= ENV.fetch("NEUROCHAT_DB_PASSWORD") { "" } %>

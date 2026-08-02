@@ -166,7 +166,7 @@
                 <h3 id="user-name">...</h3>
                 <span id="user-dept">...</span>
                 <button class="edit-profile-btn" onclick="openProfileModal()">✏️ Editar Perfil</button>
-                <button id="btn-admin-panel" class="edit-profile-btn" onclick="window.location.href='/admin.html'" style="display:none; margin-top:5px; background-color:#1e293b; color:white; font-weight:bold;"><i class="fa-solid fa-lock"></i> ⚙️ Painel Admin</button>
+                <button id="btn-admin-panel" class="edit-profile-btn" onclick="window.location.href='/admin.html'" style="display:none; margin-top:4px; background-color:#1e293b; color:white; font-weight:bold;"><i class="fa-solid fa-lock"></i> ⚙️ Painel Admin</button>
             </div>
         </div>
 
@@ -196,19 +196,19 @@
     <main class="main-area">
         <div id="welcome-screen">
             <div class="welcome-box">
-                <h1 style="color: white; margin: 0; font-size: 2.5rem; font-family: 'Montserrat', sans-serif; font-weight: 800; text-shadow: 0 4px 12px rgba(0,0,0,0.3);">NeuroChat 🧠</h1>
-                <p style="color: #90caf9; margin-top: 10px; margin-bottom: 25px; font-weight: 500;">Bem-vindo à central de comunicação interna.</p>
+                <h1 style="color: #0284c7; margin: 0; font-size: 2.5rem; font-family: 'Montserrat', sans-serif; font-weight: 800; text-shadow: none;">NeuroChat 🧠</h1>
+                <p style="color: #0369a1; margin-top: 10px; margin-bottom: 25px; font-weight: 500;">Bem-vindo à central de comunicação interna.</p>
 
                 <!-- LINHA PRINCIPAL: AVISOS + AGENDA LADO A LADO -->
                 <div style="display: flex; gap: 20px; align-items: flex-start; text-align: left;">
 
                     <!-- COLUNA ESQUERDA: Avisos + Botão -->
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 14px;">
-                        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-left: 5px solid #00d2ff; padding: 20px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
-                            <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 10px; font-family: 'Montserrat', sans-serif; font-weight: 700;">📌 Avisos Importantes</h4>
-                            <p style="font-weight: 700; margin-bottom: 5px; color: #fff;">Olá pessoal!</p>
-                            <p style="font-size: 0.9rem; color: #90caf9; margin-bottom: 10px;">Seguem as instruções para o uso do Neurochat:</p>
-                            <ul style="padding-left: 20px; color: #e3f2fd; font-size: 0.9rem; line-height: 1.6; margin: 0; font-weight: 500;">
+                        <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-left: 5px solid #0284c7; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.05);">
+                            <h4 style="color: #0284c7; margin-top: 0; margin-bottom: 10px; font-family: 'Montserrat', sans-serif; font-weight: 700;">📌 Avisos Importantes</h4>
+                            <p style="font-weight: 700; margin-bottom: 5px; color: #1e293b;">Olá pessoal!</p>
+                            <p style="font-size: 0.9rem; color: #475569; margin-bottom: 10px;">Seguem as instruções para o uso do Neurochat:</p>
+                            <ul style="padding-left: 20px; color: #334155; font-size: 0.9rem; line-height: 1.6; margin: 0; font-weight: 500;">
                                 <li>1 - Insira seu nome e primeiro sobrenome.</li>
                                 <li>2 - Solicite ao Marketing uma foto institucional para adicionar ao seu perfil.</li>
                                 <li>3 - Foi criado o "MANUAL &amp; NOVIDADES" que traz todas as melhorias do chat.</li>
@@ -224,13 +224,13 @@
 
                     <!-- COLUNA DIREITA: Card de Agendamentos -->
                     <div style="flex: 1; display: flex; flex-direction: column;">
-                        <div id="agenda-card" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px; height: 100%; box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
+                        <div id="agenda-card" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 18px; height: 100%; box-sizing: border-box; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.05);">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                <h4 style="color: #00d2ff; margin: 0; font-size: 1rem; font-family: 'Montserrat', sans-serif; font-weight: 700;">📅 Salas Agendadas Hoje</h4>
-                                <span id="agenda-date-label" style="font-size: 0.78rem; color: #90caf9; font-weight: 600;"></span>
+                                <h4 style="color: #0284c7; margin: 0; font-size: 1rem; font-family: 'Montserrat', sans-serif; font-weight: 700;">📅 Salas Agendadas Hoje</h4>
+                                <span id="agenda-date-label" style="font-size: 0.78rem; color: #0369a1; font-weight: 600;"></span>
                             </div>
                             <div id="agenda-list">
-                                <div style="text-align: center; color: #90caf9; font-size: 0.9rem; padding: 10px 0;">
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; padding: 10px 0;">
                                     <span style="font-size: 1.4rem;">⏳</span><br>Carregando agendamentos...
                                 </div>
                             </div>
@@ -240,7 +240,7 @@
                 </div>
                 <!-- FIM DA LINHA PRINCIPAL -->
 
-                <p style="margin-top: 25px; font-size: 0.85rem; color: #90caf9; opacity: 0.8; text-align: center; font-weight: 500;">
+                <p style="margin-top: 25px; font-size: 0.85rem; color: #0369a1; opacity: 0.8; text-align: center; font-weight: 500;">
                     👈 Selecione um colega ou grupo no menu lateral para iniciar.
                 </p>
             </div>
@@ -372,7 +372,7 @@
                 <input type="file" id="file-input" style="display:none" onchange="uploadFile()">
                 <button type="button" class="upload-btn" onclick="document.getElementById('file-input').click()">+</button>
                 <button type="button" id="emoji-btn" class="emoji-btn">😊</button>
-                <textarea id="input" rows="1" placeholder="Digite sua mensagem..." oninput="autoResize(this)" onkeydown="checkEnter(event)"></textarea>
+                <textarea id="input" rows="1" placeholder="Digite sua mensagem..." oninput="autoResize(this)" onkeydown="checkEnter(event)" spellcheck="false"></textarea>
                 <button type="button" onclick="sendMessage()" class="send-btn" title="Enviar (Enter)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
             </form>
         </div>
@@ -466,6 +466,5 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@3.0.3/dist/index.min.js"></script>
     <script src="js/chat.js"></script>
-    </body>
 </body>
 </html>

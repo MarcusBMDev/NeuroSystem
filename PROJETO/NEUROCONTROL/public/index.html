@@ -160,20 +160,22 @@
                     // Armazena dados do usuário localmente
                     localStorage.setItem('user', JSON.stringify(data.user));
 
-                    // Redireciona baseado no departamento/setor
+                    // Redireciona baseado no departamento/setor e perfil do usuário
                     const dept = (data.user.department || '').toLowerCase().trim();
-                    if (dept.includes('controle interno') || dept === 'ci') {
-                        window.location.href = '/dashboard_ci.html';
-                    } else if (dept.includes('faturamento') && !dept.includes('coordenação') && !dept.includes('coordenaçao')) {
-                        window.location.href = '/dashboard_faturamento.html';
+                    const isSuper = data.user.is_super_admin === 1 || data.user.is_super_admin === true;
+
+                    if (isSuper || dept.includes('diretoria') || dept.includes('geral') || dept.includes('administração') || dept.includes('administracao')) {
+                        window.location.href = '/dashboard_geral.html'; // Visão Consolidada Central da Diretoria
                     } else if (dept.includes('recepção') || dept.includes('recepcao')) {
                         window.location.href = '/dashboard_recepcao.html';
-                    } else if (dept.includes('agendamento') || dept.includes('solicitação') || dept.includes('solicitacao') || dept.includes('coordenação') || dept.includes('coordenaçao') || dept.includes('operacional')) {
+                    } else if (dept.includes('controle interno') || dept === 'ci') {
+                        window.location.href = '/dashboard_ci.html';
+                    } else if (dept.includes('agendamento') || dept.includes('solicitação') || dept.includes('solicitacao') || dept.includes('operacional')) {
                         window.location.href = '/dashboard_operacional.html';
-                    } else if (dept.includes('diretoria') || dept.includes('financeiro') || dept.includes('super')) {
-                        window.location.href = '/dashboard_faturamento.html'; // Visão executiva completa
-                    } else {
+                    } else if (dept.includes('faturamento') || dept.includes('financeiro')) {
                         window.location.href = '/dashboard_faturamento.html';
+                    } else {
+                        window.location.href = '/dashboard_geral.html';
                     }
                 } else {
                     errorMsg.textContent = data.error || 'Credenciais inválidas.';

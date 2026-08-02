@@ -307,6 +307,69 @@ const SolicitacaoController = {
             SolicitacaoController.enviarNotificacoesRh(req.session.user.id, "ATESTADO MÉDICO", req.session.user.username);
             res.redirect('/?msg=Atestado enviado com sucesso!');
         });
+    },
+
+    // 7. SUPORTE INTERNO / HELP DESK
+    salvarSuporte: (req, res) => {
+        const { tipo, sala, unidade, urgente, descricao, email_afetado, impressora_modelo, assunto } = req.body;
+        const usuarioId = req.session.user.id;
+        const usuarioNome = req.session.user.username;
+
+        let detalhes = `TIPO DE SUPORTE: `;
+        let tipoSuporteNome = '';
+        if (tipo === 'suporte_computador') {
+            detalhes += `Computador\n`;
+            tipoSuporteNome = 'Computador';
+        } else if (tipo === 'suporte_email') {
+            detalhes += `E-mail (${email_afetado})\n`;
+            tipoSuporteNome = 'E-mail';
+        } else if (tipo === 'suporte_impressora') {
+            detalhes += `Impressora (${impressora_modelo || 'Não informado'})\n`;
+            tipoSuporteNome = 'Impressora';
+        } else if (tipo === 'suporte_diversos') {
+            detalhes += `Diversos (${assunto})\n`;
+            tipoSuporteNome = 'Problemas Diversos';
+        }
+
+        detalhes += `LOCAL/SALA: ${sala}\n` +
+                    `UNIDADE: Unidade ${unidade}\n` +
+                    `URGENTE: ${urgente}\n` +
+                    `DESCRIÇÃO: ${descricao}`;
+
+        const dados = {
+            usuario_id: usuarioId,
+            tipo: tipo,
+            data_evento: null,
+            descricao: detalhes
+        };
+
+        RhModel.criarSolicitacao(dados, (err) => {
+            if (err) return res.redirect('/?erro=Erro ao enviar chamado de suporte.');
+            
+            // Alert user of RH (and Admins) via Neurochat
+            const statusUrgente = urgente === 'Sim' ? '🚨 *URGENTE*' : '⏳ Normal';
+
+            const msgContent = `🛠️ *NOVA SOLICITAÇÃO DE SUPORTE*\n` +
+                               `👤 *Solicitante:* ${usuarioNome}\n` +
+                               `📌 *Tipo:* Suporte de ${tipoSuporteNome}\n` +
+                               `📍 *Local:* ${sala} - Unidade ${unidade}\n` +
+                               `⚠️ *Urgência:* ${statusUrgente}\n` +
+                               `📝 *Descrição:* ${descricao}`;
+
+            // Busca os administradores/RH dinamicamente da tabela rh_admins
+            const sqlAdmins = "SELECT user_id FROM rh_admins";
+            RhModel.query(sqlAdmins, [], (errAdmins, resultsAdmins) => {
+                let adminIds = [79, 95]; // Fallback caso ocorra erro
+                if (!errAdmins && resultsAdmins && resultsAdmins.length > 0) {
+                    adminIds = resultsAdmins.map(r => r.user_id);
+                }
+                
+                // Envia alerta para os admins/RH
+                NotificacaoUtils.enviarMensagem(usuarioId, adminIds, msgContent);
+            });
+
+            res.redirect('/?msg=Solicitação de suporte enviada com sucesso!');
+        });
     }
 };
 

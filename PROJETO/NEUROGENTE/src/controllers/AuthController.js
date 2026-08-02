@@ -25,11 +25,11 @@ const AuthController = {
                 db.query(sqlAdmin, [usuario.id], (errAdmin, resAdmin) => {
                     if (errAdmin) {
                         console.error("Erro ao consultar rh_admins:", errAdmin.message);
-                        // Se houver erro (ex: tabela não existe), assume que não é admin e continua
-                        req.session.isAdmin = false;
+                        // Se houver erro, assume true se for super admin
+                        req.session.isAdmin = (usuario.is_super_admin == 1);
                     } else {
-                        // Se resAdmin for undefined ou nulo por algum motivo, trata como false
-                        req.session.isAdmin = (resAdmin && resAdmin.length > 0);
+                        // É admin se estiver na tabela rh_admins OU se for super admin
+                        req.session.isAdmin = (resAdmin && resAdmin.length > 0) || (usuario.is_super_admin == 1);
                     }
 
                     // Configura a sessão

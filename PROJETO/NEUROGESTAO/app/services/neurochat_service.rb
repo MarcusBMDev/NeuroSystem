@@ -22,12 +22,14 @@ class NeurochatService
   end
 
   def self.notificar_remocao_paciente(paciente, motivo, setor, user_id = nil)
+    convenio_nome = clean_str(paciente.convenio&.nome || 'Particular / Sem Convênio')
     profissionais = clean_str(paciente.agendamentos.map { |a| a.profissional&.nome }.compact.uniq.join(', '))
     mensagem = "⚠️ **PACIENTE REMOVIDO**\n" \
-               "O paciente **#{clean_str(paciente.nome)}**, que realizava terapias com: **#{profissionais.presence || 'Nenhum'}**,\n" \
-               "foi removido da lista de agendamentos.\n" \
-               "**Motivo:** #{clean_str(motivo)}\n" \
-               "**Ação realizada por:** **#{clean_str(setor)}**"
+               "👤 Paciente: **#{clean_str(paciente.nome)}**\n" \
+               "🏢 Convênio / Plano de Saúde: **#{convenio_nome}**\n" \
+               "👨‍⚕️ Terapias com: **#{profissionais.presence || 'Nenhum'}**\n" \
+               "📝 **Motivo:** #{clean_str(motivo)}\n" \
+               "🏢 **Ação realizada por:** **#{clean_str(setor)}**"
     enviar_mensagem_grupo(mensagem, RETIRADAS_GROUP_ID, user_id)
     enviar_para_grupos_operacionais(mensagem, user_id)
   rescue => e
@@ -37,9 +39,11 @@ class NeurochatService
   # Notifica o Grupo 14 (Retiradas) com todos os detalhes da remoção
   def self.notificar_retirada_paciente(paciente, profissional, dia_semana, horario, motivo, setor, user_id = nil, operador_nome = nil)
     prof_nome = profissional&.nome || 'Não identificado'
+    convenio_nome = clean_str(paciente&.convenio&.nome || 'Particular / Sem Convênio')
     operador_str = operador_nome.present? ? "#{clean_str(operador_nome)} (#{clean_str(setor)})" : clean_str(setor)
     mensagem = "🔴 **PACIENTE RETIRADO DA GRADE**\n" \
                "👤 Paciente: **#{clean_str(paciente.nome)}**\n" \
+               "🏢 Convênio / Plano de Saúde: **#{convenio_nome}**\n" \
                "👨‍⚕️ Profissional: **#{clean_str(prof_nome)}**\n" \
                "📅 Horário removido: **#{clean_str(dia_semana)} às #{clean_str(horario)}**\n" \
                "📝 Motivo: #{clean_str(motivo)}\n" \
@@ -53,6 +57,7 @@ class NeurochatService
   # Notifica o Grupo 14 (Retiradas) com os detalhes da REDUÇÃO de grade
   def self.notificar_reducao_grade(paciente, agendamentos, motivo, setor, operador_nome = nil)
     operador_str = operador_nome.present? ? "#{clean_str(operador_nome)} (#{clean_str(setor)})" : clean_str(setor)
+    convenio_nome = clean_str(paciente&.convenio&.nome || 'Particular / Sem Convênio')
     
     horarios_str = agendamentos.map do |ag|
       especialidade_str = ag.profissional&.especialidade.present? ? " (#{ag.profissional.especialidade})" : ""
@@ -60,7 +65,8 @@ class NeurochatService
     end.join("\n")
 
     mensagem = "📉 **SOLICITAÇÃO DE REDUÇÃO DE GRADE**\n" \
-               "👤 Paciente: **#{clean_str(paciente.nome)}**\n\n" \
+               "👤 Paciente: **#{clean_str(paciente.nome)}**\n" \
+               "🏢 Convênio / Plano de Saúde: **#{convenio_nome}**\n\n" \
                "📋 **Horários Removidos:**\n" \
                "#{horarios_str}\n\n" \
                "📝 Justificativa/Observação: **#{clean_str(motivo)}**\n" \
@@ -75,6 +81,7 @@ class NeurochatService
   # Notifica o Grupo 14 (Retiradas) com os detalhes da REMOÇÃO de grade (Alta / Finalização)
   def self.notificar_remocao_grade(paciente, agendamentos, motivo, setor, operador_nome = nil)
     operador_str = operador_nome.present? ? "#{clean_str(operador_nome)} (#{clean_str(setor)})" : clean_str(setor)
+    convenio_nome = clean_str(paciente&.convenio&.nome || 'Particular / Sem Convênio')
     
     horarios_str = agendamentos.map do |ag|
       especialidade_str = ag.profissional&.especialidade.present? ? " (#{ag.profissional.especialidade})" : ""
@@ -82,7 +89,8 @@ class NeurochatService
     end.join("\n")
 
     mensagem = "❌ **SOLICITAÇÃO DE REMOÇÃO DE GRADE (ALTA/FINALIZAÇÃO)**\n" \
-               "👤 Paciente: **#{clean_str(paciente.nome)}**\n\n" \
+               "👤 Paciente: **#{clean_str(paciente.nome)}**\n" \
+               "🏢 Convênio / Plano de Saúde: **#{convenio_nome}**\n\n" \
                "📋 **Horários Removidos:**\n" \
                "#{horarios_str}\n\n" \
                "📝 Justificativa/Observação: **#{clean_str(motivo)}**\n" \

@@ -61,8 +61,11 @@
                 <h2>Controle de Faturamento</h2>
                 <p id="cicloSubtitulo">Ciclo atual: 01/07 - 31/07/2026 • 12 convênios ativos</p>
             </div>
-            <div>
-                <button class="btn btn-secondary"><i class="fa-solid fa-download"></i> Exportar</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="abrirModalNfsParticularesFaturamento()" style="background-color: #0284c7; border:none;"><i class="fa-solid fa-receipt"></i> NFs Particulares (Planilha Kare)</button>
+                <button class="btn btn-secondary" onclick="abrirModalGerenciarConvenios()"><i class="fa-solid fa-handshake"></i> Gerenciar Convênios</button>
+                <button class="btn btn-secondary" onclick="abrirModalTabelaPrecos()"><i class="fa-solid fa-dollar-sign"></i> Tabela de Preços</button>
+                <button class="btn btn-secondary" onclick="exportarRelatorio()"><i class="fa-solid fa-download"></i> Exportar</button>
                 <button class="btn btn-primary" onclick="abrirModalNovaGuia()"><i class="fa-solid fa-plus"></i> Nova guia</button>
             </div>
         </div>
@@ -154,6 +157,27 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- CONTROLES DE PAGINAÇÃO -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px;">
+                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600;" id="faturamentoPaginationInfo">
+                            Exibindo 0 a 0 de 0 guias
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="faturamentoPageSize" style="font-size: 12px; color: var(--text-muted); font-weight: 600; margin: 0;">Itens por página:</label>
+                            <select id="faturamentoPageSize" onchange="mudarTamanhoPaginaFaturamento(this.value)" class="form-control" style="width: 70px; padding: 4px 8px; font-size: 12px; margin: 0;">
+                                <option value="10" selected>10</option>
+                                <option value="15">15</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                            <div style="display: flex; gap: 4px; margin-left: 8px;">
+                                <button class="btn btn-secondary" id="btnPagPrev" onclick="paginaAnteriorFaturamento()" style="padding: 4px 10px; font-size: 11px;"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+                                <span id="faturamentoPageNum" style="font-size: 12px; font-weight: 700; align-self: center; padding: 0 8px;">1 / 1</span>
+                                <button class="btn btn-secondary" id="btnPagNext" onclick="proximaPaginaFaturamento()" style="padding: 4px 10px; font-size: 11px;">Próximo <i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -220,6 +244,174 @@
                     <button type="submit" class="btn btn-primary">Salvar Guia</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE CHECKLIST POR CONVÊNIO AO FATURAR -->
+    <div class="modal" id="checklistFaturamentoModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>Regras de Faturamento por Convênio</h3>
+                <button class="modal-close" onclick="fecharModalChecklist()">&times;</button>
+            </div>
+            <div style="font-size:13px; margin-bottom:15px; color: var(--text-muted);">
+                Atenção: O convênio <strong id="modalChecklistConvenio" style="color: var(--primary);">Convênio</strong> exige o cumprimento das seguintes etapas operacionais para faturamento. Marque todas para prosseguir:
+            </div>
+            
+            <form id="checklistFaturamentoForm">
+                <input type="hidden" id="modalChecklistGuiaId">
+                <div id="checklistItemsContainer" style="display:flex; flex-direction:column; gap:12px; margin: 20px 0;">
+                    <!-- Gerado dinamicamente via JS -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalChecklist()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: var(--success);"><i class="fa-solid fa-file-invoice-dollar"></i> Concluir Faturamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE TABELA DE PREÇOS / VALORES POR SESSÃO -->
+    <div class="modal" id="tabelaPrecosModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-dollar-sign"></i> Tabela de Preços por Convênio e Sessão</h3>
+                <button class="modal-close" onclick="fecharModalTabelaPrecos()">&times;</button>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">
+                Cadastre o valor repassado/cobrado por sessão para cada convênio e especialidade de terapia.
+            </div>
+
+            <!-- FORMULÁRIO DE NOVO VALOR -->
+            <form id="tabelaPrecoForm" style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
+                <div style="display:grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap:10px; align-items:end;">
+                    <div>
+                        <label style="font-size:11px; font-weight:700;">Convênio</label>
+                        <select class="form-control" id="precoConvenioSelect" required style="font-size:12px; padding:6px;"></select>
+                    </div>
+                    <div>
+                        <label style="font-size:11px; font-weight:700;">Especialidade</label>
+                        <select class="form-control" id="precoEspecialidadeSelect" required style="font-size:12px; padding:6px;">
+                            <option value="Psico">Psicologia</option>
+                            <option value="Fono">Fonoaudiologia</option>
+                            <option value="TO">T.O</option>
+                            <option value="Fisio">Fisioterapia</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:11px; font-weight:700;">Código TUSS</label>
+                        <input type="text" class="form-control" id="precoTussInput" placeholder="Ex: 50000470" required style="font-size:12px; padding:6px;">
+                    </div>
+                    <div>
+                        <label style="font-size:11px; font-weight:700;">Valor Sessão (R$)</label>
+                        <input type="number" step="0.01" class="form-control" id="precoValorInput" placeholder="Ex: 120.00" required style="font-size:12px; padding:6px;">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:12px; width:100%; font-size:12px;"><i class="fa-solid fa-plus-circle"></i> Salvar Valor de Sessão</button>
+            </form>
+
+            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Convênio</th>
+                            <th>Especialidade</th>
+                            <th>TUSS</th>
+                            <th>Valor / Sessão</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaPrecosTbody">
+                        <tr>
+                            <td colspan="4" style="text-align:center; color:var(--text-muted);">Carregando valores...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer" style="margin-top:15px;">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalTabelaPrecos()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE GESTÃO DE CONVÊNIOS E PLANOS DE SAÚDE -->
+    <div class="modal" id="gerenciarConveniosModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-handshake"></i> Autonomia Financeira: Gestão de Convênios & Planos</h3>
+                <button class="modal-close" onclick="fecharModalGerenciarConvenios()">&times;</button>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">
+                Cadastre ou edite os nomes dos convênios e planos aceitos na clínica.
+            </div>
+
+            <form id="convenioForm" style="display:flex; gap:10px; margin-bottom:20px;">
+                <input type="text" class="form-control" id="novoConvenioNomeInput" placeholder="Nome do Novo Convênio (ex: Unimed, Cassi...)" required style="font-size:13px; margin:0;">
+                <button type="submit" class="btn btn-primary" style="font-size:13px; white-space:nowrap;"><i class="fa-solid fa-plus"></i> Adicionar Convênio</button>
+            </form>
+
+            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome do Convênio / Plano</th>
+                            <th style="width:120px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gerenciarConveniosTbody">
+                        <tr>
+                            <td colspan="3" style="text-align:center; color:var(--text-muted);">Carregando convênios...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer" style="margin-top:15px;">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalGerenciarConvenios()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE NFS PARTICULARES (KARE - EMISSÃO DE NF) -->
+    <div class="modal" id="nfsParticularesFaturamentoModal">
+        <div class="modal-content" style="max-width: 850px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-receipt"></i> Controle de NFs Particulares (Planilha Kare/Camila)</h3>
+                <button class="modal-close" onclick="fecharModalNfsParticularesFaturamento()">&times;</button>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; background:#f8fafc; padding:12px; border-radius:8px;">
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <label for="fatNfMesFilter" style="font-size:12px; font-weight:700; margin:0;">Mês Competência:</label>
+                    <input type="month" class="form-control" id="fatNfMesFilter" onchange="carregarNfsParticularesFaturamento()" style="margin:0; font-size:12px; padding:4px 8px;">
+                </div>
+                <div style="font-size:13px;">
+                    Total Mês: <strong id="fatNfTotalValue" style="color:var(--success);">R$ 0,00</strong> | Emitidas: <strong id="fatNfEmitidasCount">0</strong> | Pendentes: <strong id="fatNfPendentesCount" style="color:var(--warning);">0</strong>
+                </div>
+            </div>
+
+            <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Paciente</th>
+                            <th>Procedimento</th>
+                            <th>Responsável / CPF / Dados</th>
+                            <th>Qtd / Pacote</th>
+                            <th>Valor Total</th>
+                            <th style="width:140px;">Nº da NF</th>
+                            <th>Status</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fatNfParticularesTbody">
+                        <tr>
+                            <td colspan="8" style="text-align:center; color:var(--text-muted); padding:20px;">Carregando NFs particulares...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer" style="margin-top:15px;">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalNfsParticularesFaturamento()">Fechar</button>
+            </div>
         </div>
     </div>
 

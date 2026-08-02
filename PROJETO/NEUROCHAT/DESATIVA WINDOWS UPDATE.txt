@@ -1,0 +1,34 @@
+@echo off
+title Desativar Windows Update
+color 0C
+
+echo ===================================================
+echo   Desativando os servicos do Windows Update...
+echo ===================================================
+echo.
+
+:: 1. Parar os servicos em execucao
+echo Parando os servicos...
+net stop wuauserv /y
+net stop UsoSvc /y
+net stop bits /y
+net stop dosvc /y
+
+:: 2. Desativar a inicializacao automatica dos servicos
+echo.
+echo Modificando a inicializacao dos servicos para "Desativado"...
+sc config wuauserv start= disabled
+sc config UsoSvc start= disabled
+sc config bits start= disabled
+sc config dosvc start= disabled
+
+:: 3. Alterar o Registro para bloquear atualizacoes automaticas
+echo.
+echo Aplicando bloqueio via Registro do Windows...
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /t REG_DWORD /d 1 /f
+
+echo.
+echo ===================================================
+echo   Windows Update desativado com sucesso!
+echo ===================================================
+pause

@@ -1,6 +1,7 @@
 // Estado da recepção
 let activeGuiaIdParaAssinar = null;
 let activePacienteIdParaProblema = null;
+let gradeRecepcaoCache = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Autenticação
@@ -27,63 +28,132 @@ document.addEventListener('DOMContentLoaded', () => {
 // Carrega os atendimentos do dia de hoje
 async function carregarGradeRecepcao() {
     try {
-        const response = await fetch('/api/recepcao/hoje');
-        const grade = await response.json();
-        const tbody = document.querySelector('#recepcaoTable tbody');
-        tbody.innerHTML = '';
+        const unidadeSelect = document.getElementById('unidadeFilterSelect');
+        const unidade = unidadeSelect ? unidadeSelect.value : 'todas';
+        const response = await fetch(`/api/recepcao/hoje?unidade=${unidade}`);
+        gradeRecepcaoCache = await response.json();
 
-        if (grade.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">Nenhum paciente agendado para hoje.</td></tr>`;
-            return;
-        }
-
-        grade.forEach(item => {
-            const tr = document.createElement('tr');
-            
-            // Regra do token (Bradesco / Servir)
-            const convenio = (item.convenio_nome || '').toUpperCase();
-            const exigeToken = convenio.includes('BRADESCO') || convenio.includes('SERVIR');
-
-            const statusGuia = item.guia_id ? `<strong>${item.guia_numero}</strong>` : '<span style="color:var(--danger);font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Sem Guia na Pasta!</span>';
-
-            let assinadaLabel = 'Pendente';
-            let assinadaColor = 'var(--text-muted)';
-            let signBtnClass = 'btn-primary';
-            let signBtnText = 'Assinar Guia';
-
-            if (item.status_assinatura_hoje === 'assinada') {
-                assinadaLabel = '✅ Assinada';
-                assinadaColor = 'var(--success)';
-                signBtnClass = 'btn-secondary';
-                signBtnText = 'Assinada';
-            }
-
-            tr.innerHTML = `
-                <td><strong>${item.horario}</strong></td>
-                <td><strong>${item.paciente_nome}</strong></td>
-                <td>${item.profissional_nome}</td>
-                <td><span class="badge-terapia ${item.especialidade.toLowerCase().includes('fono') ? 'fono' : item.especialidade.toLowerCase().includes('psic') ? 'psico' : 'to'}">${item.especialidade}</span></td>
-                <td>${statusGuia}</td>
-                <td style="color: ${assinadaColor}; font-weight:600;">${assinadaLabel}</td>
-                <td>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn ${signBtnClass}" style="padding: 4px 8px; font-size:11px;" 
-                                ${item.status_assinatura_hoje === 'assinada' || !item.guia_id ? 'disabled' : ''}
-                                onclick="iniciarAssinatura(${item.guia_id}, '${item.convenio_nome}')">
-                            <i class="fa-solid fa-pen-fancy"></i> ${signBtnText}
-                        </button>
-                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size:11px; background-color: var(--danger-light); color: var(--danger); border-color: var(--danger-light);" 
-                                onclick="abrirProblemaModal(${item.paciente_id})">
-                            <i class="fa-solid fa-circle-xmark"></i> Sinalizar Problema
-                        </button>
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        atualizarKPIsRecepcao(gradeRecepcaoCache);
+        filtrarGradeLocal();
     } catch (e) {
         console.error('Erro ao carregar grade da recepção:', e);
     }
+}
+
+function atualizarKPIsRecepcao(grade) {
+    const total = grade.length;
+    const assinadas = grade.filter(item => item.status_assinatura_hoje === 'assinada').length;
+    const pendentes = grade.filter(item => item.status_assinatura_hoje !== 'assinada' && item.guia_id).length;
+    const semGuia = grade.filter(item => !item.guia_id).length;
+
+    const elTotal = document.getElementById('recKpiTotal');
+    const elAssinadas = document.getElementById('recKpiAssinadas');
+    const elPendentes = document.getElementById('recKpiPendentes');
+    const elSemGuia = document.getElementById('recKpiSemGuia');
+
+    if (elTotal) elTotal.textContent = total;
+    if (elAssinadas) elAssinadas.textContent = assinadas;
+    if (elPendentes) elPendentes.textContent = pendentes;
+    if (elSemGuia) elSemGuia.textContent = semGuia;
+}
+
+function filtrarGradeLocal() {
+    const terapiaSelect = document.getElementById('terapiaFilterSelect');
+    const buscaInput = document.getElementById('searchRecepcaoInput');
+
+    const terapiaFiltro = terapiaSelect ? terapiaSelect.value.toLowerCase() : 'todas';
+    const buscaFiltro = buscaInput ? buscaInput.value.toLowerCase().trim() : '';
+
+    const gradeFiltrada = gradeRecepcaoCache.filter(item => {
+        const espec = (item.especialidade || '').toLowerCase();
+        const matchTerapia = terapiaFiltro === 'todas' || espec.includes(terapiaFiltro);
+
+        const pacNome = (item.paciente_nome || '').toLowerCase();
+        const profNome = (item.profissional_nome || '').toLowerCase();
+        const guiaNum = (item.guia_numero || '').toLowerCase();
+
+        const matchBusca = !buscaFiltro || pacNome.includes(buscaFiltro) || profNome.includes(buscaFiltro) || guiaNum.includes(buscaFiltro);
+
+        return matchTerapia && matchBusca;
+    });
+
+    renderGradeRecepcao(gradeFiltrada);
+}
+
+function renderGradeRecepcao(grade) {
+    const tbody = document.querySelector('#recepcaoTable tbody');
+    tbody.innerHTML = '';
+
+    if (grade.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">Nenhum paciente agendado para os filtros selecionados.</td></tr>`;
+        return;
+    }
+
+    grade.forEach(item => {
+        const tr = document.createElement('tr');
+        if (item.risco_linha_vermelha) {
+            tr.style.backgroundColor = '#fef2f2';
+            tr.style.borderLeft = '4px solid #ef4444';
+        }
+        
+        // Regra do token (Bradesco / Servir)
+        const convenio = (item.convenio_nome || '').toUpperCase();
+        const exigeToken = convenio.includes('BRADESCO') || convenio.includes('SERVIR');
+        const tokenBadge = exigeToken ? `<span class="badge" style="background:#fef3c7; color:#b45309; font-size:9px; margin-left:4px;"><i class="fa-solid fa-key"></i> Token Exigido</span>` : '';
+        const riscoBadge = item.risco_linha_vermelha ? `<span class="badge" style="background:#fee2e2; color:#991b1b; font-size:9px; font-weight:700; margin-left:4px;"><i class="fa-solid fa-triangle-exclamation"></i> LINHA VERMELHA (SEM GUIA)</span>` : '';
+
+        const statusGuia = item.guia_id 
+            ? `<strong>${item.guia_numero}</strong> ${tokenBadge} ${riscoBadge}` 
+            : `<span style="color:var(--danger);font-weight:700;"><i class="fa-solid fa-circle-exclamation"></i> Sem Guia na Pasta!</span> ${riscoBadge}`;
+
+        let assinadaLabel = 'Pendente';
+        let assinadaColor = 'var(--warning)';
+        let signBtnClass = 'btn-primary';
+        let signBtnText = 'Assinar Guia';
+
+        if (item.status_assinatura_hoje === 'assinada') {
+            assinadaLabel = '✅ Assinada';
+            assinadaColor = 'var(--success)';
+            signBtnClass = 'btn-secondary';
+            signBtnText = 'Assinada';
+        }
+
+        const espec = (item.especialidade || '').toLowerCase();
+        let badgeClass = 'psico';
+        if (espec.includes('fono')) badgeClass = 'fono';
+        else if (espec.includes('ocupacional') || espec.includes('t.o') || espec === 'to') badgeClass = 'to';
+        else if (espec.includes('fisi')) badgeClass = 'fisio';
+
+        const salaBadge = item.profissional_sala 
+            ? `<div style="font-size:10px; color:var(--text-muted); font-weight:600; margin-top:2px;"><i class="fa-solid fa-door-open" style="color:var(--primary);"></i> ${item.profissional_sala} · ${item.profissional_unidade || 'Unidade 1'}</div>` 
+            : `<div style="font-size:10px; color:var(--text-muted); font-weight:600; margin-top:2px;"><i class="fa-solid fa-door-open" style="color:var(--primary);"></i> Sala 01 · ${item.profissional_unidade || 'Unidade 1'}</div>`;
+
+        tr.innerHTML = `
+            <td><strong>${item.horario}</strong></td>
+            <td><strong>${item.paciente_nome}</strong></td>
+            <td>
+                <div><strong>${item.profissional_nome}</strong></div>
+                ${salaBadge}
+            </td>
+            <td><span class="badge-terapia ${badgeClass}">${item.especialidade}</span></td>
+            <td>${statusGuia}</td>
+            <td style="color: ${assinadaColor}; font-weight:600;">${assinadaLabel}</td>
+            <td>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn ${signBtnClass}" style="padding: 5px 10px; font-size:11px; font-weight:600;" 
+                            ${item.status_assinatura_hoje === 'assinada' || !item.guia_id ? 'disabled' : ''}
+                            onclick="iniciarAssinatura(${item.guia_id}, '${item.convenio_nome || ''}')">
+                        <i class="fa-solid fa-pen-fancy"></i> ${signBtnText}
+                    </button>
+                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size:11px; font-weight:600; background-color: #fef2f2; color: #dc2626; border-color: #fecaca;" 
+                            onclick="abrirProblemaModal(${item.paciente_id})">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Sinalizar Problema
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 // Carrega avisos críticos de CI Overrides (Part 3 - Alerta Urgente)

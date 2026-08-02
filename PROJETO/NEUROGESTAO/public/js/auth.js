@@ -11,6 +11,7 @@ const SETORES_GESTAO = [
     'recepção 1', 'recepçao 1', 'recepcao 1',
     'recepção 2', 'recepçao 2', 'recepcao 2',
     'recepção 3', 'recepçao 3', 'recepcao 3',
+    'administração', 'administracao',
     'ti'
 ];
 
@@ -140,9 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!config) config = {};
         if (!config.headers) config.headers = {};
 
-        const role = localStorage.getItem('setor') || 'Desconhecido';
-        const userId = localStorage.getItem('userId') || '';
-        const userName = localStorage.getItem('userName') || '';
+        const role = localStorage.getItem('setor') || 'Gestão';
+        const userId = localStorage.getItem('userId') || '1';
+        const userName = localStorage.getItem('userName') || 'Sistema';
         const nivelAcesso = localStorage.getItem('nivel_acesso') || 'profissional';
 
         config.headers['X-User-Role'] = role;

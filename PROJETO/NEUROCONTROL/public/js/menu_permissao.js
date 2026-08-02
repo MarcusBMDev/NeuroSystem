@@ -12,28 +12,72 @@ window.fetch = function(url, options = {}) {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Validação automática de sessão em todas as telas protegidas
+    // 1. Validação automática de sessão e restrição estrita por setor
     const user = JSON.parse(localStorage.getItem('user'));
-    if (!user && window.location.pathname !== '/index.html') {
+    const currentPath = window.location.pathname;
+
+    if (!user && currentPath !== '/index.html' && currentPath !== '/') {
         window.location.href = '/index.html';
         return;
     }
-    renderizarMenuLateral();
+
+    if (user) {
+        enforceSectorAccessGuard(user, currentPath);
+        renderizarMenuLateral();
+    }
 });
+
+/**
+ * Garante que usuários vejam exclusivamente os painéis do seu próprio setor
+ */
+function enforceSectorAccessGuard(user, currentPath) {
+    // Super Admins e Diretoria possuem acesso irrestrito a todos os painéis
+    if (user.is_super_admin === 1 || user.is_super_admin === true || (user.department && user.department.toLowerCase().includes('diretoria'))) {
+        return;
+    }
+
+    const dept = (user.department || '').toLowerCase().trim();
+
+    const allowedPages = [];
+    if (dept.includes('recep')) {
+        allowedPages.push('/dashboard_recepcao.html');
+    } else if (dept.includes('controle') || dept.includes('ci')) {
+        allowedPages.push('/dashboard_ci.html');
+    } else if (dept.includes('financ') || dept.includes('faturam')) {
+        allowedPages.push('/dashboard_faturamento.html');
+    } else if (dept.includes('solicit') || dept.includes('agend') || dept.includes('operac')) {
+        allowedPages.push('/dashboard_primeiro_atendimento.html', '/dashboard_solicitacoes.html', '/dashboard_operacional.html');
+    } else if (dept.includes('profissio') || dept.includes('medico') || dept.includes('clinico')) {
+        allowedPages.push('/dashboard_profissionais.html');
+    }
+
+    // Se o usuário está tentando acessar uma página que não pertence ao seu setor, redireciona
+    if (allowedPages.length > 0 && !allowedPages.includes(currentPath) && currentPath !== '/index.html' && currentPath !== '/') {
+        console.warn(`[Segurança NeuroControl] Acesso restrito! Redirecionando usuário ${user.username} para ${allowedPages[0]}`);
+        window.location.href = allowedPages[0];
+    }
+}
 
 function renderizarMenuLateral() {
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user) return;
 
     const navContainer = document.getElementById('sidebarNavLinks');
-    if (!navContainer) return; // Se a página não tiver o container de menu dinâmico
+    if (!navContainer) return;
 
+    const isSuperOrDiretoria = user.is_super_admin === 1 || user.is_super_admin === true || (user.department && user.department.toLowerCase().includes('diretoria'));
     const permissions = user.permissions || [];
     
-    // Lista de todas as opções de menu disponíveis
     const menuOptions = [
         {
-            nome: 'Painel Geral',
+            nome: 'Visão Consolidada',
+            url: '/dashboard_geral.html',
+            icon: 'fa-solid fa-brain',
+            permissao: 'ver_painel_geral',
+            exclusivoDiretoria: true
+        },
+        {
+            nome: 'Faturamento',
             url: '/dashboard_faturamento.html',
             icon: 'fa-solid fa-chart-line',
             permissao: 'ver_painel_geral'
@@ -51,9 +95,15 @@ function renderizarMenuLateral() {
             permissao: 'assinar_sessoes'
         },
         {
-            nome: 'Solicitação / Agenda',
-            url: '/dashboard_operacional.html',
-            icon: 'fa-solid fa-gears',
+            nome: '1º Atendimento',
+            url: '/dashboard_primeiro_atendimento.html',
+            icon: 'fa-solid fa-user-plus',
+            permissao: 'cadastrar_guias'
+        },
+        {
+            nome: 'Solicitações',
+            url: '/dashboard_solicitacoes.html',
+            icon: 'fa-solid fa-file-invoice',
             permissao: 'cadastrar_guias'
         },
         {
@@ -66,15 +116,23 @@ function renderizarMenuLateral() {
 
     navContainer.innerHTML = '';
 
-    // Filtra e cria os elementos HTML do menu
     menuOptions.forEach(opt => {
-        // Se o usuário tem a permissão exigida ou é super admin
-        if (permissions.includes(opt.permissao) || user.is_super_admin === 1) {
+        const dept = (user.department || '').toLowerCase().trim();
+        let podeVer = isSuperOrDiretoria || permissions.includes(opt.permissao);
+
+        if (!isSuperOrDiretoria) {
+            if (opt.exclusivoDiretoria) podeVer = false;
+            if (dept.includes('recep') && opt.url !== '/dashboard_recepcao.html') podeVer = false;
+            if ((dept.includes('controle') || dept.includes('ci')) && opt.url !== '/dashboard_ci.html') podeVer = false;
+            if ((dept.includes('financ') || dept.includes('faturam')) && opt.url !== '/dashboard_faturamento.html') podeVer = false;
+            if ((dept.includes('solicit') || dept.includes('agend')) && (opt.url !== '/dashboard_primeiro_atendimento.html' && opt.url !== '/dashboard_solicitacoes.html')) podeVer = false;
+        }
+
+        if (podeVer) {
             const li = document.createElement('li');
             li.classList.add('nav-item');
             
-            // Marca a página atual como active
-            if (window.location.pathname === opt.url) {
+            if (window.location.pathname === opt.url || (window.location.pathname === '/dashboard_operacional.html' && opt.url === '/dashboard_primeiro_atendimento.html')) {
                 li.classList.add('active');
             }
 

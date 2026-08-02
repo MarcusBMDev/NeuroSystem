@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroControl - 1º Atendimento</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .previsao-box {
+            background-color: #f1f5f9;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: var(--radius);
+            margin-top: 10px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon" style="background-color: #0284c7;"><i class="fa-solid fa-user-plus"></i></div>
+            <div class="logo-text">
+                <h3>NeuroControl</h3>
+                <span style="font-size: 10px; color: #38bdf8; display:block;">1º Atendimento</span>
+            </div>
+        </div>
+        <ul class="nav-links" id="sidebarNavLinks">
+            <!-- Gerado dinamicamente via menu_permissao.js -->
+        </ul>
+
+        <div class="user-profile-sidebar">
+            <div class="user-avatar" id="userAvatar">OP</div>
+            <div class="user-info-side">
+                <span class="user-name-side" id="userNameSide">Operacional</span>
+                <span class="user-dept-side" id="userDeptSide">1º Atendimento</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div>
+                <span style="font-size: 14px; font-weight:700; color:var(--primary);"><i class="fa-solid fa-user-plus"></i> Onboarding de Novos Pacientes</span>
+            </div>
+            <div class="top-bar-right">
+                <div class="user-profile-header">
+                    <span style="font-size: 13px; font-weight: 600;" id="userHeaderName">Colaborador</span>
+                    <div class="user-avatar" style="background-color: #0284c7; color: white;">OP</div>
+                    <button class="btn btn-secondary" onclick="logout()" style="padding: 6px 12px; font-size: 11px;"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN TITLE AREA -->
+        <div class="dashboard-title-area" style="margin-bottom: 20px;">
+            <div>
+                <h2>Fila de Primeiro Agendamento</h2>
+                <p>Cadastre novos pacientes e libere horários na grade do NeuroGestão com notificação automática via NeuroChat.</p>
+            </div>
+        </div>
+
+        <!-- GRID PRINCIPAL: FORMULÁRIO DE 1ª GUIA + FILA DE PRIMEIRO AGENDAMENTO -->
+        <div class="content-grid" style="grid-template-columns: 1fr 2.2fr;">
+            
+            <!-- FORMULÁRIO DE CADASTRO DE 1ª GUIA -->
+            <div class="panel-card">
+                <div class="panel-card-header">
+                    <div class="panel-card-title"><i class="fa-solid fa-file-signature"></i> Cadastrar 1ª Guia (Novo Paciente)</div>
+                </div>
+                <form id="primeiroAtendimentoForm">
+                    <div class="form-group" style="position:relative;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <label for="solPacInput" style="margin:0;">Paciente (NEUROGESTÃO)</label>
+                            <button type="button" class="btn btn-secondary" onclick="abrirModalCadastrarNovoPaciente()" style="font-size:10px; padding:3px 8px; background:#e0f2fe; color:#0369a1; border-color:#bae6fd;"><i class="fa-solid fa-user-plus"></i> + Cadastrar Novo Paciente</button>
+                        </div>
+                        <input type="text" class="form-control" id="solPacInput" required placeholder="Digite o nome do paciente..." autocomplete="off">
+                        <input type="hidden" id="solPacId">
+                        <div id="solAutocompleteList" style="position: absolute; background: white; border: 1px solid #ccc; width: 100%; display: none; z-index: 999; max-height: 150px; overflow-y: auto; border-radius: 4px; box-shadow: var(--shadow); margin-top:2px;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="solNumeroGuia">Número da Guia / Protocolo</label>
+                        <input type="text" class="form-control" id="solNumeroGuia" required placeholder="Ex: 136329590">
+                    </div>
+                    <div class="form-group">
+                        <label for="solTerapia">Terapia / Especialidade</label>
+                        <select class="form-control" id="solTerapia" required>
+                            <option value="Psico">Psicologia (TCC)</option>
+                            <option value="Fono">Fonoaudiologia</option>
+                            <option value="TO">Terapia Ocupacional (T.O)</option>
+                            <option value="Fisio">Fisioterapia / Motricidade</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="solDataPedido">Data de Emissão do Pedido Médico</label>
+                        <input type="date" class="form-control" id="solDataPedido" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="solMesVigente">Mês de Competência</label>
+                        <input type="month" class="form-control" id="solMesVigente" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="solQtdAutorizada">Quantidade de Sessões Autorizadas</label>
+                        <input type="number" class="form-control" id="solQtdAutorizada" required placeholder="Qtd aprovada (Ex: 4, 8, 42)">
+                    </div>
+                    <div class="form-group">
+                        <label for="solNeurochatGrupoId">ID do Grupo NeuroChat (Notificação)</label>
+                        <input type="text" class="form-control" id="solNeurochatGrupoId" placeholder="Ex: GRUPO_AGENDAMENTO_PALMAS (opcional)">
+                    </div>
+
+                    <!-- Caixa de Previsão Calculada -->
+                    <div class="previsao-box" id="previsaoBox" style="display: none;">
+                        <i class="fa-solid fa-calculator" style="color: var(--primary);"></i> Frequência da Agenda: <strong id="previsaoCalculadaText">0 sessões</strong>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px; background-color:#0284c7;"><i class="fa-solid fa-floppy-disk"></i> Enviar para Fila de Primeiro Agendamento</button>
+                </form>
+            </div>
+
+            <!-- FILA DE PRIMEIRO AGENDAMENTO (PACIENTES AGUARDANDO ALOCAÇÃO DE GRADE) -->
+            <div class="panel-card">
+                <div class="panel-card-header">
+                    <div class="panel-card-title"><i class="fa-solid fa-clock"></i> Pacientes Liberados Aguardando Grade</div>
+                </div>
+                <div style="font-size:12px; color: var(--text-muted); margin-bottom: 16px;">
+                    Selecione o paciente, confirme a alocação dos horários no NeuroGestão e clique em <strong>Confirmar na Grade</strong> para disparar a notificação de retorno no NeuroChat.
+                </div>
+                
+                <div id="aguardandoAgendaList">
+                    <p style="text-align: center; color: var(--text-muted); font-size:13px; padding:20px;">Buscando fila de primeiro agendamento...</p>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL DE CADASTRAR NOVO PACIENTE PARA 1º AGENDAMENTO -->
+    <div class="modal" id="cadastrarNovoPacienteModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-plus"></i> Cadastrar Novo Paciente (1º Atendimento)</h3>
+                <button class="modal-close" onclick="fecharModalCadastrarNovoPaciente()">&times;</button>
+            </div>
+            <form id="cadastrarNovoPacienteForm" style="padding-top:10px;">
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700;">Nome Completo do Paciente</label>
+                    <input type="text" class="form-control" id="novoPacNome" placeholder="Ex: João Pedro Silva" required style="font-size:13px;">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700;">Convênio / Plano de Saúde</label>
+                    <select class="form-control" id="novoPacConvenioSelect" required style="font-size:13px;"></select>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:12px; font-weight:700;">Especialidades / Terapias Previstas</label>
+                    <select class="form-control" id="novoPacEspecialidadesSelect" style="font-size:13px;">
+                        <option value="Psicologia">Psicologia (Convencional)</option>
+                        <option value="Fonoaudiologia">Fonoaudiologia</option>
+                        <option value="Terapia Ocupacional">Terapia Ocupacional</option>
+                        <option value="Fisioterapia">Fisioterapia</option>
+                        <option value="Psicologia, ABA">Linha TEA (ABA)</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalCadastrarNovoPaciente()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: var(--primary);"><i class="fa-solid fa-check"></i> Cadastrar Paciente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/menu_permissao.js"></script>
+    <script src="js/dashboard_primeiro_atendimento.js"></script>
+</body>
+</html>

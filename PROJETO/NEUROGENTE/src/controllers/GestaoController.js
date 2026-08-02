@@ -59,22 +59,36 @@ const GestaoController = {
                     return res.redirect('/gestao/painel');
                 }
 
-                // Envia Notificação ao Usuário
-                const nomesTipos = {
-                    'dayoff': 'Day Off (Aniversário)',
-                    'formacao': 'Curso / Formação',
-                    'saude': 'Incentivo à Saúde',
-                    'desligamento_at': 'Desligamento AT (ABA)',
-                    'contratacao_at': 'Contratação AT (ABA)',
-                    'atestado': 'Atestado Médico'
-                };
+                let msgContent = '';
+                if (tipoSolicitacao.startsWith('suporte_') || tipoSolicitacao === 'suporte') {
+                    if (status === 'aprovado') {
+                        msgContent = `🛠️ *SUPORTE ACEITO*\nOlá! Seu chamado de suporte foi *ACEITO* e logo o T.I irá até o seu local.`;
+                    } else if (status === 'em_fila') {
+                        msgContent = `🛠️ *SUPORTE NA FILA*\nOlá! Seu chamado de suporte está *NA FILA* e logo o T.I irá até o seu local.`;
+                    } else {
+                        msgContent = `🛠️ *SUPORTE RECUSADO*\nOlá. Infelizmente seu chamado de suporte foi *RECUSADO*.`;
+                    }
+                } else {
+                    // Envia Notificação ao Usuário para outros tipos
+                    const nomesTipos = {
+                        'dayoff': 'Day Off (Aniversário)',
+                        'formacao': 'Curso / Formação',
+                        'saude': 'Incentivo à Saúde',
+                        'desligamento_at': 'Desligamento AT (ABA)',
+                        'contratacao_at': 'Contratação AT (ABA)',
+                        'atestado': 'Atestado Médico'
+                    };
 
-                const nomeTipo = nomesTipos[tipoSolicitacao] || tipoSolicitacao.toUpperCase();
-                const statusFormatado = status === 'aprovado' ? '✅ APROVADA' : '❌ RECUSADA';
+                    const nomeTipo = nomesTipos[tipoSolicitacao] || tipoSolicitacao.toUpperCase();
+                    let statusFormatado = '⏳ PENDENTE';
+                    if (status === 'aprovado') statusFormatado = '✅ APROVADA';
+                    else if (status === 'recusado') statusFormatado = '❌ RECUSADA';
+                    else if (status === 'em_fila') statusFormatado = '⏳ EM FILA';
 
-                const msgContent = `🧠 *STATUS DA SUA SOLICITAÇÃO*\n` +
-                                   `📌 *Tipo:* ${nomeTipo}\n` +
-                                   `📈 *Novo Status:* ${statusFormatado}`;
+                    msgContent = `🧠 *STATUS DA SUA SOLICITAÇÃO*\n` +
+                                 `📌 *Tipo:* ${nomeTipo}\n` +
+                                 `📈 *Novo Status:* ${statusFormatado}`;
+                }
 
                 NotificacaoUtils.enviarMensagem(adminId, targetUserId, msgContent);
 

@@ -96,7 +96,8 @@ class Api::AgendamentosController < ApplicationController
         min_age: prof.min_age, 
         max_age: prof.max_age, 
         horarios_disponiveis: vagas_livres,
-        vagas_ocupadas: ag_data.select { |o| o[2] == 'confirmado' || o[2] == 'pendente' }.size
+        vagas_ocupadas: ag_data.select { |o| o[2] == 'confirmado' || o[2] == 'pendente' }.size,
+        vagas_bloqueadas: ag_data.select { |o| o[2] == 'bloqueado' }.size
       }
     end
 
@@ -348,12 +349,16 @@ class Api::AgendamentosController < ApplicationController
     
     # Se for um bloqueio, validamos quem está tentando remover
     if agendamento.status == 'bloqueado'
-      requester_id = params[:user_id].to_i
+      requester_id = (params[:user_id].presence || request.headers['X-User-Id'].presence).to_i
+      requester_name = (request.headers['X-User-Name'].presence || params[:user_name].presence).to_s.strip.upcase
+      bloqueador_nome = agendamento.bloqueado_por.to_s.strip.upcase
       
       # Utiliza a lógica centralizada de gestão (incluindo super admins e setores autorizados)
       is_admin = user_is_gestao?
+      is_creator_by_id = (agendamento.bloqueado_por_id.present? && agendamento.bloqueado_por_id == requester_id && requester_id > 0)
+      is_creator_by_name = (bloqueador_nome.present? && requester_name.present? && bloqueador_nome == requester_name)
       
-      unless is_admin || agendamento.bloqueado_por_id == requester_id
+      unless is_admin || is_creator_by_id || is_creator_by_name
         return render json: { error: "Somente o usuário '#{agendamento.bloqueado_por}' ou a Gestão pode realizar este desbloqueio." }, status: :forbidden
       end
     end

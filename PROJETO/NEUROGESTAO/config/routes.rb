@@ -1,4 +1,10 @@
 Rails.application.routes.draw do
+  # ROTAS DE PRIORIDADE CRÍTICA MÁXIMA
+  post '/api/pacientes/unificar_automatico', to: 'api/data_pacientes#unificar_automatico'
+  post '/api/data_pacientes/unificar_automatico', to: 'api/data_pacientes#unificar_automatico'
+  post '/pacientes/unificar_automatico', to: 'api/data_pacientes#unificar_automatico'
+  post '/data_pacientes/unificar_automatico', to: 'api/data_pacientes#unificar_automatico'
+
   # API Unified Routes - PRIORIDADE MÁXIMA
   namespace :api, defaults: { format: :json } do
     
@@ -8,9 +14,14 @@ Rails.application.routes.draw do
     resources :data_pacientes, controller: 'data_pacientes' do
       patch 'reativar', on: :member
       post 'mesclar', on: :collection
+      post 'unificar_automatico', on: :collection
+      get 'removidos', on: :collection
     end
     
     # Endpoint principal para compatibilidade no front
+    post 'pacientes/unificar_automatico', to: 'data_pacientes#unificar_automatico'
+    post 'data_pacientes/unificar_automatico', to: 'data_pacientes#unificar_automatico'
+    get  'pacientes/removidos', to: 'data_pacientes#removidos'
     get  'pacientes', to: 'data_pacientes#index'
     post 'pacientes', to: 'data_pacientes#create'
     put  'pacientes/:id', to: 'data_pacientes#update'
@@ -32,6 +43,9 @@ Rails.application.routes.draw do
     resources :solicitantes, only: [:index, :create, :destroy]
     resources :lista_esperas, only: [:index, :create, :update, :destroy]
     resources :auditorias, only: [:index]
+    
+    get 'admin/backup', to: 'backups#download'
+    get 'backup_database', to: 'backups#download'
     
     post 'importar_agenda', to: 'importacoes#upload_planilha'
     

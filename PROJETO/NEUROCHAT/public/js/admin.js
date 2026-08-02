@@ -98,19 +98,31 @@ async function carregarUsuarios() {
     }
 }
 
-// Filtra e renderiza a tabela de colaboradores
-function filtrarUsuariosTabela(filterValue) {
+// Filtra e renderiza a tabela de colaboradores por status e termo de busca
+function filtrarUsuariosTabela() {
+    const filterValue = document.getElementById('userStatusFilter')?.value || 'ativos';
+    const searchVal = (document.getElementById('userSearchInput')?.value || '').toLowerCase().trim();
+
     const tbody = document.querySelector('#usersTable tbody');
     tbody.innerHTML = '';
 
     const filtered = allUsersList.filter(u => {
-        if (filterValue === 'ativos') return u.is_active === 1;
-        if (filterValue === 'inativos') return u.is_active === 0;
-        return true; // 'todos'
+        let matchStatus = true;
+        if (filterValue === 'ativos') matchStatus = (u.is_active === 1);
+        else if (filterValue === 'inativos') matchStatus = (u.is_active === 0);
+
+        let matchSearch = true;
+        if (searchVal) {
+            const name = (u.username || '').toLowerCase();
+            const sector = (u.setor_nome || '').toLowerCase();
+            matchSearch = name.includes(searchVal) || sector.includes(searchVal);
+        }
+
+        return matchStatus && matchSearch;
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding:24px;">Nenhum colaborador encontrado com este filtro.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding:24px;">Nenhum colaborador encontrado para os filtros selecionados.</td></tr>`;
         return;
     }
 
@@ -559,11 +571,30 @@ async function carregarArquivosAuditados() {
     }
 }
 
-// 6. Gerenciamento Completo de Setores
+// 6. Gerenciamento Completo de Setores e Subgrupos
 async function carregarSectoresCompleto() {
     try {
         const res = await fetch(`/api/admin/sectors-with-count?adminId=${currentUser.id}`);
         const sectors = await res.json();
+
+        if (!Array.isArray(sectors)) {
+            console.error('Resposta inválida ao listar setores:', sectors);
+            return;
+        }
+
+        // Atualiza os dropdowns de seleção de Grupo Pai (no cadastro e na edição)
+        const parentSelect = document.getElementById('setorParentSelect');
+        const editParentSelect = document.getElementById('editSectorParentSelect');
+        
+        let parentOptions = '<option value="">🏷️ Nenhum (Grupo Principal)</option>';
+        // Filtra apenas grupos principais para serem opções de pai
+        const mainGroups = sectors.filter(s => !s.parent_id);
+        mainGroups.forEach(g => {
+            parentOptions += `<option value="${g.id}">🏷️ ${g.nome}</option>`;
+        });
+
+        if (parentSelect) parentSelect.innerHTML = parentOptions;
+        if (editParentSelect) editParentSelect.innerHTML = parentOptions;
 
         const tbody = document.querySelector('#sectorsTable tbody');
         tbody.innerHTML = '';
@@ -580,15 +611,28 @@ async function carregarSectoresCompleto() {
                 btnDelete = `<button class="btn btn-secondary" disabled title="Setores do sistema não podem ser excluídos" style="cursor:not-allowed; opacity:0.5;"><i class="fa-solid fa-lock"></i> Bloqueado</button>`;
             } else {
                 // Setores criados pelo painel: Podem ser editados e excluídos (se não houver usuários vinculados)
-                btnEdit = `<button class="btn btn-secondary" onclick="abrirModalEditarSetor(${s.id}, '${s.nome.replace(/'/g, "\\'")}', '${(s.descricao||'').replace(/'/g, "\\'")}')"><i class="fa-solid fa-pen-to-square"></i> Editar</button>`;
+                btnEdit = `<button class="btn btn-secondary" onclick="abrirModalEditarSetor(${s.id}, '${s.nome.replace(/'/g, "\\'")}', '${(s.descricao||'').replace(/'/g, "\\'")}', ${s.parent_id || 'null'})"><i class="fa-solid fa-pen-to-square"></i> Editar</button>`;
                 
                 btnDelete = s.user_count > 0 
                     ? `<button class="btn btn-secondary" disabled title="Não é possível excluir setores com usuários ativos" style="cursor:not-allowed; opacity:0.5;"><i class="fa-solid fa-lock"></i> Bloqueado</button>`
                     : `<button class="btn btn-danger" onclick="excluirSetorAPI(${s.id})"><i class="fa-solid fa-trash"></i> Excluir</button>`;
             }
 
+            // Formatação visual da hierarquia de Subgrupos
+            let setorColHtml = `<strong>🏷️ ${s.nome}</strong>`;
+            if (s.parent_id) {
+                setorColHtml = `<div style="padding-left: 16px;"><i class="fa-solid fa-arrow-turn-up" style="transform: rotate(90deg); color: var(--primary); margin-right: 6px;"></i> <strong>${s.nome}</strong> <span class="badge badge-info" style="font-size:10px;">Subgrupo</span></div>`;
+            } else {
+                setorColHtml = `<strong>🏷️ ${s.nome}</strong> <span class="badge badge-success" style="font-size:10px;">Grupo Principal</span>`;
+            }
+
+            const parentColHtml = s.parent_nome 
+                ? `<span style="font-weight:600; color:#334155;"><i class="fa-solid fa-folder"></i> ${s.parent_nome}</span>`
+                : `<span style="color:var(--text-muted); font-style:italic;">-</span>`;
+
             tr.innerHTML = `
-                <td><strong>${s.nome}</strong></td>
+                <td>${setorColHtml}</td>
+                <td>${parentColHtml}</td>
                 <td>${s.descricao || '<span style="color:var(--text-muted);font-style:italic;">Sem descrição</span>'}</td>
                 <td><span class="badge ${s.user_count > 0 ? 'badge-success' : 'badge-info'}">${s.user_count} colaborador(es)</span></td>
                 <td>
@@ -605,11 +649,12 @@ async function carregarSectoresCompleto() {
     }
 }
 
-// Criar Setor
+// Criar Setor / Subgrupo
 async function criarSetorAPI(e) {
     e.preventDefault();
     const nome = document.getElementById('setorNome').value.trim();
     const descricao = document.getElementById('setorDescricao').value.trim();
+    const parentId = document.getElementById('setorParentSelect').value;
 
     try {
         const response = await fetch('/api/admin/create-sector', {
@@ -618,14 +663,15 @@ async function criarSetorAPI(e) {
             body: JSON.stringify({
                 adminId: currentUser.id,
                 nome: nome,
-                descricao: descricao
+                descricao: descricao,
+                parentId: parentId ? parseInt(parentId) : null
             })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            alert('✅ Setor criado com sucesso!');
+            alert('✅ Setor / Subgrupo criado com sucesso!');
             document.getElementById('setorForm').reset();
             carregarSectoresCompleto();
         } else {
@@ -638,7 +684,7 @@ async function criarSetorAPI(e) {
 
 // Excluir Setor
 async function excluirSetorAPI(sectorId) {
-    if (!confirm('Deseja excluir permanentemente este setor?')) return;
+    if (!confirm('Deseja excluir permanentemente este setor / subgrupo?')) return;
 
     try {
         const response = await fetch('/api/admin/delete-sector', {
@@ -653,7 +699,7 @@ async function excluirSetorAPI(sectorId) {
         const data = await response.json();
 
         if (response.ok) {
-            alert('Setor excluído com sucesso!');
+            alert('Setor / Subgrupo excluído com sucesso!');
             carregarSectoresCompleto();
         } else {
             alert('Erro: ' + (data.error || 'Falha ao excluir setor.'));
@@ -664,10 +710,16 @@ async function excluirSetorAPI(sectorId) {
 }
 
 // Modal Editar Setor
-function abrirModalEditarSetor(id, nome, descricao) {
+function abrirModalEditarSetor(id, nome, descricao, parentId) {
     document.getElementById('editSectorId').value = id;
     document.getElementById('editSectorNome').value = nome;
     document.getElementById('editSectorDescricao').value = descricao;
+    
+    const parentSelect = document.getElementById('editSectorParentSelect');
+    if (parentSelect) {
+        parentSelect.value = parentId ? parentId.toString() : '';
+    }
+    
     document.getElementById('modalEditSector').classList.add('active');
 }
 
@@ -679,6 +731,7 @@ async function confirmarEditarSetor() {
     const id = document.getElementById('editSectorId').value;
     const nome = document.getElementById('editSectorNome').value.trim();
     const descricao = document.getElementById('editSectorDescricao').value.trim();
+    const parentId = document.getElementById('editSectorParentSelect').value;
 
     if (!nome) return alert('O nome do setor é obrigatório.');
 
@@ -690,14 +743,15 @@ async function confirmarEditarSetor() {
                 adminId: currentUser.id,
                 sectorId: id,
                 nome: nome,
-                descricao: descricao
+                descricao: descricao,
+                parentId: parentId ? parseInt(parentId) : null
             })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            alert('✅ Setor atualizado com sucesso!');
+            alert('✅ Setor / Subgrupo atualizado com sucesso!');
             fecharModalEditSector();
             carregarSectoresCompleto();
         } else {

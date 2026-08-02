@@ -34,7 +34,7 @@ const RhModel = {
             SELECT s.*, u.username 
             FROM rh_solicitacoes s
             LEFT JOIN users u ON s.usuario_id = u.id
-            ORDER BY FIELD(s.status, 'pendente', 'aprovado', 'recusado'), s.data_criacao DESC
+            ORDER BY FIELD(s.status, 'pendente', 'em_fila', 'aprovado', 'recusado'), s.data_criacao DESC
         `;
         db.query(sql, callback);
     },

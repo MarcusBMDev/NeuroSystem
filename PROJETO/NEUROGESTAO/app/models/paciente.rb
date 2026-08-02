@@ -6,7 +6,7 @@ class Paciente < ApplicationRecord
   belongs_to :convenio, optional: true
   has_many :agendamentos, dependent: :nullify
 
-  validates :nome, presence: true, uniqueness: { case_sensitive: false }
+  validates :nome, presence: { message: "é obrigatório" }
   validates :age,
             numericality: { only_integer: true, greater_than_or_equal_to: 0 },
             allow_nil: true
@@ -25,7 +25,8 @@ class Paciente < ApplicationRecord
 
   # Inativa o paciente sem apagá-lo do banco (Soft Delete)
   def soft_delete
-    update(deleted_at: Time.current, status: 'inativo')
+    new_nome = nome.to_s.include?('inativo') ? nome : "#{nome}_inativo_#{id}"
+    update_columns(deleted_at: Time.current, status: 'inativo', nome: new_nome)
   end
 
   # Desfaz o Soft Delete, reativando o paciente

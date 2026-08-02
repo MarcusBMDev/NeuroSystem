@@ -77,3 +77,8 @@ CREATE TABLE IF NOT EXISTS neurocontrol_protocolo_itens (
     FOREIGN KEY (protocolo_id) REFERENCES neurocontrol_protocolos(id) ON DELETE CASCADE,
     FOREIGN KEY (guia_id) REFERENCES neurocontrol_guias(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Adição de novas colunas para regras de negócio do NeuroControl
+ALTER TABLE neurocontrol_guias ADD COLUMN data_validade DATE DEFAULT NULL;
+ALTER TABLE neurocontrol_assinaturas_sessoes ADD COLUMN token_autorizacao VARCHAR(50) DEFAULT NULL;
+

@@ -1,5 +1,5 @@
 class Api::DataPacientesController < ApplicationController
-  before_action :bloquear_neurochat_escrita, only: [:create, :update, :destroy, :reativar, :mesclar]
+  before_action :bloquear_neurochat_escrita, only: [:create, :update, :destroy, :reativar, :mesclar, :unificar_automatico]
 
 
   # Responde ao GET /api/data_pacientes.json
@@ -13,15 +13,10 @@ class Api::DataPacientesController < ApplicationController
 
       if params[:busca].present?
         termo = "%#{params[:busca]}%"
-        # Case insensitive regex / ilike query depending on DB. ILIKE is postgres, but let's use standard LIKE if sqlite:
-        # Assuming postgres based on "ILIKE" usage typically in Heroku/Rails 7 apps
-        # But wait, checking if it works, otherwise standard LIKE or ActiveRecord's .where("nome ILIKE ?") works.
-        # Actually ILIKE is safer for Postgres. But we will use lower() to be safe on all relations
         pacientes_query = pacientes_query.where("LOWER(nome) LIKE ?", termo.downcase)
       end
 
       if params[:profissional_id].present?
-        # Filter patients by specific professional without eagerly loading issues via JOIN duplication
         paciente_ids = Agendamento.where(profissional_id: params[:profissional_id]).select(:paciente_id)
         pacientes_query = pacientes_query.where(id: paciente_ids)
       end
@@ -40,7 +35,7 @@ class Api::DataPacientesController < ApplicationController
       json_data = pacientes.map { |p|
         begin
           p.as_json(
-            only: [:id, :nome, :age, :birth_date, :convenio_id, :weekly_frequency, :status, :planned_specialties]
+            only: [:id, :nome, :age, :birth_date, :convenio_id, :weekly_frequency, :status, :planned_specialties, :vip]
           ).merge({
             convenio: p.convenio ? { id: p.convenio.id, nome: p.convenio.nome } : nil,
             agendamentos: p.agendamentos.map { |a| 
@@ -75,29 +70,68 @@ class Api::DataPacientesController < ApplicationController
   # POST /api/data_pacientes
   def create
     nome_trimmed = paciente_params[:nome].to_s.strip
-    # Busca paciente pelo nome (case-insensitive) incluindo os deletados
-    paciente_existente = Paciente.unscoped.find_by("LOWER(nome) = ?", nome_trimmed.downcase)
+    
+    # 1. Verificar se o paciente já existe no banco (exato ou por inteligência de nome/sobrenome em ativos)
+    paciente_existente = Paciente.ativos.find_by("LOWER(nome) = ?", nome_trimmed.downcase) || verificar_duplicidade_nome(nome_trimmed, apenas_ativos: true)
 
     if paciente_existente
-      if paciente_existente.deleted_at.present?
-        # Smart Re-activation: Reativa o paciente e atualiza os dados
-        paciente_existente.reativar
-        AuditoriaService.log(request, 'REATIVAR', paciente_existente, "Paciente reativado via formulário de criação")
+      # Se o paciente já existe ativo, atualizamos o cadastro existente em vez de dar erro de duplicidade
+      paciente_existente.assign_attributes(paciente_params.except(:nome))
+      if paciente_params[:nome].present? && !paciente_existente.nome.to_s.include?('⭐')
+        paciente_existente.nome = paciente_params[:nome]
       end
-      # Upsert: Atualiza os dados do paciente existente e segue para processar salvamento
-      paciente_existente.assign_attributes(paciente_params)
       processar_salvamento(paciente_existente)
-    else
-      paciente = Paciente.new(paciente_params)
-      processar_salvamento(paciente)
+      return
     end
+
+    # Se estiver inativo/removido, orienta a reativação
+    paciente_inativo = Paciente.unscoped.where.not(deleted_at: nil).find_by("LOWER(nome) = ?", nome_trimmed.downcase)
+    if paciente_inativo
+      return render json: { 
+        success: false, 
+        errors: ["O paciente '#{paciente_inativo.nome}' está inativo/removido. Reative-o no histórico de removidos em vez de criar um novo cadastro."] 
+      }, status: :unprocessable_entity
+    end
+
+    paciente = Paciente.new(paciente_params)
+    processar_salvamento(paciente)
   end
 
   # PATCH/PUT /api/data_pacientes/:id
   def update
     paciente = Paciente.find(params[:id])
+    
+    nome_novo_limpo = paciente_params[:nome].present? ? limpar_nome_base(paciente_params[:nome]) : nil
+    nome_atual_limpo = paciente.nome.present? ? limpar_nome_base(paciente.nome) : nil
+
+    # Só valida duplicidade com OUTROS pacientes se o nome base foi alterado para um nome diferente
+    if nome_novo_limpo.present? && nome_novo_limpo.downcase != nome_atual_limpo.downcase
+      duplicado = verificar_duplicidade_nome(paciente_params[:nome], paciente.id, apenas_ativos: true)
+      if duplicado
+        if mesmo_paciente_duplicado?(paciente_params[:nome], duplicado.nome)
+          # Se for a mesma pessoa (ex: Samira vs Samira - ABA ⭐), consolida agendamentos e inativa o duplicado extra
+          Agendamento.where(paciente_id: duplicado.id).update_all(paciente_id: paciente.id)
+          duplicado.soft_delete rescue nil
+        else
+          return render json: { 
+            success: false, 
+            errors: ["Já existe outro paciente ativo cadastrado com nome e sobrenome similares: '#{duplicado.nome}'."] 
+          }, status: :unprocessable_entity
+        end
+      end
+    end
+
     paciente.assign_attributes(paciente_params)
+    
+    if paciente_params[:nome].present?
+      base_limpa = limpar_nome_base(paciente_params[:nome])
+      paciente.nome = base_limpa if base_limpa.split(/\s+/).size >= 2
+    end
+
     processar_salvamento(paciente)
+  rescue => e
+    Rails.logger.error "Erro no update de paciente: #{e.message}\n#{e.backtrace.join("\n")}"
+    render json: { success: false, errors: ["Erro ao atualizar paciente: #{e.message}"] }, status: :unprocessable_entity
   end
 
   # DELETE /api/data_pacientes/:id
@@ -105,7 +139,6 @@ class Api::DataPacientesController < ApplicationController
     paciente = Paciente.find(params[:id])
     motivo = params[:motivo] || "Motivo não informado"
     setor = request.headers['X-User-Role'] || 'Desconhecido'
-    # Notifica cada retirada individualmente para visibilidade total das vagas liberadas
     Agendamento.where(paciente_id: paciente.id).includes(:profissional).each do |ag|
       NeurochatService.notificar_retirada_paciente(paciente, ag.profissional, ag.dia_semana, ag.horario, motivo, setor)
     end
@@ -116,6 +149,50 @@ class Api::DataPacientesController < ApplicationController
     else
       render json: { error: 'Não foi possível excluir o paciente.' }, status: :unprocessable_entity
     end
+  end
+
+  # GET /api/data_pacientes/removidos
+  def removidos
+    page = (params[:page] || 1).to_i
+    per_page = (params[:per_page] || 30).to_i
+    offset = (page - 1) * per_page
+
+    query = Paciente.inativos.order(updated_at: :desc)
+
+    if params[:busca].present?
+      termo = "%#{params[:busca]}%"
+      query = query.where("LOWER(nome) LIKE ?", termo.downcase)
+    end
+
+    total_registros = query.count
+    pacientes_removidos = query.offset(offset).limit(per_page)
+
+    auditorias_exclusao = Auditoria.where(entidade_tipo: 'Paciente', acao: 'EXCLUIR').order(created_at: :desc).group_by(&:entidade_id)
+
+    dados = pacientes_removidos.map do |p|
+      audit = auditorias_exclusao[p.id]&.first
+      motivo_bruto = audit&.detalhes.to_s
+      motivo = motivo_bruto.sub(/^Motivo:\s*/, '').presence || "Motivo não informado"
+      operador = audit&.user_name.presence || audit&.setor.presence || "Sistema"
+
+      {
+        id: p.id,
+        nome: p.nome,
+        age: p.age,
+        convenio_nome: p.convenio&.nome&.upcase || 'PARTICULAR',
+        data_remocao: p.updated_at || p.deleted_at || audit&.created_at,
+        motivo: motivo,
+        operador: operador,
+        setor: audit&.setor || 'Gestão'
+      }
+    end
+
+    render json: {
+      removidos: dados,
+      total: total_registros,
+      pagina_atual: page,
+      total_paginas: (total_registros.to_f / per_page).ceil
+    }
   end
 
   # PATCH /api/data_pacientes/:id/reativar
@@ -151,20 +228,12 @@ class Api::DataPacientesController < ApplicationController
 
     begin
       Paciente.transaction do
-        # 1. Atualiza agendamentos
         Agendamento.where(paciente_id: id_origem).update_all(paciente_id: id_destino)
-
-        # 2. Atualiza lista de espera
         ListaEspera.where(paciente_id: id_origem).update_all(paciente_id: id_destino, nome: paciente_destino.nome)
-
-        # 3. Atualiza transferências
         Transferencia.where(paciente_id: id_origem).update_all(paciente_id: id_destino)
-
-        # 4. Remove o paciente de origem
         paciente_origem.destroy!
       end
 
-      # Registra em auditoria
       AuditoriaService.log(request, 'MESCLAR_PACIENTES', paciente_destino, "Mesclou paciente #{paciente_origem.nome} (ID: #{id_origem}) para #{paciente_destino.nome} (ID: #{id_destino})")
 
       render json: { success: true, message: "Pacientes unificados com sucesso!" }
@@ -173,13 +242,237 @@ class Api::DataPacientesController < ApplicationController
     end
   end
 
+  # POST /api/data_pacientes/unificar_automatico
+  def unificar_automatico
+    pacientes_ativos = Paciente.ativos.to_a
+    grupos = []
+    visitados = Set.new
+
+    pacientes_ativos.each do |p1|
+      next if visitados.include?(p1.id)
+
+      grupo = [p1]
+      visitados.add(p1.id)
+
+      pacientes_ativos.each do |p2|
+        next if visitados.include?(p2.id)
+        if grupo.any? { |m| mesmo_paciente_duplicado?(m.nome, p2.nome) }
+          grupo << p2
+          visitados.add(p2.id)
+        end
+      end
+
+      grupos << grupo if grupo.size > 1
+    end
+
+    total_grupos = grupos.size
+    total_duplicados_removidos = 0
+
+    Paciente.transaction do
+      grupos.each do |lista|
+        # Seleciona paciente principal (prioriza VIP, depois convênio, depois agendamentos)
+        principal = lista.max_by do |p|
+          score = 0
+          score += 1000 if (p.respond_to?(:vip?) && p.vip?) || p.nome.to_s.include?('⭐')
+          score += 100 if p.convenio_id.present?
+          score += p.agendamentos.count * 10
+          score -= p.id
+          score
+        end
+
+        # Garante status VIP no paciente principal se algum dos duplicados era VIP
+        is_vip_group = lista.any? { |p| (p.respond_to?(:vip?) && p.vip?) || p.nome.to_s.include?('⭐') }
+        if is_vip_group && principal.respond_to?(:vip=)
+          principal.vip = true
+        end
+
+        # Limpa sufixos do tipo "- ABA", "- OCC" ou "⭐" do nome do paciente principal se houver nome limpo no grupo
+        nome_limpo_opcao = lista.map { |p| limpar_nome_base(p.nome).gsub('⭐', '').strip }.reject(&:blank?).min_by(&:length)
+        if nome_limpo_opcao.present? && nome_limpo_opcao.split(/\s+/).size >= 2
+          principal.nome = nome_limpo_opcao
+        end
+
+        principal.save rescue nil
+
+        duplicados = lista.reject { |p| p.id == principal.id }
+
+        duplicados.each do |dup|
+          Agendamento.where(paciente_id: dup.id).update_all(paciente_id: principal.id)
+          ListaEspera.where(paciente_id: dup.id).update_all(paciente_id: principal.id, nome: principal.nome)
+          Transferencia.where(paciente_id: dup.id).update_all(paciente_id: principal.id)
+          
+          if ActiveRecord::Base.connection.table_exists?('neurocontrol_guias')
+            ActiveRecord::Base.connection.execute("UPDATE neurocontrol_guias SET paciente_id = #{principal.id} WHERE paciente_id = #{dup.id}") rescue nil
+          end
+          if ActiveRecord::Base.connection.table_exists?('neurocontrol_negociacoes')
+            ActiveRecord::Base.connection.execute("UPDATE neurocontrol_negociacoes SET paciente_id = #{principal.id} WHERE paciente_id = #{dup.id}") rescue nil
+          end
+          if ActiveRecord::Base.connection.table_exists?('neurocontrol_alertas')
+            ActiveRecord::Base.connection.execute("UPDATE neurocontrol_alertas SET paciente_id = #{principal.id} WHERE paciente_id = #{dup.id}") rescue nil
+          end
+
+          dup.soft_delete rescue dup.destroy
+          total_duplicados_removidos += 1
+        end
+
+        AuditoriaService.log(request, 'UNIFICAR_AUTOMATICO', principal, "Unificados #{duplicados.size} pacientes duplicados para #{principal.nome} (ID: #{principal.id})")
+      end
+    end
+
+    render json: {
+      success: true,
+      message: total_grupos > 0 ? "#{total_grupos} grupos de pacientes unificados com sucesso (#{total_duplicados_removidos} cadastros duplicados unificados)!" : "Nenhum paciente duplicado encontrado na base.",
+      total_grupos: total_grupos,
+      total_unificados: total_duplicados_removidos
+    }
+  rescue => e
+    render json: { error: "Erro na unificação automática: #{e.message}" }, status: :unprocessable_entity
+  end
+
   private
+
+  def levenshtein_distance(str1, str2)
+    s1 = str1.to_s.downcase
+    s2 = str2.to_s.downcase
+    m = s1.length
+    n = s2.length
+    return m if n == 0
+    return n if m == 0
+    d = Array.new(m + 1) { Array.new(n + 1) }
+    (0..m).each { |i| d[i][0] = i }
+    (0..n).each { |j| d[0][j] = j }
+    (1..n).each do |j|
+      (1..m).each do |i|
+        d[i][j] = if s1[i - 1] == s2[j - 1]
+                    d[i - 1][j - 1]
+                  else
+                    [d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + 1].min
+                  end
+      end
+    end
+    d[m][n]
+  end
+
+  def palavras_similares?(w1, w2)
+    return true if w1 == w2
+    return false if w1.blank? || w2.blank?
+    if (w1.size == 1 && w2.start_with?(w1)) || (w2.size == 1 && w1.start_with?(w2))
+      return true
+    end
+    if w1.size >= 4 && w2.size >= 4
+      dist = levenshtein_distance(w1, w2)
+      return true if dist <= (w1.size >= 7 ? 2 : 1)
+    end
+    false
+  end
+
+  def limpar_nome_base(nome)
+    return "" if nome.blank?
+    raw = nome.to_s.gsub('⭐', '').strip
+    partes_traco = raw.split(/\s*[\-\–\—]\s*/)
+    if partes_traco.size > 1 && partes_traco.first.to_s.strip.split(/\s+/).size >= 2
+      partes_traco.first.strip
+    else
+      raw
+    end
+  end
+
+  def normalizar_nome(nome)
+    return "" if nome.blank?
+    base = limpar_nome_base(nome)
+    str = ActiveSupport::Inflector.transliterate(base).upcase.gsub(/[^A-Z0-9\s]/, ' ')
+    stop_words = [
+      'DA', 'DE', 'DO', 'DOS', 'DAS', 'E',
+      'ABA', 'OCC', 'DEN', 'FISIO', 'PSICO', 'FONOAUDIOLOGIA', 'FONOAUDIOLOGO', 'FONOAUDIOLOGA',
+      'PSICOPEDAGOGIA', 'PSICOLOGIA', 'TERAPIA', 'REABILITACAO', 'MUTIRAO', 'AVALIACAO',
+      'CONSULTA', 'ATENDIMENTO', 'GERAL', 'PACIENTE'
+    ]
+    tokens = str.split(/\s+/).reject { |w| stop_words.include?(w) }
+    tokens.join(' ')
+  end
+
+  def extrair_primeiro_e_ultimo_nome(nome)
+    tokens = normalizar_nome(nome).split(' ')
+    return "" if tokens.empty?
+    return tokens.first if tokens.size == 1
+    "#{tokens.first} #{tokens.last}"
+  end
+
+  def mesmo_paciente_duplicado?(nome1, nome2)
+    t1 = normalizar_nome(nome1).split(' ')
+    t2 = normalizar_nome(nome2).split(' ')
+    return false if t1.empty? || t2.empty?
+
+    return true if t1 == t2
+
+    first_match = palavras_similares?(t1.first, t2.first)
+    return false unless first_match
+
+    # Regra 1: Nome Subconjunto (ex: "ANATÓLIO VALADARES" vs "ANATÓLIO VALADARES CAVALCANTE")
+    menor, maior = t1.size <= t2.size ? [t1, t2] : [t2, t1]
+    if menor.size >= 2
+      todas_no_maior = menor.all? do |w_menor|
+        maior.any? { |w_maior| palavras_similares?(w_menor, w_maior) }
+      end
+      return true if todas_no_maior
+    end
+
+    # Regra 2: Tolerância de Erro de Digitação no Último Sobrenome (ex: "COSTANTIN" vs "COSTATIN")
+    last_match = palavras_similares?(t1.last, t2.last)
+    return false unless last_match
+
+    # Regra 3: Sobrenomes do meio
+    mid1 = t1[1..-2] || []
+    mid2 = t2[1..-2] || []
+    return true if mid1.empty? || mid2.empty?
+
+    mid_match = mid1.all? { |w1| mid2.any? { |w2| palavras_similares?(w1, w2) } } ||
+                mid2.all? { |w2| mid1.any? { |w1| palavras_similares?(w1, w2) } }
+
+    mid_match
+  end
+
+  def verificar_duplicidade_nome(nome, ignorar_id = nil, apenas_ativos: false)
+    return nil if nome.blank?
+
+    scope = apenas_ativos ? Paciente.ativos : Paciente.unscoped
+    scope.each do |p|
+      next if ignorar_id.present? && p.id == ignorar_id.to_i
+      if mesmo_paciente_duplicado?(nome, p.nome)
+        return p
+      end
+    end
+    nil
+  end
 
   def processar_salvamento(paciente)
     adicionar_a_espera = params[:adicionar_a_espera].to_s == "true"
     especialidade_espera = params[:especialidade_espera] || paciente.planned_specialties
 
-    if paciente.save
+    salvo = begin
+      paciente.save
+    rescue ActiveRecord::RecordNotUnique, Mysql2::Error => e
+      if e.message.include?('Duplicate entry') || e.message.include?('index_pacientes_on_nome')
+        conflito_inativo = Paciente.unscoped.where.not(deleted_at: nil).where.not(id: paciente.id).find_by("LOWER(nome) = ?", paciente.nome.to_s.downcase)
+        if conflito_inativo
+          conflito_inativo.update_columns(nome: "#{conflito_inativo.nome}_inativo_#{conflito_inativo.id}")
+          paciente.save
+        else
+          conflito_ativo = Paciente.ativos.where.not(id: paciente.id).find_by("LOWER(nome) = ?", paciente.nome.to_s.downcase)
+          if conflito_ativo
+            Agendamento.where(paciente_id: conflito_ativo.id).update_all(paciente_id: paciente.id)
+            conflito_ativo.update_columns(deleted_at: Time.current, status: 'inativo', nome: "#{conflito_ativo.nome}_inativo_#{conflito_ativo.id}")
+            paciente.save
+          else
+            false
+          end
+        end
+      else
+        raise e
+      end
+    end
+
+    if salvo
       acao_audit = params[:action] == 'create' ? 'CRIAR' : 'EDITAR'
       AuditoriaService.log(request, acao_audit, paciente, "Dados: #{paciente_params.to_h}")
       
@@ -220,7 +513,7 @@ class Api::DataPacientesController < ApplicationController
   end
 
   def paciente_params
-    params.require(:paciente).permit(:nome, :age, :birth_date, :convenio_id, :weekly_frequency, :planned_specialties, :status)
+    params.require(:paciente).permit(:nome, :age, :birth_date, :convenio_id, :weekly_frequency, :planned_specialties, :status, :vip)
   end
 
   private

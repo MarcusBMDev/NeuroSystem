@@ -79,41 +79,117 @@
             </div>
         </div>
 
-        <!-- TABS DOS SETORES -->
+        <!-- TABS DOS SETORES (3 ABAS DIRETAS) -->
         <div class="tab-container" style="border-bottom: 2px solid var(--border-color); margin-bottom: 24px;">
-            <button class="tab-btn active" id="tabSolicitacaoBtn" onclick="switchSetor('solicitacao')" style="font-size: 15px; padding: 10px 24px;"><i class="fa-solid fa-file-invoice"></i> Setor de Solicitação (Nagilla)</button>
-            <button class="tab-btn" id="tabAgendamentoBtn" onclick="switchSetor('agendamento')" style="font-size: 15px; padding: 10px 24px;"><i class="fa-solid fa-calendar-plus"></i> Setor de Agendamento (Camila/Bruno/Petronio)</button>
+            <button class="tab-btn active" id="tabPrimeiroAtendimentoBtn" onclick="switchOpTab('primeiro_atendimento')" style="font-size: 14px; padding: 10px 20px;"><i class="fa-solid fa-user-plus"></i> 1º Atendimento</button>
+            <button class="tab-btn" id="tabSolicitacoesBtn" onclick="switchOpTab('solicitacoes')" style="font-size: 14px; padding: 10px 20px;"><i class="fa-solid fa-file-invoice"></i> Solicitações</button>
+            <button class="tab-btn" id="tabNfParticularesBtn" onclick="switchOpTab('nf_particulares')" style="font-size: 14px; padding: 10px 20px;"><i class="fa-solid fa-receipt"></i> NFs Particulares</button>
         </div>
 
         <!-- ============================================== -->
-        <!-- VIEW SOLICITAÇÃO (NAGILLA) -->
+        <!-- VIEW SOLICITAÇÃO (NAGILLA / SETOR DE SOLICITAÇÃO) -->
         <!-- ============================================== -->
         <div id="viewSolicitacao">
-            <div class="content-grid" style="grid-template-columns: 1.2fr 1.8fr;">
+            
+            <!-- CARDS DE RESUMO DA SOLICITAÇÃO (4x1 Grid) -->
+            <div class="kpi-grid" style="margin-bottom: 20px;">
+                <div class="kpi-card" style="padding: 16px;">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Total Solicitações</span>
+                        <div class="kpi-icon" style="background-color: var(--primary-light); color: var(--primary);"><i class="fa-solid fa-file-invoice"></i></div>
+                    </div>
+                    <div class="kpi-value" id="solKpiTotal">0</div>
+                    <div class="kpi-subtext">Guias ativas no mês de competência</div>
+                </div>
+
+                <div class="kpi-card" style="padding: 16px;">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Em Análise / Solicitadas</span>
+                        <div class="kpi-icon" style="background-color: var(--warning-light); color: var(--warning);"><i class="fa-solid fa-hourglass-half"></i></div>
+                    </div>
+                    <div class="kpi-value" id="solKpiAnalise" style="color:var(--warning);">0</div>
+                    <div class="kpi-subtext" style="color:var(--warning);">Aguardando resposta do convênio</div>
+                </div>
+
+                <div class="kpi-card" style="padding: 16px;">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Guias Prontas / Impressas</span>
+                        <div class="kpi-icon" style="background-color: var(--success-light); color: var(--success);"><i class="fa-solid fa-circle-check"></i></div>
+                    </div>
+                    <div class="kpi-value" id="solKpiImpressas" style="color:var(--success);">0</div>
+                    <div class="kpi-subtext" style="color:var(--success);">Liberadas para agendamento/atendimento</div>
+                </div>
+
+                <div class="kpi-card" style="padding: 16px;">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Pedidos Médicos a Renovar</span>
+                        <div class="kpi-icon" style="background-color: var(--danger-light); color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    </div>
+                    <div class="kpi-value" id="solKpiVencidas" style="color:var(--danger);">0</div>
+                    <div class="kpi-subtext" style="color:var(--danger);">Pedidos médicos vencidos ou a vencer em 30 dias</div>
+                </div>
+            </div>
+
+            <!-- BARRA DE FILTROS (CONVÊNIO, STATUS E BUSCA RÁPIDA) -->
+            <div class="panel-card" style="margin-bottom: 20px; padding: 16px 20px;">
+                <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;">
+                    <div style="display:flex; gap:12px; align-items:center; flex:1; min-width:240px;">
+                        <label for="solConvenioFilter" style="margin:0; font-size:12px; font-weight:700; white-space:nowrap; color:var(--text-muted);"><i class="fa-solid fa-hospital-user"></i> Convênio:</label>
+                        <select class="form-control" id="solConvenioFilter" onchange="carregarDadosSolicitacao()" style="margin:0; font-size:13px; font-weight:600;">
+                            <option value="todos">🏢 Todos os Convênios</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex; gap:12px; align-items:center; flex:1; min-width:220px;">
+                        <label for="solStatusFilter" style="margin:0; font-size:12px; font-weight:700; white-space:nowrap; color:var(--text-muted);"><i class="fa-solid fa-filter"></i> Status:</label>
+                        <select class="form-control" id="solStatusFilter" onchange="carregarDadosSolicitacao()" style="margin:0; font-size:13px; font-weight:600;">
+                            <option value="todos">🎯 Todos os Status</option>
+                            <option value="aguardando_agendamento">⏳ Solicitado / Em Análise</option>
+                            <option value="p_assinar">✅ Impressa / Liberada</option>
+                            <option value="inconsistente">⚠️ Negada / Divergência</option>
+                            <option value="finalizado">🏁 Finalizada</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex; gap:12px; align-items:center; flex:1.5; min-width:280px;">
+                        <div style="position:relative; width:100%;">
+                            <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i>
+                            <input type="text" class="form-control" id="solBuscaInput" oninput="carregarDadosSolicitacao()" placeholder="Pesquisar paciente, carteirinha ou guia..." style="padding-left:34px; margin:0; font-size:13px;">
+                        </div>
+                        <button class="btn btn-primary" onclick="abrirModalNovaGuia()" style="white-space:nowrap; font-size:12px;"><i class="fa-solid fa-plus-circle"></i> Nova Solicitação</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LAYOUT EM GRID: FORMULÁRIO RÁPIDO + TABELA PRINCIPAL DE SOLICITAÇÕES -->
+            <div class="content-grid" style="grid-template-columns: 1fr 2.2fr;">
                 
-                <!-- FORMULÁRIO DE CADASTRO -->
+                <!-- FORMULÁRIO DE CADASTRO DE GUIA/SOLICITAÇÃO -->
                 <div class="panel-card">
                     <div class="panel-card-header">
-                        <div class="panel-card-title"><i class="fa-solid fa-plus-circle"></i> Cadastrar Nova Guia</div>
+                        <div class="panel-card-title"><i class="fa-solid fa-file-signature"></i> Cadastrar / Atualizar Guia</div>
                     </div>
                     <form id="solicitacaoForm">
                         <div class="form-group" style="position:relative;">
-                            <label for="solPacInput">Paciente (NEUROGESTÃO)</label>
-                            <input type="text" class="form-control" id="solPacInput" required placeholder="Comece a digitar o nome do paciente..." autocomplete="off">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <label for="solPacInput" style="margin:0;">Paciente (NEUROGESTÃO)</label>
+                                <button type="button" class="btn btn-secondary" onclick="abrirModalCadastrarNovoPaciente()" style="font-size:10px; padding:3px 8px; background:#e0f2fe; color:#0369a1; border-color:#bae6fd;"><i class="fa-solid fa-user-plus"></i> + Cadastrar Novo Paciente</button>
+                            </div>
+                            <input type="text" class="form-control" id="solPacInput" required placeholder="Digite o nome do paciente..." autocomplete="off">
                             <input type="hidden" id="solPacId">
                             <div id="solAutocompleteList" style="position: absolute; background: white; border: 1px solid #ccc; width: 100%; display: none; z-index: 999; max-height: 150px; overflow-y: auto; border-radius: 4px; box-shadow: var(--shadow); margin-top:2px;"></div>
                         </div>
                         <div class="form-group">
-                            <label for="solNumeroGuia">Número da Guia Autorizada</label>
-                            <input type="text" class="form-control" id="solNumeroGuia" required placeholder="Ex: GUI-12345">
+                            <label for="solNumeroGuia">Número da Guia / Protocolo</label>
+                            <input type="text" class="form-control" id="solNumeroGuia" required placeholder="Ex: 136329590">
                         </div>
                         <div class="form-group">
-                            <label for="solTerapia">Terapia/Especialidade</label>
+                            <label for="solTerapia">Terapia / Especialidade</label>
                             <select class="form-control" id="solTerapia" required>
-                                <option value="Psico">Psicologia</option>
+                                <option value="Psico">Psicologia (TCC)</option>
                                 <option value="Fono">Fonoaudiologia</option>
                                 <option value="TO">Terapia Ocupacional (T.O)</option>
-                                <option value="Fisio">Fisioterapia</option>
+                                <option value="Fisio">Fisioterapia / Motricidade</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -125,30 +201,69 @@
                             <input type="month" class="form-control" id="solMesVigente" required>
                         </div>
                         <div class="form-group">
-                            <label for="solQtdAutorizada">Quantidade Autorizada</label>
-                            <input type="number" class="form-control" id="solQtdAutorizada" required placeholder="Quantidade aprovada pelo convênio">
+                            <label for="solQtdAutorizada">Quantidade de Sessões Autorizadas</label>
+                            <input type="number" class="form-control" id="solQtdAutorizada" required placeholder="Qtd aprovada (Ex: 4, 8, 42)">
+                        </div>
+                        <div class="form-group">
+                            <label for="solNeurochatGrupoId">ID do Grupo NeuroChat (Notificação)</label>
+                            <input type="text" class="form-control" id="solNeurochatGrupoId" placeholder="Ex: GRUPO_AGENDAMENTO_PALMAS (opcional)">
                         </div>
 
                         <!-- Caixa de Previsão Calculada -->
                         <div class="previsao-box" id="previsaoBox" style="display: none;">
-                            <i class="fa-solid fa-calculator" style="color: var(--primary);"></i> Previsão calculada pela agenda: <strong id="previsaoCalculadaText">0 sessões</strong>
+                            <i class="fa-solid fa-calculator" style="color: var(--primary);"></i> Frequência da Agenda: <strong id="previsaoCalculadaText">0 sessões</strong>
                         </div>
 
-                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;"><i class="fa-solid fa-floppy-disk"></i> Autorizar e Liberar para Agendamento</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;"><i class="fa-solid fa-floppy-disk"></i> Salvar Solicitação no Sistema</button>
                     </form>
                 </div>
 
-                <!-- ALERTAS DE SLA / OCIOSIDADE -->
+                <!-- TABELA COMPLETA DE SOLICITAÇÕES (Substituta da Planilha) -->
                 <div class="panel-card">
                     <div class="panel-card-header">
-                        <div class="panel-card-title"><i class="fa-solid fa-clock-rotate-left"></i> Monitor de SLA (Alertas de Ociosidade)</div>
+                        <div class="panel-card-title"><i class="fa-solid fa-table-list"></i> Controle Geral de Solicitações do Mês</div>
                     </div>
-                    <div style="font-size:12px; color: var(--text-muted); margin-bottom: 16px;">
-                        Exibe as guias emitidas há mais de 3 dias que ainda não foram vinculadas à grade de atendimento.
+                    <div class="table-responsive">
+                        <table class="data-table" id="solicitacoesTable">
+                            <thead>
+                                <tr>
+                                    <th>Paciente / Carteirinha</th>
+                                    <th>Convênio</th>
+                                    <th>Terapia</th>
+                                    <th>Frequência na Agenda</th>
+                                    <th>Validade Pedido</th>
+                                    <th>Nº Guia / Qtd</th>
+                                    <th>Status Guia</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="solicitacoesTbody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding:40px;">Carregando solicitações do sistema...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div id="slaList">
-                        <!-- Carregado via JS -->
-                        <p style="text-align: center; color: var(--text-muted);">Nenhum alerta de ociosidade ativo.</p>
+
+                    <!-- CONTROLES DE PAGINAÇÃO DAS SOLICITAÇÕES -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600;" id="solicitacaoPaginationInfo">
+                            Exibindo 0 a 0 de 0 solicitações
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="solicitacaoPageSize" style="font-size: 12px; color: var(--text-muted); font-weight: 600; margin: 0;">Itens por página:</label>
+                            <select id="solicitacaoPageSize" onchange="mudarTamanhoPaginaSolicitacao(this.value)" class="form-control" style="width: 70px; padding: 4px 8px; font-size: 12px; margin: 0;">
+                                <option value="10" selected>10</option>
+                                <option value="15">15</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                            <div style="display: flex; gap: 4px; margin-left: 8px;">
+                                <button class="btn btn-secondary" id="solBtnPagPrev" onclick="paginaAnteriorSolicitacao()" style="padding: 4px 10px; font-size: 11px;"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+                                <span id="solicitacaoPageNum" style="font-size: 12px; font-weight: 700; align-self: center; padding: 0 8px;">1 / 1</span>
+                                <button class="btn btn-secondary" id="solBtnPagNext" onclick="proximaPaginaSolicitacao()" style="padding: 4px 10px; font-size: 11px;">Próximo <i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -163,6 +278,30 @@
             <!-- LISTA DE GUIAS INCONSISTENTES DEVOLVIDAS PELO CI (Urgente) -->
             <div id="guiasDevolvidasContainer">
                 <!-- Inserido dinamicamente se houver inconsistências de rasuras -->
+            </div>
+
+            <!-- BARRA DE FILTROS E PESQUISA DE ESPECIALIDADE -->
+            <div class="panel-card" style="margin-bottom: 20px; padding: 16px 20px;">
+                <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;">
+                    <div style="display:flex; gap:12px; align-items:center; flex:1; min-width:280px;">
+                        <label for="filterTerapiaAgendamento" style="margin:0; font-size:12px; font-weight:700; white-space:nowrap; color:var(--text-muted);"><i class="fa-solid fa-filter"></i> Especialidade:</label>
+                        <select class="form-control" id="filterTerapiaAgendamento" onchange="filtrarDadosAgendamento()" style="margin:0; font-size:13px; font-weight:600;">
+                            <option value="todas">🎯 Todas as Especialidades</option>
+                            <option value="Psico">🧠 Psicologia</option>
+                            <option value="Fono">🗣️ Fonoaudiologia</option>
+                            <option value="TO">🎨 Terapia Ocupacional (T.O)</option>
+                            <option value="Fisio">🏃 Fisioterapia</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex; gap:12px; align-items:center; flex:1.5; min-width:300px;">
+                        <div style="position:relative; width:100%;">
+                            <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i>
+                            <input type="text" class="form-control" id="filterBuscaAgendamento" oninput="filtrarDadosAgendamento()" placeholder="Buscar paciente, convênio ou número da guia..." style="padding-left:34px; margin:0; font-size:13px;">
+                        </div>
+                        <button class="btn btn-secondary" onclick="carregarDadosAgendamento()" style="padding:10px 14px;"><i class="fa-solid fa-rotate"></i></button>
+                    </div>
+                </div>
             </div>
 
             <div class="content-grid" style="grid-template-columns: 1.8fr 1.2fr;">
@@ -182,8 +321,8 @@
                                 <tr>
                                     <th style="width: 40px;"><input type="checkbox" id="selectAllChecklist" onclick="toggleSelectAllChecklist(this)"></th>
                                     <th>Paciente</th>
-                                    <th>Guia</th>
-                                    <th>Terapia</th>
+                                    <th>Guia / Convênio</th>
+                                    <th>Especialidade</th>
                                     <th>Qtd. Sessões</th>
                                     <th>Status</th>
                                 </tr>
@@ -213,9 +352,163 @@
                     </div>
                 </div>
 
+                <!-- CENTRAL DE PERMISSÕES: VALIDAÇÃO & TRAVA DE CIÊNCIA DOS COORDENADORES -->
+                <div class="panel-card" style="border: 2px solid #bae6fd; background-color: #f0f9ff; margin-bottom: 20px;">
+                    <div class="panel-card-header" style="border-bottom: 1px solid #bae6fd;">
+                        <div class="panel-card-title" style="color: #0369a1;"><i class="fa-solid fa-user-shield"></i> Central de Permissões: Remoção / Redução de Pacientes da Grade</div>
+                        <button class="btn btn-primary" onclick="abrirModalSolicitarAlteracao()" style="background-color: #0284c7; border:none; font-size:12px;"><i class="fa-solid fa-triangle-exclamation"></i> Solicitar Remoção / Redução</button>
+                    </div>
+                    <div style="font-size:12px; color: #0369a1; margin-bottom: 16px;">
+                        Solicitações de alteração na grade exigem obrigatoriamente o <strong>check de declaração de ciência do Coordenador da Especialidade</strong> antes de efetivar o recálculo sistêmico.
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Paciente</th>
+                                    <th>Tipo</th>
+                                    <th>Especialidade</th>
+                                    <th>Solicitado Por</th>
+                                    <th>Motivo</th>
+                                    <th>Status</th>
+                                    <th style="width:140px;">Ação Coordenador</th>
+                                </tr>
+                            </thead>
+                            <tbody id="centralPermissoesTbody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding:20px;">Carregando solicitações da Central de Permissões...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
         </div>
 
+        <!-- ============================================== -->
+        <!-- VIEW NFs PARTICULARES (PLANILHA KARE & CAMILA) -->
+        <!-- ============================================== -->
+        <div id="viewNfParticulares" style="display: none;">
+            
+            <div class="kpi-grid" style="margin-bottom: 20px;">
+                <div class="kpi-card" style="padding: 16px;">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Total Faturado NFs</span>
+                        <div class="kpi-icon" style="background-color: var(--success-light); color: var(--success);"><i class="fa-solid fa-dollar-sign"></i></div>
+                    </div>
+                    <div class="kpi-value" id="nfKpiTotal" style="color:var(--success);">R$ 0,00</div>
+                    <div class="kpi-subtext">Valor acumulado no mês selecionado</div>
+                </div>
+
+                <div class="kpi-card" style="padding: 16px;">
+                    <div class="kpi-header">
+                        <span class="kpi-title">NFs Emitidas</span>
+                        <div class="kpi-icon" style="background-color: var(--primary-light); color: var(--primary);"><i class="fa-solid fa-file-check"></i></div>
+                    </div>
+                    <div class="kpi-value" id="nfKpiEmitidas">0</div>
+                    <div class="kpi-subtext">Notas fiscais geradas no sistema</div>
+                </div>
+
+                <div class="kpi-card" style="padding: 16px;">
+                    <div class="kpi-header">
+                        <span class="kpi-title">NFs Pendentes</span>
+                        <div class="kpi-icon" style="background-color: var(--warning-light); color: var(--warning);"><i class="fa-solid fa-clock"></i></div>
+                    </div>
+                    <div class="kpi-value" id="nfKpiPendentes" style="color:var(--warning);">0</div>
+                    <div class="kpi-subtext" style="color:var(--warning);">Aguardando faturamento/emissão</div>
+                </div>
+            </div>
+
+            <!-- BARRA DE AÇÕES DO PARTICULAR -->
+            <div class="panel-card" style="margin-bottom: 20px; padding: 16px 20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <label for="nfMesFilter" style="font-size:12px; font-weight:700; color:var(--text-muted); margin:0;">Mês Competência:</label>
+                        <input type="month" class="form-control" id="nfMesFilter" onchange="carregarNfsParticulares()" style="margin:0; font-size:13px; font-weight:600;">
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-secondary" onclick="abrirModalNovoParticular()"><i class="fa-solid fa-plus"></i> + Lançar Particular</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABELA DE NFS PARTICULARES -->
+            <div class="panel-card">
+                <div class="panel-card-header">
+                    <div class="panel-card-title"><i class="fa-solid fa-receipt"></i> Controle de Pacientes Particulares para Emissão de Nota Fiscal</div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Paciente</th>
+                                <th>Procedimento / Terapia</th>
+                                <th>Responsável / CPF / Contato</th>
+                                <th>Qtd. Sessões / Pacote</th>
+                                <th>Valor Total</th>
+                                <th>Nº da NF</th>
+                                <th>Status</th>
+                                <th>Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nfParticularesTbody">
+                            <tr>
+                                <td colspan="8" style="text-align:center; color:var(--text-muted); padding:30px;">Carregando NFs particulares...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL DE SOLICITAR REMOÇÃO / REDUÇÃO -->
+    <div class="modal" id="solicitarAlteracaoModal">
+        <div class="modal-content" style="max-width: 550px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-minus"></i> Solicitar Remoção / Redução de Paciente</h3>
+                <button class="modal-close" onclick="fecharModalSolicitarAlteracao()">&times;</button>
+            </div>
+            <form id="solicitarAlteracaoForm" style="padding-top:10px;">
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700;">Nome do Paciente</label>
+                    <input type="text" class="form-control" id="altPacInput" placeholder="Digite para buscar paciente..." required style="font-size:13px;">
+                    <input type="hidden" id="altPacId">
+                    <div id="altPacAutocompleteList" style="display:none; position:absolute; background:white; border:1px solid #ccc; width:90%; z-index:1000; max-height:150px; overflow-y:auto;"></div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">Tipo de Ação</label>
+                        <select class="form-control" id="altTipoSelect" required style="font-size:13px;">
+                            <option value="remocao">Remoção Completa da Grade</option>
+                            <option value="reducao">Redução de Carga Horária/Sessões</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">Especialidade Afetada</label>
+                        <select class="form-control" id="altEspecialidadeSelect" required style="font-size:13px;">
+                            <option value="Psicologia">Psicologia</option>
+                            <option value="Fonoaudiologia">Fonoaudiologia</option>
+                            <option value="Terapia Ocupacional">Terapia Ocupacional</option>
+                            <option value="Fisioterapia">Fisioterapia</option>
+                            <option value="Pedagogia">Pedagogia</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:12px; font-weight:700;">Justificativa / Motivo da Remoção</label>
+                    <textarea class="form-control" id="altMotivoText" rows="3" placeholder="Descreva o motivo detalhado para análise da coordenação..." required style="font-size:13px;"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalSolicitarAlteracao()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: var(--primary);"><i class="fa-solid fa-paper-plane"></i> Enviar para Coordenador</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- MODAL DE TRAVA DE SEGURANÇA (QTD AUTORIZADA < EXPECTATIVA) -->
@@ -237,6 +530,149 @@
                 <button class="btn btn-secondary" onclick="fecharDivergenciaModal()">Não, ajustar valor</button>
                 <button class="btn btn-primary" onclick="confirmarSalvarGuiaDivergente()" style="background-color: var(--danger);">Sim, desejo prosseguir</button>
             </div>
+    <!-- MODAL DE IMPRESSÃO DE PROTOCOLO DIGITAL -->
+    <div class="modal" id="impressaoProtocoloModal">
+        <div class="modal-content" style="max-width: 750px;">
+            <div class="modal-header no-print">
+                <h3><i class="fa-solid fa-print"></i> Protocolo Digital de Trânsito</h3>
+                <button class="modal-close" onclick="fecharModalImpressaoProtocolo()">&times;</button>
+            </div>
+            <div id="printProtocolArea" style="padding: 20px; background: white; color: #000;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
+                    <div>
+                        <h2 style="margin:0; font-size: 20px; font-weight:800; text-transform:uppercase; color:#0f172a;">NEUROCONTROL</h2>
+                        <span style="font-size:11px; color:#475569; font-weight:600;">COMPROVANTE DE PROTOCOLO DIGITAL DE TRÂNSITO</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <h1 style="margin:0; font-size: 24px; color: var(--primary);" id="printProtocoloNumero">#0000</h1>
+                        <span style="font-size:11px; color:#64748b;" id="printDataEmissao">Data: --/--/----</span>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom: 16px; background:#f8fafc; padding:10px 14px; border-radius:6px; border:1px solid #e2e8f0;">
+                    <div>Emissor: <strong id="printEmissorNome">-</strong></div>
+                    <div>Setor Origem: <strong>Agendamento</strong></div>
+                    <div>Destino: <strong>Controle Interno (CI)</strong></div>
+                </div>
+
+                <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:24px; border:1px solid #cbd5e1;">
+                    <thead>
+                        <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
+                            <th style="padding:8px; text-align:left; border-right:1px solid #cbd5e1;">#</th>
+                            <th style="padding:8px; text-align:left; border-right:1px solid #cbd5e1;">Paciente</th>
+                            <th style="padding:8px; text-align:left; border-right:1px solid #cbd5e1;">Nº da Guia</th>
+                            <th style="padding:8px; text-align:center; border-right:1px solid #cbd5e1;">Terapia</th>
+                            <th style="padding:8px; text-align:center;">Qtd. Sessões</th>
+                        </tr>
+                    </thead>
+                    <tbody id="printItensTbody">
+                        <!-- Carregado via JS -->
+                    </tbody>
+                </table>
+
+                <div style="display:flex; justify-content:space-between; margin-top: 40px; font-size:11px;">
+                    <div style="width:45%; text-align:center; border-top:1px solid #000; padding-top:6px;">
+                        <strong id="printSignEmissor">Agendamento (Emissor)</strong><br>
+                        <span>Data: _____/_____/_________</span>
+                    </div>
+                    <div style="width:45%; text-align:center; border-top:1px solid #000; padding-top:6px;">
+                        <strong>Controle Interno (Recebedor/Custódia)</strong><br>
+                        <span>Data: _____/_____/_________</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer no-print">
+                <button class="btn btn-secondary" onclick="fecharModalImpressaoProtocolo()">Fechar</button>
+                <button class="btn btn-primary" onclick="window.print()" style="background-color: var(--primary);"><i class="fa-solid fa-print"></i> Imprimir / Gerar PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CADASTRAR NOVO PACIENTE PARA 1º AGENDAMENTO -->
+    <div class="modal" id="cadastrarNovoPacienteModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-plus"></i> Cadastrar Novo Paciente (1º Atendimento)</h3>
+                <button class="modal-close" onclick="fecharModalCadastrarNovoPaciente()">&times;</button>
+            </div>
+            <form id="cadastrarNovoPacienteForm" style="padding-top:10px;">
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700;">Nome Completo do Paciente</label>
+                    <input type="text" class="form-control" id="novoPacNome" placeholder="Ex: João Pedro Silva" required style="font-size:13px;">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700;">Convênio / Plano de Saúde</label>
+                    <select class="form-control" id="novoPacConvenioSelect" required style="font-size:13px;"></select>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:12px; font-weight:700;">Especialidades / Terapias Previstas</label>
+                    <select class="form-control" id="novoPacEspecialidadesSelect" style="font-size:13px;">
+                        <option value="Psicologia">Psicologia (Convencional)</option>
+                        <option value="Fonoaudiologia">Fonoaudiologia</option>
+                        <option value="Terapia Ocupacional">Terapia Ocupacional</option>
+                        <option value="Fisioterapia">Fisioterapia</option>
+                        <option value="Psicologia, ABA">Linha TEA (ABA)</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalCadastrarNovoPaciente()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: var(--primary);"><i class="fa-solid fa-check"></i> Cadastrar Paciente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE LANÇAR PATICULAR PARA NF -->
+    <div class="modal" id="novoParticularModal">
+        <div class="modal-content" style="max-width: 550px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-receipt"></i> Lançar Paciente Particular para NF</h3>
+                <button class="modal-close" onclick="fecharModalNovoParticular()">&times;</button>
+            </div>
+            <form id="novoParticularForm" style="padding-top:10px;">
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700;">Nome do Paciente Particular</label>
+                    <input type="text" class="form-control" id="partPacNome" placeholder="Ex: Jaiane Cerqueira dos Santos" required style="font-size:13px;">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">Procedimento / Terapia</label>
+                        <input type="text" class="form-control" id="partProcedimento" placeholder="Ex: AVN, TCC, ABA, Fono" required style="font-size:13px;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">Qtd. Sessões / Pacote</label>
+                        <input type="text" class="form-control" id="partQtd" placeholder="Ex: 4 ou Pacote" required style="font-size:13px;">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">Nome do Responsável (NF)</label>
+                        <input type="text" class="form-control" id="partRespNome" placeholder="Ex: Solange Helena" style="font-size:13px;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">CPF do Responsável</label>
+                        <input type="text" class="form-control" id="partRespCpf" placeholder="Ex: 026.997.531-49" style="font-size:13px;">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">Valor Total (R$)</label>
+                        <input type="number" step="0.01" class="form-control" id="partValorTotal" placeholder="Ex: 2820.00" required style="font-size:13px;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">Mês Competência</label>
+                        <input type="month" class="form-control" id="partMesVigente" required style="font-size:13px;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:12px; font-weight:700;">Observações / Endereço / E-mail</label>
+                    <textarea class="form-control" id="partObs" rows="2" placeholder="Dados cadastrais completos para emissão..." style="font-size:13px;"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalNovoParticular()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: var(--primary);"><i class="fa-solid fa-floppy-disk"></i> Salvar Registro Particular</button>
+                </div>
+            </form>
         </div>
     </div>
 

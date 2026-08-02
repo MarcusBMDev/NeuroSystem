@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroControl - Solicitações</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon" style="background-color: var(--primary);"><i class="fa-solid fa-file-invoice"></i></div>
+            <div class="logo-text">
+                <h3>NeuroControl</h3>
+                <span style="font-size: 10px; color: #38bdf8; display:block;">Solicitações</span>
+            </div>
+        </div>
+        <ul class="nav-links" id="sidebarNavLinks">
+            <!-- Gerado dinamicamente via menu_permissao.js -->
+        </ul>
+
+        <div class="user-profile-sidebar">
+            <div class="user-avatar" id="userAvatar">OP</div>
+            <div class="user-info-side">
+                <span class="user-name-side" id="userNameSide">Solicitações</span>
+                <span class="user-dept-side" id="userDeptSide">Gestão de Guias</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div>
+                <span style="font-size: 14px; font-weight:700; color:var(--primary);"><i class="fa-solid fa-file-invoice"></i> Controle Geral de Solicitações do Mês</span>
+            </div>
+            <div class="top-bar-right">
+                <div class="user-profile-header">
+                    <span style="font-size: 13px; font-weight: 600;" id="userHeaderName">Colaborador</span>
+                    <div class="user-avatar" style="background-color: var(--primary); color: white;">OP</div>
+                    <button class="btn btn-secondary" onclick="logout()" style="padding: 6px 12px; font-size: 11px;"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARDS DE RESUMO DAS SOLICITAÇÕES (4x1 Grid) -->
+        <div class="kpi-grid" style="margin-bottom: 20px;">
+            <div class="kpi-card" style="padding: 16px;">
+                <div class="kpi-header">
+                    <span class="kpi-title">Total Solicitações</span>
+                    <div class="kpi-icon" style="background-color: var(--primary-light); color: var(--primary);"><i class="fa-solid fa-file-invoice"></i></div>
+                </div>
+                <div class="kpi-value" id="solKpiTotal">0</div>
+                <div class="kpi-subtext">Guias ativas no mês de competência</div>
+            </div>
+
+            <div class="kpi-card" style="padding: 16px;">
+                <div class="kpi-header">
+                    <span class="kpi-title">Em Análise / Solicitadas</span>
+                    <div class="kpi-icon" style="background-color: var(--warning-light); color: var(--warning);"><i class="fa-solid fa-hourglass-half"></i></div>
+                </div>
+                <div class="kpi-value" id="solKpiAnalise" style="color:var(--warning);">0</div>
+                <div class="kpi-subtext" style="color:var(--warning);">Aguardando resposta do convênio</div>
+            </div>
+
+            <div class="kpi-card" style="padding: 16px;">
+                <div class="kpi-header">
+                    <span class="kpi-title">Guias Prontas / Impressas</span>
+                    <div class="kpi-icon" style="background-color: var(--success-light); color: var(--success);"><i class="fa-solid fa-circle-check"></i></div>
+                </div>
+                <div class="kpi-value" id="solKpiImpressas" style="color:var(--success);">0</div>
+                <div class="kpi-subtext" style="color:var(--success);">Liberadas para agendamento/atendimento</div>
+            </div>
+
+            <div class="kpi-card" style="padding: 16px;">
+                <div class="kpi-header">
+                    <span class="kpi-title">Pedidos Médicos a Renovar</span>
+                    <div class="kpi-icon" style="background-color: var(--danger-light); color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                </div>
+                <div class="kpi-value" id="solKpiVencidas" style="color:var(--danger);">0</div>
+                <div class="kpi-subtext" style="color:var(--danger);">Pedidos médicos vencidos ou a vencer em 30 dias</div>
+            </div>
+        </div>
+
+        <!-- BARRA DE FILTROS (CONVÊNIO, STATUS E BUSCA RÁPIDA) -->
+        <div class="panel-card" style="margin-bottom: 20px; padding: 16px 20px;">
+            <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;">
+                <div style="display:flex; gap:12px; align-items:center; flex:1; min-width:240px;">
+                    <label for="solConvenioFilter" style="margin:0; font-size:12px; font-weight:700; white-space:nowrap; color:var(--text-muted);"><i class="fa-solid fa-hospital-user"></i> Convênio:</label>
+                    <select class="form-control" id="solConvenioFilter" onchange="carregarDadosSolicitacao()" style="margin:0; font-size:13px; font-weight:600;">
+                        <option value="todos">🏢 Todos os Convênios</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; gap:12px; align-items:center; flex:1; min-width:220px;">
+                    <label for="solStatusFilter" style="margin:0; font-size:12px; font-weight:700; white-space:nowrap; color:var(--text-muted);"><i class="fa-solid fa-filter"></i> Status:</label>
+                    <select class="form-control" id="solStatusFilter" onchange="carregarDadosSolicitacao()" style="margin:0; font-size:13px; font-weight:600;">
+                        <option value="todos">🎯 Todos os Status</option>
+                        <option value="aguardando_agendamento">⏳ Solicitado / Em Análise</option>
+                        <option value="p_assinar">✅ Impressa / Liberada</option>
+                        <option value="inconsistente">⚠️ Negada / Divergência</option>
+                        <option value="finalizado">🏁 Finalizada</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; gap:12px; align-items:center; flex:1.5; min-width:280px;">
+                    <div style="position:relative; width:100%;">
+                        <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i>
+                        <input type="text" class="form-control" id="solBuscaInput" oninput="carregarDadosSolicitacao()" placeholder="Pesquisar paciente, carteirinha ou guia..." style="padding-left:34px; margin:0; font-size:13px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABELA COMPLETA DE SOLICITAÇÕES -->
+        <div class="panel-card">
+            <div class="panel-card-header">
+                <div class="panel-card-title"><i class="fa-solid fa-table-list"></i> Controle Geral de Guias do Mês</div>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table" id="solicitacoesTable">
+                    <thead>
+                        <tr>
+                            <th>Paciente / Carteirinha</th>
+                            <th>Convênio</th>
+                            <th>Terapia</th>
+                            <th>Frequência na Agenda</th>
+                            <th>Validade Pedido</th>
+                            <th>Nº Guia / Qtd</th>
+                            <th>Status Guia</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="solicitacoesTbody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: var(--text-muted); padding:40px;">Carregando solicitações do sistema...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- CONTROLES DE PAGINAÇÃO DAS SOLICITAÇÕES -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: 600;" id="solicitacaoPaginationInfo">
+                    Exibindo 0 a 0 de 0 solicitações
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label for="solicitacaoPageSize" style="font-size: 12px; color: var(--text-muted); font-weight: 600; margin: 0;">Itens por página:</label>
+                    <select id="solicitacaoPageSize" onchange="mudarTamanhoPaginaSolicitacao(this.value)" class="form-control" style="width: 70px; padding: 4px 8px; font-size: 12px; margin: 0;">
+                        <option value="10" selected>10</option>
+                        <option value="15">15</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                    <div style="display: flex; gap: 4px; margin-left: 8px;">
+                        <button class="btn btn-secondary" id="solBtnPagPrev" onclick="paginaAnteriorSolicitacao()" style="padding: 4px 10px; font-size: 11px;"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+                        <span id="solicitacaoPageNum" style="font-size: 12px; font-weight: 700; align-self: center; padding: 0 8px;">1 / 1</span>
+                        <button class="btn btn-secondary" id="solBtnPagNext" onclick="proximaPaginaSolicitacao()" style="padding: 4px 10px; font-size: 11px;">Próximo <i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTRAL DE PERMISSÕES: VALIDAÇÃO & TRAVA DE CIÊNCIA DOS COORDENADORES -->
+        <div class="panel-card" style="border: 2px solid #bae6fd; background-color: #f0f9ff; margin-top: 20px;">
+            <div class="panel-card-header" style="border-bottom: 1px solid #bae6fd;">
+                <div class="panel-card-title" style="color: #0369a1;"><i class="fa-solid fa-user-shield"></i> Central de Permissões: Remoção / Redução de Pacientes da Grade</div>
+                <button class="btn btn-primary" onclick="abrirModalSolicitarAlteracao()" style="background-color: #0284c7; border:none; font-size:12px;"><i class="fa-solid fa-triangle-exclamation"></i> Solicitar Remoção / Redução</button>
+            </div>
+            <div style="font-size:12px; color: #0369a1; margin-bottom: 16px;">
+                Solicitações de alteração na grade exigem obrigatoriamente o <strong>check de declaração de ciência do Coordenador da Especialidade</strong> antes de efetivar o recálculo sistêmico.
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Paciente</th>
+                            <th>Tipo</th>
+                            <th>Especialidade</th>
+                            <th>Solicitado Por</th>
+                            <th>Motivo</th>
+                            <th>Status</th>
+                            <th style="width:140px;">Ação Coordenador</th>
+                        </tr>
+                    </thead>
+                    <tbody id="centralPermissoesTbody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: var(--text-muted); padding:20px;">Carregando solicitações da Central de Permissões...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL DE SOLICITAR REMOÇÃO / REDUÇÃO -->
+    <div class="modal" id="solicitarAlteracaoModal">
+        <div class="modal-content" style="max-width: 550px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-minus"></i> Solicitar Remoção / Redução de Paciente</h3>
+                <button class="modal-close" onclick="fecharModalSolicitarAlteracao()">&times;</button>
+            </div>
+            <form id="solicitarAlteracaoForm" style="padding-top:10px;">
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700;">Nome do Paciente</label>
+                    <input type="text" class="form-control" id="altPacInput" placeholder="Digite para buscar paciente..." required style="font-size:13px;">
+                    <input type="hidden" id="altPacId">
+                    <div id="altPacAutocompleteList" style="display:none; position:absolute; background:white; border:1px solid #ccc; width:90%; z-index:1000; max-height:150px; overflow-y:auto;"></div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">Tipo de Ação</label>
+                        <select class="form-control" id="altTipoSelect" required style="font-size:13px;">
+                            <option value="remocao">Remoção Completa da Grade</option>
+                            <option value="reducao">Redução de Carga Horária/Sessões</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; font-weight:700;">Especialidade Afetada</label>
+                        <select class="form-control" id="altEspecialidadeSelect" required style="font-size:13px;">
+                            <option value="Psicologia">Psicologia</option>
+                            <option value="Fonoaudiologia">Fonoaudiologia</option>
+                            <option value="Terapia Ocupacional">Terapia Ocupacional</option>
+                            <option value="Fisioterapia">Fisioterapia</option>
+                            <option value="Pedagogia">Pedagogia</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:12px; font-weight:700;">Justificativa / Motivo da Remoção</label>
+                    <textarea class="form-control" id="altMotivoText" rows="3" placeholder="Descreva o motivo detalhado para análise da coordenação..." required style="font-size:13px;"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalSolicitarAlteracao()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: var(--primary);"><i class="fa-solid fa-paper-plane"></i> Enviar para Coordenador</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE REGISTRAR CONTATO -->
+    <div class="modal" id="registrarContatoModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-phone"></i> Registrar Contato com o Paciente</h3>
+                <button class="modal-close" onclick="fecharModalRegistrarContato()">&times;</button>
+            </div>
+            <form id="registrarContatoForm" style="padding-top:10px;">
+                <input type="hidden" id="contatoGuiaId">
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700;">Status do Contato</label>
+                    <select class="form-control" id="contatoStatusSelect" required style="font-size:13px;">
+                        <option value="liberado_para_grade">✅ Contatado & Liberado para Grade</option>
+                        <option value="aguardando_retorno">⏳ Aguardando Retorno do Paciente</option>
+                        <option value="sem_sucesso">⚠️ Tentativa sem sucesso</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:12px; font-weight:700;">Observações do Contato</label>
+                    <textarea class="form-control" id="contatoObsText" rows="3" placeholder="Descreva o retorno do paciente ou combinações de horários..." style="font-size:13px;"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalRegistrarContato()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: var(--primary);"><i class="fa-solid fa-floppy-disk"></i> Salvar e Notificar Agendamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/menu_permissao.js"></script>
+    <script src="js/dashboard_solicitacoes.js"></script>
+</body>
+</html>

@@ -7,14 +7,22 @@ DROP TABLE IF EXISTS agendamentos_clinica_dev.neurocontrol_permissoes;
 CREATE TABLE IF NOT EXISTS neurochat_db.setores (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) UNIQUE NOT NULL,
-    descricao VARCHAR(255) DEFAULT NULL
+    descricao VARCHAR(255) DEFAULT NULL,
+    is_default TINYINT(1) DEFAULT 0,
+    parent_id INT NULL DEFAULT NULL,
+    FOREIGN KEY (parent_id) REFERENCES neurochat_db.setores(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+ALTER TABLE neurochat_db.setores ADD COLUMN IF NOT EXISTS is_default TINYINT(1) DEFAULT 0;
+ALTER TABLE neurochat_db.setores ADD COLUMN IF NOT EXISTS parent_id INT NULL DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS neurochat_db.permissoes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) UNIQUE NOT NULL,
     descricao VARCHAR(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS neurochat_db.setores_permissoes;
 
 CREATE TABLE IF NOT EXISTS neurochat_db.setores_permissoes (
     setor_id INT NOT NULL,
@@ -47,20 +55,21 @@ DELETE FROM neurochat_db.setores_permissoes;
 DELETE FROM neurochat_db.setores;
 DELETE FROM neurochat_db.permissoes;
 
-INSERT INTO neurochat_db.setores (id, nome, descricao) VALUES
-(1, 'Diretoria geral', 'Acesso irrestrito a todos os painéis e relatórios'),
-(2, 'Coordenação Faturamento e Solicitação', 'Responsável operacional pela equipe de faturamento e emissões'),
-(3, 'Faturamento', 'Analistas responsáveis por conferência final e digitação nos planos'),
-(4, 'Solicitação', 'Operadores que cadastram guias autorizadas e verificam SLA'),
-(5, 'Coordenação de agendamento e recepção', 'Coordena as secretárias e marcações'),
-(6, 'Recepção Unidade 1', 'Recepção e recepção física de pacientes Unidade 1'),
-(7, 'Recepção Unidade 2', 'Recepção e recepção física de pacientes Unidade 2'),
-(8, 'Recepção Unidade 3', 'Recepção e recepção física de pacientes Unidade 3'),
-(9, 'Supervisão recepção', 'Supervisora operacional da recepção e secretárias'),
-(10, 'Agendamento', 'Camila, Bruno e Petrônio - Responsáveis por agendas e protocolos'),
-(11, 'Diretoria financeira e de controle interno', 'Gestão estratégica de custos, receitas e auditoria de guias'),
-(12, 'Financeiro', 'Gestão de tabela de preços e negociações directas'),
-(13, 'Controle interno', 'Auditoria física e sistêmica de guias do CI (Talita/Natan)');
+INSERT INTO neurochat_db.setores (id, nome) VALUES
+(1, 'Diretoria geral'),
+(2, 'Coordenação Faturamento e Solicitação'),
+(3, 'Faturamento'),
+(4, 'Solicitação'),
+(5, 'Coordenação de agendamento e recepção'),
+(6, 'Recepção Unidade 1'),
+(7, 'Recepção Unidade 2'),
+(8, 'Recepção Unidade 3'),
+(9, 'Supervisão recepção'),
+(10, 'Agendamento'),
+(11, 'Diretoria financeira e de controle interno'),
+(12, 'Financeiro'),
+(13, 'Controle interno')
+ON DUPLICATE KEY UPDATE nome=VALUES(nome);
 
 INSERT INTO neurochat_db.permissoes (id, nome, descricao) VALUES
 (1, 'ver_painel_geral', 'Visualizar o dashboard de faturamento e KPIs'),

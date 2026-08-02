@@ -84,12 +84,12 @@
             </div>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
             <div onclick="window.location.href='/grade'" class="card-blue p-8 rounded-[2.5rem] text-white shadow-xl shadow-blue-500/20 group transition-all hover:-translate-y-2 relative overflow-hidden cursor-pointer">
                 <div class="absolute -right-4 -bottom-4 opacity-10 text-8xl">📅</div>
                 <div class="relative z-10 flex flex-col h-full">
                     <p class="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Total de Atendimentos</p>
-                    <div id="total-pacientes" class="text-6xl font-black mt-auto tabular-nums">---</div>
+                    <div id="total-pacientes" class="text-5xl font-black mt-auto tabular-nums">---</div>
                 </div>
             </div>
             
@@ -97,7 +97,15 @@
                 <div class="absolute -right-4 -bottom-4 opacity-10 text-8xl">🟢</div>
                 <div class="relative z-10 flex flex-col h-full">
                     <p class="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Vagas Disponíveis</p>
-                    <div id="vagas-livres" class="text-6xl font-black mt-auto tabular-nums">---</div>
+                    <div id="vagas-livres" class="text-5xl font-black mt-auto tabular-nums">---</div>
+                </div>
+            </div>
+
+            <div onclick="abrirModalVagas()" class="card-purple p-8 rounded-[2.5rem] text-white shadow-xl shadow-purple-500/20 group transition-all hover:-translate-y-2 relative overflow-hidden cursor-pointer">
+                <div class="absolute -right-4 -bottom-4 opacity-10 text-8xl">🔒</div>
+                <div class="relative z-10 flex flex-col h-full">
+                    <p class="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Vagas Bloqueadas</p>
+                    <div id="vagas-bloqueadas" class="text-5xl font-black mt-auto tabular-nums">---</div>
                 </div>
             </div>
  
@@ -105,7 +113,7 @@
                 <div class="absolute -right-4 -bottom-4 opacity-10 text-8xl">👥</div>
                 <div class="relative z-10 flex flex-col h-full">
                     <p class="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Pacientes Cadastrados</p>
-                    <div id="total-db-pacientes" class="text-6xl font-black mt-auto tabular-nums">---</div>
+                    <div id="total-db-pacientes" class="text-5xl font-black mt-auto tabular-nums">---</div>
                 </div>
             </div>
         </div>
@@ -115,7 +123,7 @@
         <div class="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden animate-fade border border-white/20">
             <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div>
-                    <h3 id="modal-vagas-titulo" class="text-2xl font-black text-slate-900 tracking-tight">Vagas Disponíveis</h3>
+                    <h3 id="modal-vagas-titulo" class="text-2xl font-black text-slate-900 tracking-tight">Vagas & Horários</h3>
                     <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Breakdown por Profissional</p>
                 </div>
                 <button onclick="document.getElementById('modal-vagas').classList.add('hidden')" class="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-100 hover:bg-red-50 transition-all shadow-sm">✕</button>
@@ -131,7 +139,6 @@
 
     <script>
         async function load() {
-            // Atualiza o avatar com o nome do usuário logado
             const userName = localStorage.getItem('userName') || 'Usuário';
             const avatarImg = document.querySelector('header img');
             if (avatarImg) {
@@ -144,6 +151,9 @@
                 
                 document.getElementById('total-pacientes').innerText = stats.total_agendamentos || 0;
                 document.getElementById('vagas-livres').innerText = stats.vagas_disponiveis || 0;
+                if (document.getElementById('vagas-bloqueadas')) {
+                    document.getElementById('vagas-bloqueadas').innerText = stats.vagas_bloqueadas || 0;
+                }
                 document.getElementById('total-db-pacientes').innerText = stats.total_pacientes || 0;
             } catch (err) { console.error("Erro ao puxar métricas", err); }
         }
@@ -155,7 +165,7 @@
             const lista = document.getElementById('lista-vagas-especialidade');
             const titulo = document.getElementById('modal-vagas-titulo');
             
-            titulo.innerText = "Vagas Disponíveis";
+            titulo.innerText = "Detalhamento de Vagas por Profissional";
             modal.classList.remove('hidden');
             lista.innerHTML = '<div class="col-span-full text-center py-20"><div class="animate-spin inline-block w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div><p class="text-slate-400 font-black uppercase text-[10px] tracking-widest">Sincronizando Agenda...</p></div>';
 
@@ -165,7 +175,6 @@
                 
                 lista.innerHTML = '';
                 
-                // Processa cada profissional calculando a quantidade total de vagas livres
                 const profissionaisComVagas = dados.map(item => {
                     let totalVagas = 0;
                     if (item.horarios_disponiveis) {
@@ -178,16 +187,16 @@
                         nome: item.profissional,
                         especialidade: item.especialidade,
                         vagas: totalVagas,
-                        ocupadas: item.vagas_ocupadas || 0
+                        ocupadas: item.vagas_ocupadas || 0,
+                        bloqueadas: item.vagas_bloqueadas || 0
                     };
                 });
 
-                // Ordena por nome do profissional
                 profissionaisComVagas.sort((a, b) => a.nome.localeCompare(b.nome));
 
                 profissionaisComVagas.forEach(item => {
                     const card = document.createElement('div');
-                    card.className = "p-8 rounded-[2rem] border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 transition-all cursor-pointer group bg-white shadow-sm hover:shadow-md";
+                    card.className = "p-6 rounded-[2rem] border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 transition-all cursor-pointer group bg-white shadow-sm hover:shadow-md";
                     card.onclick = () => window.location.href = `/grade?profissionalId=${item.id}`;
                     
                     const corVagas = item.vagas > 0 ? 'text-emerald-500' : 'text-slate-300';
@@ -199,15 +208,20 @@
                                 <p class="text-[10px] font-bold text-slate-400 mt-1">${item.especialidade || 'Sem especialidade'}</p>
                                 <p class="text-[9px] font-bold text-blue-500 mt-1 group-hover:underline">Clique para abrir a grade</p>
                             </div>
-                            <div class="flex gap-6 items-center">
+                            <div class="flex gap-4 items-center">
                                 <div class="text-center">
-                                    <span class="text-3xl font-black ${corVagas} tabular-nums">${item.vagas}</span>
-                                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">Livres</p>
+                                    <span class="text-2xl font-black ${corVagas} tabular-nums">${item.vagas}</span>
+                                    <p class="text-[7px] font-black uppercase tracking-widest text-slate-400">Livres</p>
                                 </div>
-                                <div class="w-[1px] h-8 bg-slate-100"></div>
+                                <div class="w-[1px] h-6 bg-slate-100"></div>
                                 <div class="text-center">
-                                    <span class="text-3xl font-black text-blue-600 tabular-nums">${item.ocupadas}</span>
-                                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">Ocupadas</p>
+                                    <span class="text-2xl font-black text-blue-600 tabular-nums">${item.ocupadas}</span>
+                                    <p class="text-[7px] font-black uppercase tracking-widest text-slate-400">Ocupadas</p>
+                                </div>
+                                <div class="w-[1px] h-6 bg-slate-100"></div>
+                                <div class="text-center">
+                                    <span class="text-2xl font-black text-amber-500 tabular-nums">${item.bloqueadas}</span>
+                                    <p class="text-[7px] font-black uppercase tracking-widest text-slate-400">Bloqueadas</p>
                                 </div>
                             </div>
                         </div>

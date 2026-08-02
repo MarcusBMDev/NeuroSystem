@@ -66,8 +66,15 @@ class MessageRepository {
         const safeLimit = parseInt(limit) || 30;
 
         if (type === 'private') {
-            sql += ` WHERE ((m.user_id=? AND m.target_id=? AND m.target_type='private') OR (m.user_id=? AND m.target_id=? AND m.target_type='private'))`;
-            params = [userId, targetId, targetId, userId];
+            if (userId == targetId) {
+                // Mensagens Salvas (Rascunhos Pessoais): Esconde mensagens automáticas de sistema
+                sql += ` WHERE (m.user_id=? AND m.target_id=? AND m.target_type='private' AND (m.text NOT LIKE '%NOVO AGENDAMENTO%' AND m.text NOT LIKE '%AGENDAMENTO%'))`;
+                params = [userId, targetId];
+            } else {
+                // Conversas normais entre 2 usuários diferentes
+                sql += ` WHERE ((m.user_id=? AND m.target_id=? AND m.target_type='private') OR (m.user_id=? AND m.target_id=? AND m.target_type='private'))`;
+                params = [userId, targetId, targetId, userId];
+            }
         } else {
             sql += ` WHERE m.target_id=? AND m.target_type='group'`;
             params = [targetId];

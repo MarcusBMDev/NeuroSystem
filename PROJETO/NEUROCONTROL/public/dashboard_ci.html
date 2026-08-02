@@ -90,65 +90,113 @@
             </div>
         </div>
 
-        <!-- SEÇÃO OPERACIONAL -->
-        <div class="content-grid" style="grid-template-columns: 1.2fr 1.8fr;">
-            
-            <!-- CAIXA DE ENTRADA DE PROTOCOLOS -->
-            <div>
-                <div class="panel-card" style="height: 100%;">
-                    <div class="panel-card-header">
-                        <div class="panel-card-title"><i class="fa-solid fa-inbox"></i> Entrada de Lotes (Protocolos Digitais)</div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="data-table" id="protocolosTable">
-                            <thead>
-                                <tr>
-                                    <th>Nº Protocolo</th>
-                                    <th>Emissor</th>
-                                    <th>Data Envio</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="4" style="text-align: center; color: var(--text-muted);">Buscando protocolos...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+        <!-- TABS DOS SETORES -->
+        <div class="tab-container" style="border-bottom: 2px solid var(--border-color); margin-bottom: 24px;">
+            <button class="tab-btn active" id="tabEntradaBtn" onclick="switchTab('entrada')" style="font-size: 15px; padding: 10px 24px;"><i class="fa-solid fa-clipboard-check"></i> Auditoria de Entrada</button>
+            <button class="tab-btn" id="tabFechamentoBtn" onclick="switchTab('fechamento')" style="font-size: 15px; padding: 10px 24px;"><i class="fa-solid fa-calendar-check"></i> Auditoria de Fechamento</button>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- VIEW AUDITORIA DE ENTRADA -->
+        <!-- ============================================== -->
+        <div id="viewEntrada">
+            <!-- SEÇÃO OPERACIONAL -->
+            <div class="content-grid" style="grid-template-columns: 1.2fr 1.8fr;">
+                
+                <!-- CAIXA DE ENTRADA DE PROTOCOLOS -->
+                <div>
+                    <div class="panel-card" style="height: 100%;">
+                        <div class="panel-card-header">
+                            <div class="panel-card-title"><i class="fa-solid fa-inbox"></i> Entrada de Lotes (Protocolos Digitais)</div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table" id="protocolosTable">
+                                <thead>
+                                    <tr>
+                                        <th>Nº Protocolo</th>
+                                        <th>Emissor</th>
+                                        <th>Data Envio</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="4" style="text-align: center; color: var(--text-muted);">Buscando protocols...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- TABELA DE RISCO DIÁRIO -->
-            <div>
-                <div class="panel-card">
-                    <div class="panel-card-header">
-                        <div class="panel-card-title"><i class="fa-solid fa-triangle-exclamation"></i> Visão Diária de Risco (Hoje)</div>
-                        <span style="font-size: 11px; background-color: var(--danger-light); color: var(--danger); padding: 4px 8px; border-radius: 12px; font-weight: 600;">Vermelho = Sem Guia Válida</span>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="data-table" id="gradeRiscoTable">
-                            <thead>
-                                <tr>
-                                    <th>Hora</th>
-                                    <th>Paciente</th>
-                                    <th>Profissional</th>
-                                    <th>Terapia</th>
-                                    <th>Guia</th>
-                                    <th>Sessão Assinada</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">Buscando grade de risco...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- TABELA DE RISCO DIÁRIO -->
+                <div>
+                    <div class="panel-card">
+                        <div class="panel-card-header">
+                            <div class="panel-card-title"><i class="fa-solid fa-triangle-exclamation"></i> Visão Diária de Risco (Hoje)</div>
+                            <span style="font-size: 11px; background-color: var(--danger-light); color: var(--danger); padding: 4px 8px; border-radius: 12px; font-weight: 600;">Vermelho = Sem Guia Válida</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table" id="gradeRiscoTable">
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th>
+                                        <th>Paciente</th>
+                                        <th>Profissional</th>
+                                        <th>Terapia</th>
+                                        <th>Guia</th>
+                                        <th>Sessão Assinada</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; color: var(--text-muted);">Buscando grade de risco...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
 
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- VIEW AUDITORIA DE FECHAMENTO -->
+        <!-- ============================================== -->
+        <div id="viewFechamento" style="display: none;">
+            <div class="panel-card">
+                <div class="panel-card-header">
+                    <div class="panel-card-title"><i class="fa-solid fa-calculator"></i> Fechamento de Competência (Conciliação Mensal)</div>
+                    <span style="font-size: 11px; background-color: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 12px; font-weight: 600;">Cruzar Assinaturas vs. Agenda</span>
+                </div>
+                <div style="font-size:12px; color: var(--text-muted); padding: 16px 20px 0 20px;">
+                    Confira as sessões coletadas pela recepção em relação às previstas na agenda da clínica. Despache as guias para faturamento.
+                </div>
+                <div class="table-responsive" style="margin-top: 15px;">
+                    <table class="data-table" id="fechamentoTable">
+                        <thead>
+                            <tr>
+                                <th>Paciente</th>
+                                <th>Nº Guia</th>
+                                <th>Convênio</th>
+                                <th>Terapia</th>
+                                <th>Sessões Autorizadas</th>
+                                <th>Sessões Esperadas (Agenda)</th>
+                                <th>Sessões Assinadas (Recepção)</th>
+                                <th>Conciliação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Selecione uma competência para carregar as guias.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
     </div>
@@ -184,6 +232,62 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="fecharModalAuditoria()">Cancelar</button>
                 <button class="btn btn-primary" onclick="finalizarAuditoria()" style="background-color: var(--success);"><i class="fa-solid fa-check"></i> Concluir e Registrar Custódia</button>
+            </div>
+        </div>
+    <!-- MODAL DE IMPRESSÃO DE PROTOCOLO DIGITAL -->
+    <div class="modal" id="impressaoProtocoloModal">
+        <div class="modal-content" style="max-width: 750px;">
+            <div class="modal-header no-print">
+                <h3><i class="fa-solid fa-print"></i> Protocolo Digital de Trânsito</h3>
+                <button class="modal-close" onclick="fecharModalImpressaoProtocolo()">&times;</button>
+            </div>
+            <div id="printProtocolArea" style="padding: 20px; background: white; color: #000;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
+                    <div>
+                        <h2 style="margin:0; font-size: 20px; font-weight:800; text-transform:uppercase; color:#0f172a;">NEUROCONTROL</h2>
+                        <span style="font-size:11px; color:#475569; font-weight:600;">COMPROVANTE DE PROTOCOLO DIGITAL DE TRÂNSITO</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <h1 style="margin:0; font-size: 24px; color: var(--primary);" id="printProtocoloNumero">#0000</h1>
+                        <span style="font-size:11px; color:#64748b;" id="printDataEmissao">Data: --/--/----</span>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom: 16px; background:#f8fafc; padding:10px 14px; border-radius:6px; border:1px solid #e2e8f0;">
+                    <div>Emissor: <strong id="printEmissorNome">-</strong></div>
+                    <div>Setor Origem: <strong>Agendamento</strong></div>
+                    <div>Destino: <strong>Controle Interno (CI)</strong></div>
+                </div>
+
+                <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:24px; border:1px solid #cbd5e1;">
+                    <thead>
+                        <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
+                            <th style="padding:8px; text-align:left; border-right:1px solid #cbd5e1;">#</th>
+                            <th style="padding:8px; text-align:left; border-right:1px solid #cbd5e1;">Paciente</th>
+                            <th style="padding:8px; text-align:left; border-right:1px solid #cbd5e1;">Nº da Guia</th>
+                            <th style="padding:8px; text-align:center; border-right:1px solid #cbd5e1;">Terapia</th>
+                            <th style="padding:8px; text-align:center;">Qtd. Sessões</th>
+                        </tr>
+                    </thead>
+                    <tbody id="printItensTbody">
+                        <!-- Carregado via JS -->
+                    </tbody>
+                </table>
+
+                <div style="display:flex; justify-content:space-between; margin-top: 40px; font-size:11px;">
+                    <div style="width:45%; text-align:center; border-top:1px solid #000; padding-top:6px;">
+                        <strong id="printSignEmissor">Agendamento (Emissor)</strong><br>
+                        <span>Data: _____/_____/_________</span>
+                    </div>
+                    <div style="width:45%; text-align:center; border-top:1px solid #000; padding-top:6px;">
+                        <strong>Controle Interno (Recebedor/Custódia)</strong><br>
+                        <span>Data: _____/_____/_________</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer no-print">
+                <button class="btn btn-secondary" onclick="fecharModalImpressaoProtocolo()">Fechar</button>
+                <button class="btn btn-primary" onclick="window.print()" style="background-color: var(--primary);"><i class="fa-solid fa-print"></i> Imprimir / Gerar PDF</button>
             </div>
         </div>
     </div>

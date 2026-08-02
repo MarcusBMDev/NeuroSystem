@@ -41,8 +41,9 @@ class AuthController < ApplicationController
       "neurochat"
     else
       # Usuários locais do banco agendamentos_clinica_dev
-      setores_admin = ["Diretoria Geral", "Recepção", "Agendamento/Recepção", "TI"]
-      if setores_admin.include?(usuario.department)
+      setores_admin = ["Diretoria Geral", "Recepção", "Agendamento/Recepção", "TI", "Administração", "Administracao"]
+      dept = usuario.department.to_s.downcase
+      if setores_admin.any? { |s| dept.include?(s.downcase) || s.downcase.include?(dept) }
         "admin"
       else
         "profissional"

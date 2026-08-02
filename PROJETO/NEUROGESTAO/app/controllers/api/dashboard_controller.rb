@@ -11,27 +11,34 @@ module Api
                                       .count
       espera_count = ListaEspera.count rescue 0
 
-      # Calcular a ocupação rigorosamente pelo tempo
+      # Calcular a ocupação e bloqueios rigorosamente pelo tempo
       slots_ocupados_globais = 0
+      slots_bloqueados_globais = 0
+
       Agendamento.joins(:profissional)
                  .left_outer_joins(:paciente)
                  .where(profissionais: { ativo: true })
                  .where(status: ['confirmado', 'pendente', 'bloqueado'])
-                 .where("agendamentos.status = 'bloqueado' OR (pacientes.id IS NOT NULL AND pacientes.deleted_at IS NULL)")
                  .each do |ag|
+        num_slots = 1
         if ag.horario.to_s.include?('-')
           p1, p2 = ag.horario.split('-')
           h1, m1 = p1.to_s.downcase.gsub('h',':').split(':')
           h2, m2 = p2.to_s.downcase.gsub('h',':').split(':')
           minutos = ((h2.to_i * 60 + m2.to_i) - (h1.to_i * 60 + m1.to_i))
-          slots_ocupados_globais += [minutos / 40, 1].max
-        else
-          slots_ocupados_globais += 1
+          num_slots = [minutos / 40, 1].max
+        end
+
+        if ag.status == 'bloqueado'
+          slots_bloqueados_globais += num_slots
+        elsif ag.paciente_id.present? && ag.paciente&.deleted_at.nil?
+          slots_ocupados_globais += num_slots
         end
       end
 
+      # Capacidade total máxima da clínica = N° de Profissionais Ativos * 60 slots semanais (12 por dia x 5 dias)
       vagas_totais_teto = Profissional.ativos.count * (ClinicSlots::MONDAY.size + (ClinicSlots::STANDARD.size * 4))
-      vagas_livres_calculadas = vagas_totais_teto - slots_ocupados_globais
+      vagas_livres_calculadas = vagas_totais_teto - (slots_ocupados_globais + slots_bloqueados_globais)
       vagas_livres_calculadas = 0 if vagas_livres_calculadas < 0
 
       render json: {
@@ -41,6 +48,7 @@ module Api
         profissionais_ativos: Profissional.ativos.count,
         especialidades_cobertas: especialidades_count,
         vagas_ocupadas: slots_ocupados_globais,
+        vagas_bloqueadas: slots_bloqueados_globais,
         vagas_disponiveis: vagas_livres_calculadas,
         total_espera: espera_count,
 
@@ -50,6 +58,7 @@ module Api
         profissionaisAtivos: Profissional.ativos.count,
         especialidadesCobertas: especialidades_count,
         vagasOcupadas: slots_ocupados_globais,
+        vagasBloqueadas: slots_bloqueados_globais,
         vagasDisponiveis: vagas_livres_calculadas,
         totalEspera: espera_count
       }

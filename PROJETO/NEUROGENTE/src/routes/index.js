@@ -60,6 +60,9 @@ router.post('/solicitar/formacao', checkLogin, SolicitacaoController.salvarForma
 // Saúde / Benefícios
 router.post('/solicitar/beneficio', checkLogin, SolicitacaoController.salvarBeneficio);
 
+// Suporte Interno / Help Desk
+router.post('/solicitar/suporte', checkLogin, SolicitacaoController.salvarSuporte);
+
 // --- ROTAS EXCLUSIVAS ABA ---
 router.post('/solicitar/desligamento-at', checkLogin, SolicitacaoController.salvarDesligamentoAT);
 router.post('/solicitar/contratacao-at', checkLogin, SolicitacaoController.salvarContratacaoAT);

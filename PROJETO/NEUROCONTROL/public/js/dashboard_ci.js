@@ -1,6 +1,7 @@
 // Estado global do Controle Interno
 let activeProtocolId = null;
 let currentAuditItems = [];
+let activeTab = 'entrada';
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Verifica login
@@ -14,21 +15,42 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('userNameSide').textContent = user.username;
     document.getElementById('userHeaderName').textContent = user.username;
 
+    // Seta mês atual no filtro se vazio
+    const mesFiltro = document.getElementById('mesFiltroGlobal');
+    if (mesFiltro && !mesFiltro.value) {
+        mesFiltro.value = new Date().toISOString().slice(0, 7);
+    }
+
+    // Ouvinte de mudança de competência
+    if (mesFiltro) {
+        mesFiltro.addEventListener('change', () => {
+            carregarDadosCI();
+        });
+    }
+
     // 2. Carrega Dados
     carregarDadosCI();
 
     // Loop de polling leve (30s) para alertas e risco diário (opcional e seguro)
     setInterval(() => {
         carregarAlertasRecepcao();
-        carregarGradeRisco();
+        if (activeTab === 'entrada') {
+            carregarGradeRisco();
+        } else {
+            carregarDadosFechamento();
+        }
     }, 30000);
 });
 
 // Atualiza todas as tabelas
 function carregarDadosCI() {
     carregarAlertasRecepcao();
-    carregarProtocolosEntrada();
-    carregarGradeRisco();
+    if (activeTab === 'entrada') {
+        carregarProtocolosEntrada();
+        carregarGradeRisco();
+    } else {
+        carregarDadosFechamento();
+    }
 }
 
 // Busca os alertas gerados pela recepção (Guias perdidas, pastas com problema)
@@ -94,9 +116,12 @@ async function carregarProtocolosEntrada() {
                 <td style="font-weight: 600; color: var(--primary);">${p.protocolo_numero}</td>
                 <td>${p.emissor_nome}</td>
                 <td>${dataF}</td>
-                <td>
+                <td style="display:flex; gap:6px;">
                     <button class="btn btn-primary" style="padding: 4px 8px; font-size:11px;" onclick="abrirAuditoria(${p.id})">
                         <i class="fa-solid fa-clipboard-check"></i> Auditar
+                    </button>
+                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size:11px;" onclick="visualizarEImprimirProtocolo(${p.id})">
+                        <i class="fa-solid fa-print"></i> Imprimir
                     </button>
                 </td>
             `;
@@ -298,8 +323,190 @@ async function overrideAssinatura(guiaId) {
     }
 }
 
+// Navegação entre abas
+function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('tabEntradaBtn').classList.remove('active');
+    document.getElementById('tabFechamentoBtn').classList.remove('active');
+    document.getElementById('viewEntrada').style.display = 'none';
+    document.getElementById('viewFechamento').style.display = 'none';
+
+    if (tab === 'entrada') {
+        document.getElementById('tabEntradaBtn').classList.add('active');
+        document.getElementById('viewEntrada').style.display = 'block';
+        carregarProtocolosEntrada();
+        carregarGradeRisco();
+    } else {
+        document.getElementById('tabFechamentoBtn').classList.add('active');
+        document.getElementById('viewFechamento').style.display = 'block';
+        carregarDadosFechamento();
+    }
+}
+
+// Carrega os dados de fechamento de competência
+async function carregarDadosFechamento() {
+    try {
+        const mes = document.getElementById('mesFiltroGlobal').value;
+        const response = await fetch(`/api/gerencial/fechamento?mes_vigente=${mes}`);
+        const guias = await response.json();
+        
+        const tbody = document.querySelector('#fechamentoTable tbody');
+        tbody.innerHTML = '';
+
+        if (guias.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Nenhuma guia aguardando fechamento nesta competência.</td></tr>`;
+            return;
+        }
+
+        guias.forEach(g => {
+            const tr = document.createElement('tr');
+            
+            // Regra de conciliação: Tudo Certo se assinadas >= esperadas
+            const conciliaStatus = g.sessoes_assinadas >= g.previsao_calculada;
+            const badgeClass = conciliaStatus ? 'badge-status recebida' : 'badge-status analise';
+            const badgeText = conciliaStatus ? 'Tudo Certo' : `Pendente (${g.sessoes_assinadas} / ${g.previsao_calculada})`;
+
+            tr.innerHTML = `
+                <td><strong>${g.paciente_nome}</strong></td>
+                <td><strong>${g.guia_numero}</strong></td>
+                <td>${g.convenio_nome}</td>
+                <td><span class="badge-terapia ${g.terapia.toLowerCase()}">${g.terapia}</span></td>
+                <td style="text-align:center;">${g.quantidade_autorizada}</td>
+                <td style="text-align:center; font-weight:600;">${g.previsao_calculada}</td>
+                <td style="text-align:center; font-weight:600; color: ${conciliaStatus ? 'var(--success)' : 'var(--warning)'};">${g.sessoes_assinadas}</td>
+                <td><span class="${badgeClass}">${badgeText}</span></td>
+                <td>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-primary" style="padding: 4px 8px; font-size:11px; background-color: var(--success);" onclick="despacharGuia(${g.id}, ${g.sessoes_assinadas}, ${g.previsao_calculada})">
+                            <i class="fa-solid fa-check"></i> Despachar
+                        </button>
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size:11px; background-color: var(--danger-light); color: var(--danger); border-color: var(--danger-light);" onclick="devolverGuia(${g.id})">
+                            <i class="fa-solid fa-circle-xmark"></i> Devolver
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error('Erro ao carregar fechamento:', e);
+    }
+}
+
+// Despacha a guia para o faturamento (p_faturar)
+async function despacharGuia(guiaId, sessoesAssinadas, previsaoCalculada) {
+    let flagOverride = 0;
+    if (sessoesAssinadas < previsaoCalculada) {
+        if (!confirm(`Esta guia possui apenas ${sessoesAssinadas} de ${previsaoCalculada} sessões assinadas. Deseja realizar a Regra de Override (Bypass) e liberá-la com pendência de assinatura?`)) {
+            return;
+        }
+        flagOverride = 1;
+    } else {
+        if (!confirm('Deseja despachar esta guia para faturamento?')) {
+            return;
+        }
+    }
+
+    try {
+        const response = await fetch(`/api/guias/${guiaId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 'p_faturar',
+                assinatura_pendente_flag: flagOverride
+            })
+        });
+
+        if (response.ok) {
+            alert('Guia despachada com sucesso!');
+            carregarDadosFechamento();
+        } else {
+            alert('Erro ao despachar guia.');
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// Devolve a guia física para reprocessamento por inconsistência
+async function devolverGuia(guiaId) {
+    const motivo = prompt('Por favor, declare o motivo da devolução da guia física por inconsistência/rasura:');
+    if (motivo === null) return; // cancelou
+    if (!motivo.trim()) {
+        alert('É obrigatório preencher o motivo da inconsistência para devolver.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/guias/${guiaId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 'inconsistente',
+                observacao_inconsistencia: motivo.trim()
+            })
+        });
+
+        if (response.ok) {
+            alert('Guia devolvida com sucesso!');
+            carregarDadosFechamento();
+        } else {
+            alert('Erro ao devolver guia.');
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
 // Logout
 function logout() {
     localStorage.removeItem('user');
     window.location.href = '/index.html';
+}
+
+// Visualiza e imprime espelho do protocolo digital no CI
+async function visualizarEImprimirProtocolo(protocoloId) {
+    try {
+        const res = await fetch(`/api/protocolos/${protocoloId}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+            alert('Erro ao carregar detalhes do protocolo.');
+            return;
+        }
+
+        const p = data.protocolo;
+        const itens = data.itens;
+
+        document.getElementById('printProtocoloNumero').textContent = p.protocolo_numero;
+        document.getElementById('printEmissorNome').textContent = p.emissor_nome;
+        document.getElementById('printSignEmissor').textContent = `Agendamento: ${p.emissor_nome}`;
+        
+        const dataFmt = new Date(p.data_emissao).toLocaleString('pt-BR');
+        document.getElementById('printDataEmissao').textContent = `Data Emissão: ${dataFmt}`;
+
+        const tbody = document.getElementById('printItensTbody');
+        tbody.innerHTML = '';
+
+        itens.forEach((it, idx) => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #e2e8f0';
+            tr.innerHTML = `
+                <td style="padding:8px; border-right:1px solid #e2e8f0;">${idx + 1}</td>
+                <td style="padding:8px; border-right:1px solid #e2e8f0;"><strong>${it.paciente_nome}</strong></td>
+                <td style="padding:8px; border-right:1px solid #e2e8f0;">${it.guia_numero}</td>
+                <td style="padding:8px; text-align:center; border-right:1px solid #e2e8f0;">${it.terapia}</td>
+                <td style="padding:8px; text-align:center;">${it.quantidade_autorizada}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('impressaoProtocoloModal').classList.add('active');
+    } catch (e) {
+        console.error('Erro ao visualizar protocolo:', e);
+    }
+}
+
+function fecharModalImpressaoProtocolo() {
+    document.getElementById('impressaoProtocoloModal').classList.remove('active');
 }

@@ -546,6 +546,7 @@
         }
 
         async function abrirModalNovoHorario(agId, pacienteId, profId, pacienteNome) {
+            try { pacienteNome = decodeURIComponent(pacienteNome || ''); } catch(e){}
             document.getElementById('modal-transferir-titulo').innerText = "Novo Horário / Alteração";
             popularSeletoresTransferencia();
             
@@ -633,17 +634,58 @@
                 return parseInt(h) * 60 + (parseInt(m) || 0);
             }
 
+            function getAgendamentoRange(horario) {
+                if (!horario) return { inicio: -1, fim: -1, duracao: 0 };
+                const partes = horario.toString().split('-');
+                const inicio = timeToMinutes(partes[0].trim());
+                if (partes.length > 1) {
+                    const fimStr = partes[1].trim().toLowerCase().replace('h', ':');
+                    let [fh, fm] = fimStr.split(':');
+                    const fim = parseInt(fh) * 60 + (parseInt(fm) || 0);
+                    return { inicio, fim, duracao: fim - inicio };
+                }
+                return { inicio, fim: inicio + 40, duracao: 40 };
+            }
+
             function renderCellHtml(minutos, diaObj, isDarkRow, isBlueDay) {
                 if (isBlueDay === undefined) {
                     isBlueDay = ['seg', 'qua', 'sex'].includes(diaObj.id);
                 }
                 const hStr = formatarHoraPadrao(minutos);
+                const diaUpper = diaObj.db.trim().toUpperCase();
+
                 const agsNoSlot = agendamentos.filter(a => {
                     const dDB = (a.dia_semana || "").trim().toUpperCase();
-                    return dDB === diaObj.db.trim().toUpperCase() && timeToMinutes(a.horario) === minutos;
+                    return dDB === diaUpper && timeToMinutes(a.horario) === minutos;
+                });
+
+                const agsContinuacao = agendamentos.filter(a => {
+                    const dDB = (a.dia_semana || "").trim().toUpperCase();
+                    if (dDB !== diaUpper || a.status === 'bloqueado') return false;
+                    const range = getAgendamentoRange(a.horario);
+                    return range.inicio < minutos && minutos < range.fim;
                 });
 
                 if (agsNoSlot.length === 0) {
+                    if (agsContinuacao.length > 0) {
+                        const ag = agsContinuacao[0];
+                        const nomePaciente = ag.paciente ? ag.paciente.nome : 'Sem Nome';
+                        const isVip = !!(ag.paciente && ag.paciente.vip);
+                        const conv = ag.convenio_nome || 'PARTICULAR';
+                        const obsTitleEsc = encodeURIComponent(ag.observacoes || '');
+                        const nomePacienteEsc = encodeURIComponent(nomePaciente);
+                        const editorNameEscaped = encodeURIComponent(ag.atualizado_por || '');
+
+                        return `
+                            <div class="slot-occupied p-3 rounded-2xl text-center flex flex-col justify-center min-h-[90px] border-2 border-dashed border-blue-400 bg-blue-50/70 shadow-sm cursor-pointer hover:scale-[1.01] transition-transform"
+                                 onclick="abrirModalObservacao(${ag.id}, '${nomePacienteEsc}', '${diaObj.db}', '${ag.horario}', '${obsTitleEsc}', '${ag.cor || ''}', '${editorNameEscaped}')">
+                                <p class="text-[8px] font-black text-blue-600 uppercase mb-0.5">↔ DUPLO (${ag.horario})</p>
+                                <p class="font-bold text-slate-800 text-[10px] leading-tight truncate w-full" title="${nomePaciente}">${nomePaciente} ${isVip ? '⭐ VIP' : ''}</p>
+                                <p class="text-[7px] font-black text-blue-500 uppercase mt-0.5">${conv}</p>
+                            </div>
+                        `;
+                    }
+
                     const borderStyle = 'border: 2px dashed #cbd5e1; background-color: #ffffff;';
                     const textClass = 'text-slate-400';
                     const labelClass = 'text-slate-500';
@@ -662,26 +704,32 @@
 
                 let isDuplo = false;
                 const primeiroAg = agsNoSlot[0];
-                if (primeiroAg.horario && primeiroAg.horario.includes('-')) {
-                    const partes = primeiroAg.horario.split('-');
-                    const inicio = timeToMinutes(partes[0].trim());
-                    const fimStr = partes[1].trim().toLowerCase().replace('h', ':');
-                    let [fh, fm] = fimStr.split(':');
-                    const fim = parseInt(fh) * 60 + (parseInt(fm) || 0);
-                    if (fim - inicio > 45) {
-                        isDuplo = true;
-                    }
+                const range1 = getAgendamentoRange(primeiroAg.horario);
+                if (range1.duracao > 45) {
+                    isDuplo = true;
+                } else if (primeiroAg.paciente_id) {
+                    const temDuploConsecutivo = agendamentos.some(a => {
+                        if (a.id === primeiroAg.id || a.paciente_id !== primeiroAg.paciente_id) return false;
+                        const dDB = (a.dia_semana || "").trim().toUpperCase();
+                        if (dDB !== diaUpper) return false;
+                        const minA = timeToMinutes(a.horario);
+                        return Math.abs(minA - minutos) <= 50;
+                    });
+                    if (temDuploConsecutivo) isDuplo = true;
                 }
-                const tagHora = isDuplo ? primeiroAg.horario : hStr;
+
+                const tagHora = (isDuplo && range1.duracao > 45) ? primeiroAg.horario : `${hStr}${isDuplo ? ' ↔ DUPLO' : ''}`;
 
                 if (agsNoSlot.length === 1 && agsNoSlot[0].status === 'bloqueado') {
                     const ag = agsNoSlot[0];
+                    const bloqPorEsc = encodeURIComponent(ag.bloqueado_por || '');
+                    const motivoEsc = encodeURIComponent(ag.motivo_bloqueio || '');
                     return `
-                        <div class="slot-blocked p-3 rounded-2xl cursor-pointer hover:scale-[1.02] transition-transform h-full min-h-[90px] flex flex-col justify-center text-center bg-amber-50 border border-amber-200" 
-                             onclick="abrirModalBloqueado(${ag.id}, ${id}, '${diaObj.db}', '${hStr}', '${(ag.bloqueado_por || '').replace(/'/g, "\\'")}', '${(ag.motivo_bloqueio || '').replace(/'/g, "\\'")}')">
-                            <p class="text-[9px] font-black text-amber-600 uppercase mb-0.5">${tagHora} - BLOQUEADO</p>
-                            <p class="font-bold text-slate-800 text-[11px] truncate w-full" title="${ag.motivo_bloqueio}">${ag.motivo_bloqueio || 'Sem motivo'}</p>
-                            <p class="text-[8px] font-black text-amber-700 uppercase mt-1.5 pt-1 border-t border-amber-100">
+                        <div class="slot-blocked p-3 rounded-2xl cursor-pointer hover:scale-[1.02] transition-transform h-full min-h-[90px] flex flex-col justify-center text-center bg-red-50 border-2 border-red-200 shadow-sm" 
+                             onclick="abrirModalBloqueado(${ag.id}, ${id}, '${diaObj.db}', '${hStr}', '${bloqPorEsc}', '${motivoEsc}')">
+                            <p class="text-[9px] font-black text-red-600 uppercase mb-0.5">${tagHora} - BLOQUEADO</p>
+                            <p class="font-bold text-slate-800 text-[11px] truncate w-full" title="${(ag.motivo_bloqueio || '').replace(/"/g, '&quot;')}">${ag.motivo_bloqueio || 'Sem motivo'}</p>
+                            <p class="text-[8px] font-black text-red-700 uppercase mt-1.5 pt-1 border-t border-red-100">
                                 🔒 Por: ${ag.bloqueado_por || '???'}
                             </p>
                         </div>
@@ -697,13 +745,15 @@
                     const listaPacientes = pacsGrupo.map(ag => {
                         const nome = ag.paciente ? ag.paciente.nome : 'Sem Nome';
                         const conv = ag.convenio_nome || 'PARTICULAR';
+                        const isVip = ag.paciente && ag.paciente.vip;
+                        const vipTag = isVip ? ' <span class="text-amber-500 font-black">⭐ VIP</span>' : '';
                         return `
                             <div class="flex items-center justify-between py-1 border-b border-purple-200 last:border-b-0 group/gpitem">
                                 <div class="flex flex-col truncate max-w-[80%] text-left">
-                                    <span class="text-[9px] font-bold text-slate-700 truncate" title="${nome}">${nome}</span>
+                                    <span class="text-[9px] font-bold text-slate-700 truncate" title="${nome}">${nome}${vipTag}</span>
                                     <span class="text-[7px] font-black text-purple-400 uppercase">${conv}</span>
                                 </div>
-                                <button onclick="event.stopPropagation(); abrirModalRemocao(${ag.id}, '${nome.replace(/'/g, "\\'")}', '${diaObj.db}', '${tagHora}', ${id})"
+                                <button onclick="event.stopPropagation(); abrirModalRemocao(${ag.id}, '${encodeURIComponent(nome)}', '${diaObj.db}', '${tagHora}', ${id})"
                                         class="w-3.5 h-3.5 bg-red-100 text-red-600 rounded flex items-center justify-center text-[8px] hover:bg-red-600 hover:text-white opacity-0 group-hover/gpitem:opacity-100 transition-all" title="Remover">×</button>
                             </div>`;
                     }).join('');
@@ -729,13 +779,14 @@
                         const nome = ag.paciente ? ag.paciente.nome : 'Sem Nome';
                         const conv = ag.convenio_nome || 'PARTICULAR';
                         const enc  = !!ag.encaixe;
+                        const isVip = ag.paciente && ag.paciente.vip;
                         return `
-                            <div class="flex-1 p-1.5 border-r last:border-r-0 border-slate-200 group/subslot flex flex-col justify-center text-center">
-                                <p class="text-[8px] font-black ${enc ? 'text-purple-600' : 'text-blue-600'} uppercase mb-0.5">${enc ? '⚡ ENC' : 'REG'}</p>
+                            <div class="flex-1 p-1.5 border-r last:border-r-0 border-slate-200 group/subslot flex flex-col justify-center text-center ${isVip ? 'bg-amber-50/50' : ''}">
+                                <p class="text-[8px] font-black ${enc ? 'text-purple-600' : 'text-blue-600'} uppercase mb-0.5">${enc ? '⚡ ENC' : 'REG'} ${isVip ? '⭐' : ''}</p>
                                 <p class="font-bold text-slate-800 text-[9px] leading-tight truncate w-full" title="${nome}">${nome}</p>
                                 <p class="text-[7px] font-black text-slate-400 uppercase mt-0.5">${conv}</p>
                                 <div class="flex justify-center gap-1 mt-1 opacity-0 group-hover/subslot:opacity-100 transition-all">
-                                    <button onclick="abrirModalRemocao(${ag.id}, '${nome.replace(/'/g, "\\'")}',' ${diaObj.db}', '${tagHora}', ${id})" class="w-4 h-4 bg-red-100 text-red-600 rounded flex items-center justify-center text-[9px] hover:bg-red-600 hover:text-white" title="Remover">×</button>
+                                    <button onclick="abrirModalRemocao(${ag.id}, '${encodeURIComponent(nome)}', '${diaObj.db}', '${tagHora}', ${id})" class="w-4 h-4 bg-red-100 text-red-600 rounded flex items-center justify-center text-[9px] hover:bg-red-600 hover:text-white" title="Remover">×</button>
                                 </div>
                             </div>`;
                     }).join('');
@@ -751,12 +802,16 @@
                 agsNoSlot.filter(a => a.status !== 'bloqueado' && !a.terapia_grupo).forEach(ag => {
                     const nomePaciente = ag.paciente ? ag.paciente.nome : 'Sem Nome';
                     const isEncaixe = !!ag.encaixe;
+                    const isVip = !!(ag.paciente && ag.paciente.vip);
 
                     const profAtual = profissionaisGlobais.find(p => p.id == id);
                     const especialidadeLabel = profAtual?.especialidade || '';
 
                     const temObs = ag.observacoes && ag.observacoes.trim() !== '';
-                    const obsTitle = temObs ? ag.observacoes.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+                    const obsTitle = temObs ? ag.observacoes.replace(/"/g, '&quot;') : '';
+                    const obsTitleEsc = encodeURIComponent(ag.observacoes || '');
+                    const nomePacienteEsc = encodeURIComponent(nomePaciente);
+                    const editorNameEscaped = encodeURIComponent(ag.atualizado_por || '');
 
                     const corMap = {
                         red: { bg: '#fee2e2', border: '#fca5a5' },
@@ -767,36 +822,40 @@
                         orange: { bg: '#ffedd5', border: '#ffb74d' }
                     };
                     const customColor = corMap[ag.cor];
-                    const cardStyle = customColor
-                        ? `background-color: ${customColor.bg}; border-color: ${customColor.border};`
-                        : 'background-color: #ffffff; border-color: #cbd5e1;';
-                    const styleAttr = isEncaixe && !ag.cor ? '' : `style="${cardStyle}"`;
+                    let cardStyle = 'background-color: #ffffff; border-color: #cbd5e1;';
+                    if (customColor) {
+                        cardStyle = `background-color: ${customColor.bg}; border-color: ${customColor.border};`;
+                    } else if (isVip) {
+                        cardStyle = 'background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-color: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);';
+                    }
+                    const styleAttr = (isEncaixe && !ag.cor && !isVip) ? '' : `style="${cardStyle}"`;
 
-                    const editorNameEscaped = (ag.atualizado_por || '').replace(/'/g, "\\'");
                     const editorLabel = ag.atualizado_por ? `\n(Última ed.: ${ag.atualizado_por})` : '';
+                    const vipBadge = isVip ? '<span class="ml-1 px-1.5 py-0.5 bg-amber-500 text-white text-[7px] font-black rounded-full shadow-sm">⭐ VIP</span>' : '';
+
                     html += `
-                        <div class="slot-occupied p-3 rounded-2xl group/slot relative border-2 ${(isEncaixe && !ag.cor) ? 'border-purple-500 bg-purple-50/20' : ''} shadow-md cursor-pointer flex flex-col justify-center text-center h-full min-h-[90px]" ${styleAttr} title="${nomePaciente}${editorLabel}"
-                             onclick="abrirModalObservacao(${ag.id}, '${nomePaciente.replace(/'/g, "\\'")}',' ${diaObj.db}', '${tagHora}', '${obsTitle}', '${ag.cor || ''}', '${editorNameEscaped}')">
+                        <div class="slot-occupied p-3 rounded-2xl group/slot relative border-2 ${(isEncaixe && !ag.cor && !isVip) ? 'border-purple-500 bg-purple-50/20' : ''} shadow-md cursor-pointer flex flex-col justify-center text-center h-full min-h-[90px]" ${styleAttr} title="${nomePaciente}${editorLabel}"
+                             onclick="abrirModalObservacao(${ag.id}, '${nomePacienteEsc}', '${diaObj.db}', '${tagHora}', '${obsTitleEsc}', '${ag.cor || ''}', '${editorNameEscaped}')">
                             <div class="flex justify-between items-start mb-0.5">
-                                <p class="text-[9px] font-black ${isEncaixe ? 'text-purple-600' : 'text-blue-600'} uppercase">
+                                <p class="text-[9px] font-black ${isEncaixe ? 'text-purple-600' : (isVip ? 'text-amber-700' : 'text-blue-600')} uppercase">
                                     ${tagHora} ${isEncaixe ? '⚡' : ''}
                                 </p>
                                 <div class="flex gap-1 opacity-0 group-hover/slot:opacity-100 transition-all ml-auto" onclick="event.stopPropagation()">
                                     ${(!isEncaixe && !isNeurochat) ? `<button onclick="abrirEncaixeDireto(${id}, '${diaObj.db}', '${tagHora}')" class="w-5 h-5 bg-purple-50 text-purple-600 rounded-md flex items-center justify-center hover:bg-purple-600 hover:text-white text-[9px]" title="Encaixar">⚡</button>` : ''}
-                                    <button onclick="abrirModalNovoHorario('${ag.id}', '${ag.paciente_id}', '${id}', '${nomePaciente.replace(/'/g, "\\'")}')"
+                                    <button onclick="abrirModalNovoHorario('${ag.id}', '${ag.paciente_id}', '${id}', '${nomePacienteEsc}')"
                                             class="w-5 h-5 bg-blue-50 text-blue-600 rounded-md flex items-center justify-center hover:bg-blue-600 hover:text-white text-[9px]" title="Mudar">
                                         🕒
                                     </button>
-                                    <button onclick="abrirModalRemocao(${ag.id}, '${nomePaciente.replace(/'/g, "\\'")}',' ${diaObj.db}', '${tagHora}', ${id})"
+                                    <button onclick="abrirModalRemocao(${ag.id}, '${nomePacienteEsc}', '${diaObj.db}', '${tagHora}', ${id})"
                                             class="w-5 h-5 bg-red-100 text-red-600 rounded-md flex items-center justify-center hover:bg-red-600 hover:text-white text-[9px]" title="Remover">
                                         ×
                                     </button>
                                 </div>
                             </div>
-                            <p class="font-bold text-slate-800 text-[11px] whitespace-normal leading-tight w-full truncate" title="${nomePaciente}">${nomePaciente}</p>
+                            <p class="font-bold text-slate-800 text-[11px] whitespace-normal leading-tight w-full truncate flex items-center justify-center" title="${nomePaciente}">${nomePaciente} ${vipBadge}</p>
                             <p class="text-[8px] font-black text-slate-400 uppercase mt-0.5">${ag.convenio_nome || 'PARTICULAR'}</p>
                             <div class="flex items-center justify-center gap-1.5 mt-1.5 pt-1 border-t border-slate-100">
-                                ${especialidadeLabel ? `<span class="text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full truncate max-w-[70%]">${especialidadeLabel}</span>` : ''}
+                                ${especialidadeLabel ? `<span class="text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 ${isVip ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-600'} rounded-full truncate max-w-[70%]">${especialidadeLabel}</span>` : ''}
                                 ${temObs ? `<span class="flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black rounded-full border border-amber-200 animate-pulse" title="${obsTitle}">📝 NOTA</span>` : '<span class="text-[8px] text-slate-300">📝</span>'}
                             </div>
                         </div>`;
@@ -1105,6 +1164,9 @@
         }
 
         function abrirModalBloqueado(agId, profId, dia, hora, bloqueadoPor, motivo) {
+            try { bloqueadoPor = decodeURIComponent(bloqueadoPor || ''); } catch(e){}
+            try { motivo = decodeURIComponent(motivo || ''); } catch(e){}
+
             document.getElementById('modal-bloqueio-titulo').innerText = "Horário Bloqueado";
             document.getElementById('block-prof-id').value = profId;
             document.getElementById('block-dia').value = dia;
@@ -1184,8 +1246,9 @@
             }
             if(!confirm("Deseja liberar este horário para novos agendamentos?")) return;
             
-            const userId = localStorage.getItem('userId');
-            const res = await fetch(`/api/agendamentos/${id}?user_id=${userId}`, { method: 'DELETE' });
+            const userId = localStorage.getItem('userId') || '';
+            const userName = localStorage.getItem('userName') || '';
+            const res = await fetch(`/api/agendamentos/${id}?user_id=${userId}&user_name=${encodeURIComponent(userName)}`, { method: 'DELETE' });
             
             if(res.ok) {
                 carregarGradeProfissional();
@@ -1281,7 +1344,8 @@
             if (selPac) {
                 selPac.innerHTML = '<option value="">Selecione o paciente...</option>';
                 pacientesOrdenados.forEach(p => {
-                    selPac.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+                    const vipLabel = p.vip ? ' ⭐ VIP' : '';
+                    selPac.innerHTML += `<option value="${p.id}">${p.nome}${vipLabel}</option>`;
                 });
                 if (window.customSelects && window.customSelects['enc-paciente']) {
                     window.customSelects['enc-paciente'].rebuild();
@@ -1293,7 +1357,8 @@
             if (selGrupoPac) {
                 selGrupoPac.innerHTML = '<option value="">Selecione o paciente...</option>';
                 pacientesOrdenados.forEach(p => {
-                    selGrupoPac.innerHTML += `<option value="${p.id}" data-nome="${p.nome.replace(/'/g, "\\'")}">${p.nome}</option>`;
+                    const vipLabel = p.vip ? ' ⭐ VIP' : '';
+                    selGrupoPac.innerHTML += `<option value="${p.id}" data-nome="${p.nome.replace(/'/g, "\\'")}">${p.nome}${vipLabel}</option>`;
                 });
                 if (window.customSelects && window.customSelects['enc-grupo-paciente']) {
                     window.customSelects['enc-grupo-paciente'].rebuild();
@@ -1476,6 +1541,7 @@
         }
 
         function abrirModalRemocao(agId, pacienteNome, dia, hora, profId) {
+            try { pacienteNome = decodeURIComponent(pacienteNome); } catch(e){}
             document.getElementById('remocao-agendamento-id').value = agId;
             document.getElementById('remocao-prof-id').value = profId;
             document.getElementById('remocao-info').innerText = `${pacienteNome} - ${dia.split('-')[0]} às ${hora}`;
@@ -1538,6 +1604,9 @@
         }
 
         function abrirModalObservacao(agId, pacienteNome, dia, hora, obsAtual, corAtual, atualizadoPor) {
+            try { pacienteNome = decodeURIComponent(pacienteNome || ''); } catch(e){}
+            try { obsAtual = decodeURIComponent(obsAtual || ''); } catch(e){}
+            try { atualizadoPor = decodeURIComponent(atualizadoPor || ''); } catch(e){}
             document.getElementById('obs-agendamento-id').value = agId;
             document.getElementById('obs-info-header').innerText = `${pacienteNome.trim()} · ${dia.trim().split('-')[0]} às ${hora}`;
             document.getElementById('obs-texto').value = obsAtual || '';

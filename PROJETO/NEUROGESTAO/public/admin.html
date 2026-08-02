@@ -49,6 +49,11 @@
                 <h1 class="text-4xl font-black text-slate-900 tracking-tight">Administração <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Geral</span></h1>
                 <p class="text-slate-500 mt-2 font-medium">Gestão de acessos de usuários e configuração dinâmica de solicitantes.</p>
             </div>
+            <div>
+                <button onclick="gerarBackupBanco()" id="btn-backup-db" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all hover:-translate-y-0.5">
+                    💾 Baixar Backup Banco (.SQL)
+                </button>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -343,6 +348,61 @@
                 carregarSolicitantes();
             } catch (err) {
                 alert("Erro ao remover solicitante: " + err.message);
+            }
+        }
+
+        // ================= BACKUP DO BANCO =================
+
+        async function gerarBackupBanco() {
+            const btn = document.getElementById('btn-backup-db');
+            const textoOriginal = btn.innerHTML;
+
+            if (!confirm("Deseja gerar e baixar o backup completo (.SQL) do banco de dados 'agendamentos_clinica_dev'?")) {
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Gerando Backup...';
+
+                const response = await fetch('/api/admin/backup', {
+                    method: 'GET',
+                    headers: {
+                        'X-User-Id': localStorage.getItem('userId'),
+                        'X-User-Name': localStorage.getItem('userName'),
+                        'X-User-Role': localStorage.getItem('setor'),
+                        'X-User-Access-Level': localStorage.getItem('nivel_acesso')
+                    }
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || 'Erro ao gerar backup do banco de dados.');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+
+                const disposition = response.headers.get('Content-Disposition');
+                let filename = `backup_agendamentos_clinica_dev_${new Date().toISOString().slice(0,10)}.sql`;
+                if (disposition && disposition.includes('filename=')) {
+                    filename = disposition.split('filename=')[1].replace(/"/g, '').trim();
+                }
+
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                alert("Backup do banco de dados 'agendamentos_clinica_dev' gerado e baixado com sucesso!");
+            } catch (err) {
+                alert("Erro ao gerar backup: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
             }
         }
 

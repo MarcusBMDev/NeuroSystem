@@ -5,6 +5,8 @@ default: &default
   username: root
   password: ""
   host: 127.0.0.1
+  default_file: <%= Rails.root.join('config/my.cnf') %>
+  ssl_mode: :disabled
 
 development:
   # BANCO 1: O banco do nosso Microserviço (Leitura e Escrita)

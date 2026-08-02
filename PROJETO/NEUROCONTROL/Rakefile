@@ -1,0 +1,6 @@
+# Add your own tasks in files added to the lib/tasks directory, such as lib/tasks/capistrano.rake,
+# any fallbacks in lib/tasks/will be loaded automatically.
+
+require_relative "config/application"
+
+Rails.application.load_tasks

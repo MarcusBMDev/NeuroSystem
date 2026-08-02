@@ -499,9 +499,13 @@
             <div class="panel-card">
                 <div class="panel-header">
                     <div class="panel-title"><i class="fa-solid fa-users"></i> Colaboradores Cadastrados</div>
-                    <div style="display:flex; gap:12px; align-items:center;">
-                        <label style="font-size:11px; font-weight:700; color:var(--text-muted);">Status:</label>
-                        <select id="userStatusFilter" class="form-control" style="width:150px; padding: 6px 12px;" onchange="filtrarUsuariosTabela(this.value)">
+                    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                        <div style="position:relative; width:220px;">
+                            <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:12px;"></i>
+                            <input type="text" id="userSearchInput" class="form-control" placeholder="Buscar colaborador ou setor..." oninput="filtrarUsuariosTabela()" style="padding-left:30px; font-size:12px; margin:0;">
+                        </div>
+                        <label style="font-size:11px; font-weight:700; color:var(--text-muted); margin:0;">Status:</label>
+                        <select id="userStatusFilter" class="form-control" style="width:140px; padding: 6px 12px; margin:0;" onchange="filtrarUsuariosTabela()">
                             <option value="ativos">Apenas Ativos</option>
                             <option value="inativos">Apenas Inativos</option>
                             <option value="todos">Todos</option>
@@ -679,28 +683,35 @@
                     </div>
                     <form id="setorForm" onsubmit="criarSetorAPI(event)">
                         <div class="form-group">
-                            <label for="setorNome">Nome do Setor</label>
-                            <input type="text" class="form-control" id="setorNome" required placeholder="Ex: Recepção Unidade 4">
+                            <label for="setorNome">Nome do Setor / Subgrupo</label>
+                            <input type="text" class="form-control" id="setorNome" required placeholder="Ex: Recepção Unidade 4 ou Financeiro - Contas a Pagar">
+                        </div>
+                        <div class="form-group">
+                            <label for="setorParentSelect">Vincular a um Grupo Pai (Opcional)</label>
+                            <select class="form-control" id="setorParentSelect">
+                                <option value="">🏷️ Nenhum (Grupo Principal)</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="setorDescricao">Descrição / Observações</label>
                             <textarea class="form-control" id="setorDescricao" rows="3" placeholder="Funções ou permissões deste setor..."></textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;"><i class="fa-solid fa-floppy-disk"></i> Salvar Setor</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;"><i class="fa-solid fa-floppy-disk"></i> Salvar Setor / Subgrupo</button>
                     </form>
                 </div>
 
                 <div class="panel-card">
                     <div class="panel-header">
-                        <div class="panel-title"><i class="fa-solid fa-building-user"></i> Setores Cadastrados</div>
+                        <div class="panel-title"><i class="fa-solid fa-building-user"></i> Setores e Subgrupos Cadastrados</div>
                     </div>
                     <div class="table-responsive">
                         <table class="data-table" id="sectorsTable">
                             <thead>
                                 <tr>
-                                    <th>Nome do Setor</th>
+                                    <th>Setor / Subgrupo</th>
+                                    <th>Grupo Principal (Pai)</th>
                                     <th>Descrição</th>
-                                    <th>Colaboradores Ativos</th>
+                                    <th>Colaboradores</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -797,13 +808,19 @@
     <div class="modal" id="modalEditSector">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fa-solid fa-pen-to-square"></i> Editar Setor</h3>
+                <h3><i class="fa-solid fa-pen-to-square"></i> Editar Setor / Subgrupo</h3>
                 <button class="modal-close" onclick="fecharModalEditSector()">&times;</button>
             </div>
             <input type="hidden" id="editSectorId">
             <div class="form-group">
-                <label for="editSectorNome">Nome do Setor</label>
+                <label for="editSectorNome">Nome do Setor / Subgrupo</label>
                 <input type="text" class="form-control" id="editSectorNome" required placeholder="Ex: Recepção Unidade 4">
+            </div>
+            <div class="form-group">
+                <label for="editSectorParentSelect">Vincular a um Grupo Pai (Opcional)</label>
+                <select class="form-control" id="editSectorParentSelect">
+                    <option value="">🏷️ Nenhum (Grupo Principal)</option>
+                </select>
             </div>
             <div class="form-group">
                 <label for="editSectorDescricao">Descrição / Observações</label>

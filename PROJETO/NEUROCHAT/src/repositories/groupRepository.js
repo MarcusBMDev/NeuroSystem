@@ -13,7 +13,7 @@ class GroupRepository {
              AND m.user_id != ?) as unread
             FROM groups g 
             JOIN group_members gm ON g.id = gm.group_id
-            WHERE gm.user_id = ? AND g.is_active = 1
+            WHERE gm.user_id = ? AND (g.is_active = 1 OR g.is_active IS NULL)
             GROUP BY g.id
         `, [userId, userId]);
         return rows;

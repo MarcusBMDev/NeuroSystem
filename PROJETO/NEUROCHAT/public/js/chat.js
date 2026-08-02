@@ -25,14 +25,18 @@ notificationAudio.volume = 1.0;
 
 // Desbloqueio de áudio robusto (Tenta em qualquer interação)
 const unlockAudio = () => {
-    notificationAudio.play().then(() => {
-        notificationAudio.pause();
-        notificationAudio.currentTime = 0;
-        // Remove os listeners após desbloquear
-        document.removeEventListener('click', unlockAudio);
-        document.removeEventListener('keydown', unlockAudio);
-        document.removeEventListener('touchstart', unlockAudio);
-    }).catch(() => {});
+    // Remove os listeners imediatamente para evitar chamadas duplicadas
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('keydown', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+
+    // Executa no próximo tick do event loop para não bloquear a thread principal
+    setTimeout(() => {
+        notificationAudio.play().then(() => {
+            notificationAudio.pause();
+            notificationAudio.currentTime = 0;
+        }).catch(() => {});
+    }, 0);
 };
 document.addEventListener('click', unlockAudio);
 document.addEventListener('keydown', unlockAudio);
@@ -61,8 +65,21 @@ window.formatMessage = (t) => {
 };
 
 window.getFancyDate = (s) => { if(!s)return""; const d=new Date(s),n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate()),m=new Date(d.getFullYear(),d.getMonth(),d.getDate()),diff=Math.floor((t-m)/(1000*60*60*24));return diff===0?"HOJE":diff===1?"ONTEM":d.toLocaleDateString('pt-BR'); };
-window.autoResize = (el) => { el.style.height = '45px'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; };
-window.checkEnter = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendMessage(); } window.autoResize(e.target); };
+let autoResizeFrame = null;
+window.autoResize = (el) => {
+    if (!el) return;
+    if (!el.value) {
+        el.style.height = '40px';
+        return;
+    }
+    if (autoResizeFrame) cancelAnimationFrame(autoResizeFrame);
+    autoResizeFrame = requestAnimationFrame(() => {
+        el.style.height = '40px';
+        const computedHeight = Math.min(el.scrollHeight, 120);
+        el.style.height = Math.max(computedHeight, 40) + 'px';
+    });
+};
+window.checkEnter = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendMessage(); } };
 
 window.scrollToBottom = () => {
     const container = document.getElementById('messages');
@@ -171,7 +188,28 @@ window.renderLists = () => {
     ulUsers.innerHTML = ''; 
     let uUnread = 0;
     
-    // Deduplicação
+    // 1. Inserir "📌 Mensagens Salvas" fixo no topo da lista de contatos
+    if (currentUser && currentUser.id) {
+        const selfLi = document.createElement('li');
+        selfLi.setAttribute('data-search-name', 'mensagens salvas rascunhos meurascunho');
+        selfLi.style.background = '#f0f9ff';
+        selfLi.style.borderLeft = '4px solid #0284c7';
+        selfLi.style.marginBottom = '6px';
+        selfLi.innerHTML = `
+        <div class="contact-left">
+            <div class="avatar-wrapper">
+                <div style="width:36px; height:36px; border-radius:50%; background:#0284c7; color:white; display:flex; align-items:center; justify-content:center; font-size:16px;">📌</div>
+            </div>
+            <div class="contact-info">
+                <span class="contact-name" style="font-weight:bold; color:#0369a1;">📌 Mensagens Salvas</span>
+                <span class="contact-dept">Meu Espaço de Rascunhos</span>
+            </div>
+        </div>`;
+        selfLi.onclick = () => window.openChat('private', currentUser.id, '📌 Mensagens Salvas', selfLi);
+        ulUsers.appendChild(selfLi);
+    }
+
+    // Deduplicação de Usuários
     const uniqueUsers = Array.from(new Set(allUsers.map(a => a.id))).map(id => allUsers.find(a => a.id === id));
 
     uniqueUsers.forEach(u => {
@@ -237,6 +275,7 @@ window.renderLists = () => {
 
 // 4. CHAT
 window.openChat = async (type, id, name, el) => {
+    if (typeof window.cancelImagePreview === 'function') window.cancelImagePreview();
     document.body.classList.add('mobile-active');
     document.getElementById('welcome-screen').style.display = 'none';
     document.getElementById('chat-interface').style.display = 'flex';
@@ -555,6 +594,7 @@ window.sendMessage = () => {
         });
         if(currentChatType === 'private') { const u = allUsers.find(x => x.id == currentChatId); if(u) { u.last_activity = new Date(); window.renderLists(); } }
         input.value = ''; window.cancelReply();
+        window.autoResize(input);
     }
 };
 
@@ -863,7 +903,11 @@ window.uploadFile = async function(f=null, customCaption=null) {
                 replyToId: replyingTo ? replyingTo.id : null
             });
             // Só limpa o input base se tivermos usado a legenda dele
-            if(customCaption === null) document.getElementById('input').value = '';
+            if(customCaption === null) {
+                const inp = document.getElementById('input');
+                inp.value = '';
+                window.autoResize(inp);
+            }
             window.cancelReply();
         }
     } catch(e) {
@@ -1336,6 +1380,89 @@ window.prevSearch = function() {
     updateSearchUI(); 
     scrollToSearchResult(); 
 };
+window.highlightMessageById = function(msgId) {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (!el) return false;
+    
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const bubble = el.querySelector('.message-bubble') || el;
+    
+    document.querySelectorAll('.message-bubble.current-search').forEach(b => {
+        b.style.background = '';
+        b.classList.remove('current-search');
+    });
+
+    bubble.style.transition = 'background-color 0.5s ease';
+    bubble.style.backgroundColor = '#fef08a';
+    bubble.classList.add('current-search');
+    
+    setTimeout(() => {
+        bubble.style.backgroundColor = '';
+        bubble.classList.remove('current-search');
+    }, 3500);
+    return true;
+};
+
+window.jumpToMessage = async function(msgObj) {
+    const overlay = document.getElementById('search-results-overlay');
+    if (overlay) overlay.style.display = 'none';
+
+    const msgId = (typeof msgObj === 'object') ? msgObj.id : msgObj;
+    const targetType = (typeof msgObj === 'object' && msgObj.targetType) ? msgObj.targetType : currentChatType;
+    let targetId = (typeof msgObj === 'object' && msgObj.targetId) ? msgObj.targetId : currentChatId;
+
+    if (targetType === 'private' && typeof msgObj === 'object') {
+        if (msgObj.userId == currentUser.id) {
+            targetId = msgObj.targetId;
+        } else {
+            targetId = msgObj.userId;
+        }
+    }
+
+    if (currentChatId != targetId || currentChatType != targetType) {
+        let chatName = 'Conversa';
+        if (targetType === 'group') {
+            const g = allGroups.find(x => x.id == targetId);
+            if (g) chatName = g.name;
+        } else {
+            const u = allUsers.find(x => x.id == targetId);
+            if (u) chatName = u.username;
+        }
+        await window.openChat(targetType, targetId, chatName);
+    }
+
+    if (window.highlightMessageById(msgId)) return;
+
+    try {
+        const res = await fetch(`/history/${currentUser.id}/${currentChatId}/${currentChatType}?limit=500`);
+        const msgs = await res.json();
+        const container = document.getElementById('messages');
+        
+        if (container && msgs.length > 0) {
+            container.innerHTML = '';
+            for (let i = msgs.length - 1; i >= 0; i--) {
+                const m = msgs[i];
+                window.addMessageToScreen({ 
+                    ...m, 
+                    userId: m.user_id, 
+                    msgType: m.msg_type, 
+                    fileName: m.file_name, 
+                    raw_time: m.timestamp, 
+                    reactions: m.reactions || [], 
+                    is_read: m.is_read 
+                }, false);
+            }
+            window.updateDateSeparators();
+        }
+
+        setTimeout(() => {
+            window.highlightMessageById(msgId);
+        }, 200);
+    } catch(e) {
+        console.error("Erro ao pular para mensagem:", e);
+    }
+};
+
 window.searchInHistory = async function() {
     const term = document.getElementById('chat-search-input').value.trim();
     if (!term || term.length < 2) return alert("Digite pelo menos 2 letras para buscar no histórico.");
@@ -1364,18 +1491,24 @@ window.searchInHistory = async function() {
             data.messages.forEach(m => {
                 const item = document.createElement('div');
                 item.className = 'search-result-item';
-                item.onclick = () => {
-                    // Por enquanto, apenas avisa. No futuro podemos implementar o "pular para msg"
-                    alert(`Mensagem de ${m.user} em ${m.time}:\n\n${m.text}`);
-                    overlay.style.display = 'none';
-                };
+                item.style.cursor = 'pointer';
+                item.onclick = () => window.jumpToMessage(m);
                 
+                let dateFormatted = m.time || '';
+                const rawDate = m.raw_time || m.timestamp;
+                if (rawDate) {
+                    const dt = new Date(rawDate);
+                    if (!isNaN(dt.getTime())) {
+                        dateFormatted = dt.toLocaleDateString('pt-BR') + ' às ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    }
+                }
+
                 item.innerHTML = `
-                    <div class="search-result-meta">
-                        <span class="search-result-user">${m.user}</span>
-                        <span>${m.time}</span>
+                    <div class="search-result-meta" style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span class="search-result-user" style="font-weight:bold; color:#0369a1;">👤 ${m.user || m.username}</span>
+                        <span style="font-size:0.75rem; color:#0284c7; font-weight:600;">📅 ${dateFormatted}</span>
                     </div>
-                    <div class="search-result-text">${m.text}</div>
+                    <div class="search-result-text" style="font-size:0.85rem; color:#334155;">${formatMessage(m.text)}</div>
                 `;
                 list.appendChild(item);
             });
@@ -1946,6 +2079,7 @@ document.addEventListener('DOMContentLoaded',()=>{
                 if(inputEl) {
                     inputEl.value += (selection.emoji || selection);
                     inputEl.focus();
+                    window.autoResize(inputEl);
                 }
             });
 

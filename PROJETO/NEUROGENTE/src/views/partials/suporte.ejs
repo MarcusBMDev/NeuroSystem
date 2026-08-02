@@ -1,0 +1,165 @@
+<div id="suporte" class="tab-content" style="display: none;">
+    <div class="sub-nav" style="display: flex; gap: 10px; margin-bottom: 25px; padding: 10px; background: rgba(255, 255, 255, 0.03); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
+        <button class="sub-tab-link active" onclick="openSubTab(event, 'suporte', 'suporte_computador_inner')">💻 Computador</button>
+        <button class="sub-tab-link" onclick="openSubTab(event, 'suporte', 'suporte_email_inner')">📧 E-mail</button>
+        <button class="sub-tab-link" onclick="openSubTab(event, 'suporte', 'suporte_impressora_inner')">🖨️ Impressora</button>
+        <button class="sub-tab-link" onclick="openSubTab(event, 'suporte', 'suporte_diversos_inner')">⚙️ Outros Problemas</button>
+    </div>
+
+    <!-- Computador -->
+    <div id="suporte_computador_inner" class="sub-tab-content">
+        <div class="form-box" style="max-width: 600px; margin: 0 auto; background: rgba(0, 0, 0, 0.2); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <h3>💻 Suporte de Computador</h3>
+            <p style="font-size:0.85rem; color:#ccc; margin-bottom:20px;">Problemas com lentidão, internet, programas ou hardware do computador.</p>
+            <form action="/solicitar/suporte" method="POST">
+                <input type="hidden" name="tipo" value="suporte_computador">
+                
+                <label>Descrição do Problema:</label>
+                <textarea name="descricao" rows="4" required placeholder="Descreva detalhadamente o problema (ex: Computador liga mas não dá vídeo, sem conexão com a internet...)"></textarea>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Sala / Local:</label>
+                        <input type="text" name="sala" required placeholder="Ex: Recepção, Sala 4...">
+                    </div>
+                    <div>
+                        <label>Unidade:</label>
+                        <select name="unidade" required>
+                            <option value="1">Unidade 1</option>
+                            <option value="2">Unidade 2</option>
+                            <option value="3">Unidade 3</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label>O problema é urgente?</label>
+                <select name="urgente" required>
+                    <option value="Não">Não - Posso aguardar o fluxo normal</option>
+                    <option value="Sim">Sim - Impede o meu trabalho</option>
+                </select>
+
+                <button type="submit" class="btn" style="width:100%; margin-top:20px; background: linear-gradient(135deg, #e67e22, #d35400);">Enviar Chamado</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- E-mail -->
+    <div id="suporte_email_inner" class="sub-tab-content" style="display:none;">
+        <div class="form-box" style="max-width: 600px; margin: 0 auto; background: rgba(0, 0, 0, 0.2); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <h3>📧 Suporte de E-mail</h3>
+            <p style="font-size:0.85rem; color:#ccc; margin-bottom:20px;">Problemas para acessar, enviar/receber e-mails ou senhas bloqueadas.</p>
+            <form action="/solicitar/suporte" method="POST">
+                <input type="hidden" name="tipo" value="suporte_email">
+                
+                <label>Qual e-mail apresenta problema?</label>
+                <input type="email" name="email_afetado" required placeholder="Ex: fulano@neurocenter.com.br">
+
+                <label>Descrição do Problema:</label>
+                <textarea name="descricao" rows="4" required placeholder="Descreva o problema (ex: Não consigo logar, pede nova senha...)"></textarea>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Sala / Local:</label>
+                        <input type="text" name="sala" required placeholder="Ex: Financeiro, Diretoria...">
+                    </div>
+                    <div>
+                        <label>Unidade:</label>
+                        <select name="unidade" required>
+                            <option value="1">Unidade 1</option>
+                            <option value="2">Unidade 2</option>
+                            <option value="3">Unidade 3</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label>O problema é urgente?</label>
+                <select name="urgente" required>
+                    <option value="Não">Não - Posso aguardar o fluxo normal</option>
+                    <option value="Sim">Sim - Impede o meu trabalho</option>
+                </select>
+
+                <button type="submit" class="btn" style="width:100%; margin-top:20px; background: linear-gradient(135deg, #e67e22, #d35400);">Enviar Chamado</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Impressora -->
+    <div id="suporte_impressora_inner" class="sub-tab-content" style="display:none;">
+        <div class="form-box" style="max-width: 600px; margin: 0 auto; background: rgba(0, 0, 0, 0.2); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <h3>🖨️ Suporte de Impressora</h3>
+            <p style="font-size:0.85rem; color:#ccc; margin-bottom:20px;">Problemas com impressão, atolamento de papel, toner ou configuração de impressoras.</p>
+            <form action="/solicitar/suporte" method="POST">
+                <input type="hidden" name="tipo" value="suporte_impressora">
+                
+                <label>Identificação / Modelo da Impressora (Opcional):</label>
+                <input type="text" name="impressora_modelo" placeholder="Ex: HP LaserJet 400, Brother da Recepção...">
+
+                <label>Descrição do Problema:</label>
+                <textarea name="descricao" rows="4" required placeholder="Descreva o problema (ex: Luz vermelha piscando, atolando papel, imprimindo com riscos...)"></textarea>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Sala / Local:</label>
+                        <input type="text" name="sala" required placeholder="Ex: Faturamento, Sala de Atendimento...">
+                    </div>
+                    <div>
+                        <label>Unidade:</label>
+                        <select name="unidade" required>
+                            <option value="1">Unidade 1</option>
+                            <option value="2">Unidade 2</option>
+                            <option value="3">Unidade 3</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label>O problema é urgente?</label>
+                <select name="urgente" required>
+                    <option value="Não">Não - Posso aguardar o fluxo normal</option>
+                    <option value="Sim">Sim - Impede o meu trabalho</option>
+                </select>
+
+                <button type="submit" class="btn" style="width:100%; margin-top:20px; background: linear-gradient(135deg, #e67e22, #d35400);">Enviar Chamado</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Diversos -->
+    <div id="suporte_diversos_inner" class="sub-tab-content" style="display:none;">
+        <div class="form-box" style="max-width: 600px; margin: 0 auto; background: rgba(0, 0, 0, 0.2); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <h3>⚙️ Outros Problemas / Suporte Diverso</h3>
+            <p style="font-size:0.85rem; color:#ccc; margin-bottom:20px;">Problemas com outros sistemas, ramal telefônico, internet geral ou outros periféricos.</p>
+            <form action="/solicitar/suporte" method="POST">
+                <input type="hidden" name="tipo" value="suporte_diversos">
+                
+                <label>Assunto / O que precisa de suporte?</label>
+                <input type="text" name="assunto" required placeholder="Ex: Telefone mudo, Sistema offline...">
+
+                <label>Descrição do Problema:</label>
+                <textarea name="descricao" rows="4" required placeholder="Descreva detalhadamente a situação..."></textarea>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Sala / Local:</label>
+                        <input type="text" name="sala" required placeholder="Ex: Sala de Triagem...">
+                    </div>
+                    <div>
+                        <label>Unidade:</label>
+                        <select name="unidade" required>
+                            <option value="1">Unidade 1</option>
+                            <option value="2">Unidade 2</option>
+                            <option value="3">Unidade 3</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label>O problema é urgente?</label>
+                <select name="urgente" required>
+                    <option value="Não">Não - Posso aguardar o fluxo normal</option>
+                    <option value="Sim">Sim - Impede o meu trabalho</option>
+                </select>
+
+                <button type="submit" class="btn" style="width:100%; margin-top:20px; background: linear-gradient(135deg, #e67e22, #d35400);">Enviar Chamado</button>
+            </form>
+        </div>
+    </div>
+</div>

@@ -48,7 +48,7 @@
             <p class="text-slate-500 mt-2 font-medium">Controle de profissionais, especialidades e faixas etárias de atendimento.</p>
         </header>
         <div class="glass-panel p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 mb-8 border border-white">
-            <div class="grid grid-cols-1 md:grid-cols-6 gap-6 items-end">
+            <div class="grid grid-cols-1 md:grid-cols-8 gap-4 items-end">
                 <div class="md:col-span-2"><label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Nome Completo</label><input type="text" id="p-nome" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold uppercase"></div>
                 <div class="md:col-span-1">
                     <div class="flex justify-between items-center mb-2">
@@ -57,10 +57,22 @@
                     </div>
                     <div id="p-esp-container" class="max-h-32 overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2"></div>
                 </div>
+                <div class="md:col-span-1">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Unidade Principal</label>
+                    <select id="p-unidade" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs">
+                        <option value="Unidade 1">📍 Unidade 1</option>
+                        <option value="Unidade 2">📍 Unidade 2</option>
+                        <option value="Unidade 3">📍 Unidade 3</option>
+                    </select>
+                </div>
+                <div class="md:col-span-1">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Sala de Atendimento</label>
+                    <input type="text" id="p-sala" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs" placeholder="Ex: Sala 01" value="Sala 01">
+                </div>
                 <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Idade Mín.</label><input type="number" id="p-min-age" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" placeholder="Ex: 1"></div>
                 <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Idade Máx.</label><input type="number" id="p-max-age" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" placeholder="Ex: 18"></div>
                 <div>
-                   <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Mini Currículo (PDF/IMG)</label>
+                   <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Mini Currículo</label>
                    <input type="file" id="p-curriculo" class="hidden" onchange="document.getElementById('p-curriculo-label').innerText = this.files[0] ? '📎 Selecionado' : '📎 Anexar'">
                    <button onclick="document.getElementById('p-curriculo').click()" id="p-curriculo-label" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-400 text-xs text-center border-dashed">📎 Anexar</button>
                 </div>
@@ -81,6 +93,7 @@
                 <thead class="bg-slate-50/50 border-b border-slate-100">
                     <tr>
                         <th class="p-5 text-left text-[10px] font-black text-slate-400 uppercase">Profissional</th>
+                        <th class="p-5 text-left text-[10px] font-black text-slate-400 uppercase">Unidade / Sala</th>
                         <th class="p-5 text-left text-[10px] font-black text-slate-400 uppercase">Especialidade</th>
                         <th class="p-5 text-left text-[10px] font-black text-slate-400 uppercase">Atendimento (Idade)</th>
                         <th class="p-5 text-left text-[10px] font-black text-slate-400 uppercase">Currículo</th>
@@ -92,15 +105,26 @@
         </div>
     </main>
 
-    <!-- Formulário de Adição (Movido para um Modal ou expandido) -->
-    <!-- Vou manter no topo mas adicionar o campo de arquivo -->
-
     <div id="modal-editar" class="fixed inset-0 bg-slate-900/40 hidden flex items-center justify-center p-6 z-50 backdrop-blur-sm">
         <div class="bg-white w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl">
             <h2 class="text-2xl font-black text-slate-900 mb-6">Editar Profissional</h2>
             <div class="space-y-4">
                 <input type="hidden" id="edit-id">
                 <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Nome Completo</label><input type="text" id="edit-nome" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold uppercase"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Unidade Principal</label>
+                        <select id="edit-unidade" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold text-xs">
+                            <option value="Unidade 1">📍 Unidade 1</option>
+                            <option value="Unidade 2">📍 Unidade 2</option>
+                            <option value="Unidade 3">📍 Unidade 3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Sala de Atendimento</label>
+                        <input type="text" id="edit-sala" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold text-xs" placeholder="Ex: Sala 01">
+                    </div>
+                </div>
                 <div>
                     <div class="flex justify-between items-center mb-2">
                         <label class="block text-[10px] font-black text-slate-400 uppercase">Especialidades</label>
@@ -223,6 +247,9 @@
                 const esps = (p.especialidade || 'PENDENTE').split(',').map(e => e.trim());
                 const badgesEsp = esps.map(e => `<span class="inline-block px-2 py-1 bg-blue-50 text-blue-600 text-[9px] font-black rounded-lg mr-1 mb-1 uppercase">${e}</span>`).join('');
                 
+                const unidadeLabel = p.unidade || 'Unidade 1';
+                const salaLabel = p.sala || 'Sala 01';
+
                 const faixaEtaria = (p.min_age !== null || p.max_age !== null) 
                     ? `${p.min_age || 0} a ${p.max_age || '∞'} anos`
                     : 'NÃO DEFINIDA';
@@ -239,6 +266,9 @@
                 <tr class="hover:bg-slate-50/50 transition-colors">
                     <td class="p-5">
                         <div class="font-bold uppercase text-slate-900">${nomeUpper}</div>
+                    </td>
+                    <td class="p-5">
+                        <span class="inline-block px-2.5 py-1 bg-purple-50 text-purple-700 text-[10px] font-black rounded-lg border border-purple-100 uppercase">📍 ${unidadeLabel} · ${salaLabel}</span>
                     </td>
                     <td class="p-5">${badgesEsp}</td>
                     <td class="p-5">
@@ -284,6 +314,8 @@
             const nome = document.getElementById('p-nome').value.trim().toUpperCase();
             const checkedEsps = Array.from(document.querySelectorAll('#p-esp-container input:checked')).map(i => i.value);
             const esp = checkedEsps.join(',');
+            const unidade = document.getElementById('p-unidade').value;
+            const sala = document.getElementById('p-sala').value.trim() || 'Sala 01';
             const min_age = document.getElementById('p-min-age').value || '';
             const max_age = document.getElementById('p-max-age').value || '';
             const fileInput = document.getElementById('p-curriculo');
@@ -294,6 +326,8 @@
             const formData = new FormData();
             formData.append('profissional[nome]', nome);
             formData.append('profissional[especialidade]', esp);
+            formData.append('profissional[unidade]', unidade);
+            formData.append('profissional[sala]', sala);
             formData.append('profissional[min_age]', min_age);
             formData.append('profissional[max_age]', max_age);
             if (fileInput.files[0]) formData.append('profissional[curriculo]', fileInput.files[0]);
@@ -348,6 +382,9 @@
                 i.checked = pEsps.includes(i.value.toUpperCase());
             });
 
+            document.getElementById('edit-unidade').value = p.unidade || 'Unidade 1';
+            document.getElementById('edit-sala').value = p.sala || 'Sala 01';
+
             document.getElementById('edit-min-age').value = p.min_age || '';
             document.getElementById('edit-max-age').value = p.max_age || '';
             
@@ -386,6 +423,8 @@
             const nome = document.getElementById('edit-nome').value.trim().toUpperCase();
             const checkedEsps = Array.from(document.querySelectorAll('#edit-esp-container input:checked')).map(i => i.value);
             const especialidade = checkedEsps.join(',');
+            const unidade = document.getElementById('edit-unidade').value;
+            const sala = document.getElementById('edit-sala').value.trim() || 'Sala 01';
             const min_age = document.getElementById('edit-min-age').value || '';
             const max_age = document.getElementById('edit-max-age').value || '';
             const fileInput = document.getElementById('edit-curriculo');
@@ -396,6 +435,8 @@
             const formData = new FormData();
             formData.append('profissional[nome]', nome);
             formData.append('profissional[especialidade]', especialidade);
+            formData.append('profissional[unidade]', unidade);
+            formData.append('profissional[sala]', sala);
             formData.append('profissional[min_age]', min_age);
             formData.append('profissional[max_age]', max_age);
             if (fileInput.files[0]) formData.append('profissional[curriculo]', fileInput.files[0]);
@@ -412,13 +453,10 @@
                 } else {
                     const data = await res.json();
                     alert(data.errors ? data.errors.join('\n') : 'Erro ao salvar a edição do profissional.');
-                }
             } catch (error) {
                 alert('Erro na comunicação com o servidor.');
             }
         }
-
-
 
         window.onload = init;
     </script>

@@ -88,6 +88,8 @@ class ApplicationController < ActionController::API
     'agendamento/recepção',
     'agendamento/recepcao',
     'diretoria geral',
+    'administração',
+    'administracao',
     'ti'
   ].freeze
 

@@ -4,7 +4,7 @@ class ProfissionaisController < ApplicationController
   end
 
   def create
-    profissional = Profissional.new(params.require(:profissional).permit(:nome, :especialidade))
+    profissional = Profissional.new(params.require(:profissional).permit(:nome, :especialidade, :unidade, :sala))
     if profissional.save
       render json: profissional, status: :created
     else
@@ -14,7 +14,7 @@ class ProfissionaisController < ApplicationController
 
   def update
     @profissional = Profissional.find(params[:id])
-    if @profissional.update(params.require(:profissional).permit(:nome, :especialidade))
+    if @profissional.update(params.require(:profissional).permit(:nome, :especialidade, :unidade, :sala))
       render json: @profissional
     else
       render json: { errors: @profissional.errors.full_messages }, status: :unprocessable_entity

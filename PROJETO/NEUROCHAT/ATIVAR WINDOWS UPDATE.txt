@@ -1,0 +1,29 @@
+@echo off
+title Reativar Windows Update
+color 0A
+
+echo ===================================================
+echo   Reativando os servicos do Windows Update...
+echo ===================================================
+echo.
+
+:: 1. Reativar inicializacao dos servicos (Automatico/Manual)
+sc config wuauserv start= demand
+sc config UsoSvc start= delayed-auto
+sc config bits start= demand
+sc config dosvc start= auto
+
+:: 2. Remover a chave de bloqueio do Registro
+reg delete "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /f
+
+:: 3. Iniciar os servicos
+net start wuauserv
+net start UsoSvc
+net start bits
+net start dosvc
+
+echo.
+echo ===================================================
+echo   Windows Update reativado com sucesso!
+echo ===================================================
+pause

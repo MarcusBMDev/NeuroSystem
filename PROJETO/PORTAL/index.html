@@ -1,336 +1,110 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEUROCENTER - Portal Corporativo</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        /* 1. RESET GLOBAL */
-        * { box-sizing: border-box; }
-
-        :root {
-            /* Vidro branco sólido para leitura fácil */
-            --glass-bg: rgba(255, 255, 255, 0.92); 
-            --glass-border: rgba(255, 255, 255, 0.6);
-            --text-dark: #1a252f; 
-            --accent-color: #00d2ff; 
-        }
-
-        html { height: 100%; }
-
-        body {
-            font-family: 'Montserrat', sans-serif;
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-
-            /* FUNDO COM IMAGEM + PELÍCULA ESCURA */
-            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('fundo.png');
-            background-repeat: no-repeat;
-            background-position: center center;
-            background-attachment: fixed;
-            background-size: cover;
-            
-            color: white; /* Texto fora dos cards (título/rodapé) fica Branco */
-        }
-
-        /* Títulos fora dos cards */
-        h1 {
-            text-shadow: 0 3px 6px rgba(0,0,0,0.8);
-            font-weight: 700;
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        h2 { margin-top: 0; }
-
-        .subtitle {
-            text-align: center;
-            font-weight: 300;
-            margin-bottom: 40px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            font-size: 1.1rem;
-        }
-
-        /* --- GRID CONTAINER (A CORREÇÃO ESTÁ AQUI) --- */
-        .grid-container {
-            display: grid;
-            /* Tenta colocar quantos couberem, mas com mínimo de 220px */
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 25px;
-            
-            width: 95%;
-            max-width: 1200px;
-            padding: 20px;
-            margin: 0 auto;
-            z-index: 2;
-        }
-
-        /* FORÇA 3 COLUNAS EM PC (Tela maior que 1000px) */
-        @media (min-width: 1000px) {
-            .grid-container {
-                grid-template-columns: repeat(3, 1fr) !important;
-            }
-        }
-
-        /* FORÇA 2 COLUNAS EM TABLET (Entre 600px e 1000px) */
-        @media (min-width: 600px) and (max-width: 999px) {
-            .grid-container {
-                grid-template-columns: repeat(2, 1fr) !important;
-            }
-        }
-
-        /* --- CARDS --- */
-        .card {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 25px 15px;
-            text-align: center;
-            text-decoration: none;
-            color: var(--text-dark) !important; /* Texto escuro dentro do card */
-            transition: all 0.3s ease;
-            
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-            
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            height: 100%;
-        }
-
-        .card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
-            background: #ffffff; /* Fica 100% branco ao passar o mouse */
-        }
-
-        /* Ícones */
-        .icon-box {
-            width: 65px;
-            height: 65px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #0d47a1, #00d2ff);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 15px;
-            font-size: 1.8rem;
-            color: white;
-            box-shadow: 0 4px 10px rgba(0,100,255,0.3);
-            transition: 0.3s;
-        }
-
-        .card:hover .icon-box {
-            transform: scale(1.1) rotate(5deg);
-        }
-
-        /* Texto dentro do card */
-        .card h2 {
-            font-size: 1.3rem;
-            color: #1a252f;
-            margin-bottom: 8px;
-            font-weight: 700;
-            text-shadow: none;
-        }
-
-        .card p {
-            font-size: 0.9rem;
-            color: #555;
-            margin: 0;
-            line-height: 1.4;
-            text-shadow: none;
-        }
-
-        /* Badges */
-        .badge {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.65rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .badge-new { background: #00c853; }
-        .badge-dev { background: #7f8c8d; }
-
-        /* Rodapé */
-        footer {
-            margin-top: 40px;
-            padding: 20px;
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.8);
-            text-shadow: 0 1px 2px rgba(0,0,0,1);
-            text-align: center;
-        }
-
-        /* Cards Desativados */
-        .coming-soon {
-            filter: grayscale(100%);
-            opacity: 0.7;
-            cursor: default;
-        }
-        .coming-soon:hover {
-            transform: none;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-            background: var(--glass-bg);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>NEUROHUB - Portal Corporativo Unificado</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NEUROHUB">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <h1>NEUROCENTER</h1>
-    <div class="subtitle">Portal Corporativo Unificado</div>
+  <div id="app">
+    <!-- SIDEBAR (DESKTOP) -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">🧠</div>
+        <div class="brand-text">
+          <h1>NEUROHUB</h1>
+          <p>Portal Corporativo</p>
+        </div>
+      </div>
 
-    <div class="grid-container">
-        
-        <a href="#" id="link-chat" class="card">
-            <div class="icon-box"><div class="icon">💬</div></div>
-            <span class="badge badge-new">Online!</span>
-            <h2>NeuroChat</h2>
-            <p>Comunicação interna em tempo real.</p>
-        </a>
+      <!-- PROMPT DE INSTALAÇÃO PWA -->
+      <div class="pwa-install-banner" id="pwaBanner">
+        <div class="pwa-banner-title">📲 Instalar Aplicativo Web</div>
+        <div class="pwa-banner-desc">Instale o NEUROHUB no celular ou PC para acesso rápido e notificações.</div>
+        <button class="btn-install-pwa" id="btnInstallPwa">Instalar Agora</button>
+      </div>
 
-        <a href="#" id="link-suporte" class="card">
-            <span class="badge badge-new">Online!</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #d35400, #e67e22);">
-                <div class="icon">🛠️</div>
-            </div>
-            <h2>NeuroHelp</h2>
-            <p>Abertura de chamados e assistência técnica.</p>
-        </a>
+      <!-- NAV LATERAL -->
+      <nav class="services-nav" id="servicesNav">
+        <div class="nav-item active" data-id="home">
+          <span class="nav-icon">🏠</span>
+          <span class="nav-title">Início / Portal</span>
+        </div>
+      </nav>
+    </aside>
 
-        <a href="#" id="link-agenda" class="card">
-            <span class="badge badge-new">Online!</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #8e44ad, #9b59b6);">
-                <div class="icon">📅</div>
-            </div>
-            <h2>NeuroAgenda</h2>
-            <p>Salas de atendimento e gestão de horários.</p>
-        </a>
+    <!-- ÁREA PRINCIPAL DA APLICAÇÃO -->
+    <main class="main-content">
+      <header class="content-header">
+        <div class="header-title">
+          <span id="headerIcon">🏠</span>
+          <span id="headerTitle">NEUROCENTER - Portal Corporativo</span>
+        </div>
 
-        <a href="#" id="link-carro" class="card">
-            <span class="badge badge-new">Online!</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #27ae60, #2ecc71);">
-                <div class="icon">🚗</div>
-            </div>
-            <h2>NeuroCar</h2>
-            <p>Reserva e status do veículo oficial.</p>
-        </a>
-        
-        <a href="#" id="link-marketing" class="card">
-            <span class="badge badge-new">ONLINE!</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #d81b60, #ec407a);">
-                <div class="icon">🎨</div>
-            </div>
-            <h2>NeuroMKT</h2>
-            <p>Solicitação de artes, vídeos e comunicados.</p>
-        </a>
+        <div class="header-actions">
+          <!-- BOTÃO DE DOWNLOAD DO EXECUTÁVEL PORTÁTIL (.EXE) -->
+          <a href="./downloads/NEUROHUB.exe" download class="btn-header btn-download-exe">
+            <span>💻</span> Baixar NEUROHUB (.exe)
+          </a>
 
-        <a href="#" id="link-compras" class="card">
-            <span class="badge badge-new">ONLINE!</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #f1c40f, #f39c12);">
-                <div class="icon">🛒</div>
-            </div>
-            <h2>NeuroCompras</h2>
-            <p>Requisição de materiais e suprimentos.</p>
-        </a>
+          <button class="btn-header" id="btnNotifTest">🔔 Testar Notificação</button>
+          <button class="btn-header" id="btnReloadView">🔄 Atualizar</button>
+        </div>
+      </header>
 
-        <a href="#" id="link-print" class="card">
-            <span class="badge badge-new">Novo</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #607d8b, #455a64);">
-                <div class="icon">🖨️</div>
-            </div>
-            <h2>NeuroPrint</h2>
-            <p>Envio de arquivos para impressão.</p>
-        </a>
+      <!-- VISÃO 1: PORTAL GRID -->
+      <div class="portal-grid-container" id="portalGridContainer">
+        <div class="portal-grid-header">
+          <h2>Bem-vindo ao NEUROHUB</h2>
+          <p>Selecione um dos microserviços abaixo para iniciar o trabalho unificado:</p>
+        </div>
 
-        <a href="#" id="link-rh" class="card">
-            <span class="badge badge-new">Online!</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #0d47a1, #00d2ff);">
-                <div class="icon">🧠</div>
-            </div>
-            <h2>NeuroGente</h2>
-            <p>Portal do Colaborador e Gestão de Benefícios.</p>
-        </a>
+        <div class="grid-cards" id="gridCards">
+          <!-- Cards gerados via JS -->
+        </div>
+      </div>
 
-        <a href="#" id="link-gestao" class="card">
-            <span class="badge badge-new">Online!</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #2c3e50, #34495e);">
-                <div class="icon">⚙️</div>
-            </div>
-            <h2>NeuroGestão</h2>
-            <p>Gestão de Agendamentos.</p>
-        </a>
+      <!-- VISÃO 2: CONTAINER DE IFRAMES DOS MICROSERVIÇOS -->
+      <div class="frames-container" id="framesContainer">
+        <!-- Iframes dos 11 sistemas serão injetados e mantidos em memória -->
+      </div>
 
-        <a href="#" id="link-escuta" class="card">
-            <span class="badge badge-new">Online!</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #FF5722, #FF9800);">
-                <div class="icon">📢</div>
-            </div>
-            <h2>NeuroEscuta</h2>
-            <p>Canal de recebimento de reclamações e sugestões.</p>
-        </a>
+      <!-- BOTTOM BAR PARA MOBILE & IOS -->
+      <nav class="mobile-nav-bar" id="mobileNavBar">
+        <div class="mobile-nav-item active" data-id="home">
+          <span class="mobile-nav-icon">🏠</span>
+          <span>Portal</span>
+        </div>
+        <div class="mobile-nav-item" data-id="chat">
+          <span class="mobile-nav-icon">💬</span>
+          <span>Chat</span>
+        </div>
+        <div class="mobile-nav-item" data-id="suporte">
+          <span class="mobile-nav-icon">🎫</span>
+          <span>Suporte</span>
+        </div>
+        <div class="mobile-nav-item" data-id="agenda">
+          <span class="mobile-nav-icon">📅</span>
+          <span>Agenda</span>
+        </div>
+        <div class="mobile-nav-item" data-id="more">
+          <span class="mobile-nav-icon">☰</span>
+          <span>Sistemas</span>
+        </div>
+      </nav>
+    </main>
+  </div>
 
-        <a href="#" id="link-control" class="card">
-            <span class="badge badge-new">Novo!</span>
-            <div class="icon-box" style="background: linear-gradient(135deg, #0284c7, #38bdf8);">
-                <div class="icon">🛡️</div>
-            </div>
-            <h2>NeuroControl</h2>
-            <p>Controle de Guias e Faturamento.</p>
-        </a>
-
-
-
-    </div>
-
-    <footer>
-        &copy; <span id="year"></span> NEUROCENTER - Tecnologia e Saúde.
-    </footer>
-
-    <script>
-        // Atualiza o ano automaticamente
-        document.getElementById('year').textContent = new Date().getFullYear();
-
-        // Pega o endereço atual (ex: 192.168.10.133 ou localhost)
-        const host = window.location.hostname;
-        const protocol = window.location.protocol; 
-        
-        // CONFIGURAÇÃO DOS LINKS (Usando PORTAS Diretas para XAMPP)
-        // Isso garante que funcione tanto no servidor quanto nos PCs da rede
-        
-        document.getElementById('link-chat').href = `${protocol}//${host}:3000`;      // NeuroChat
-        document.getElementById('link-suporte').href = `${protocol}//${host}:3001`;   // Suporte 
-        document.getElementById('link-agenda').href = `${protocol}//${host}:3002`;    // NeuroAgenda
-        document.getElementById('link-carro').href = `${protocol}//${host}:3003`;     // NeuroCar 
-        document.getElementById('link-marketing').href = `${protocol}//${host}:3005`; // Marketing
-        document.getElementById('link-print').href = `${protocol}//${host}:3006`;     // NeuroPrint
-        document.getElementById('link-compras').href = `${protocol}//${host}:3007`;   // NeuroCompras
-        document.getElementById('link-rh').href = `${protocol}//${host}:3008`;        // NeuroGente
-        document.getElementById('link-gestao').href = `${protocol}//${host}:3011`;    // NeuroGestão
-        document.getElementById('link-escuta').href = `${protocol}//${host}:3010`;    // NeuroEscuta
-        document.getElementById('link-control').href = `${protocol}//${host}:3012`;   // NeuroControl
-
-        // Links "Em Breve" (mantém # para não clicar)
-        // document.getElementById('link-compras').href = "#"; 
-        // document.getElementById('link-print').href = "#"; 
-    </script>
+  <script src="app.js"></script>
 </body>
 </html>

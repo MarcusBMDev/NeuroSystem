@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroControl - Visão Consolidada da Diretoria</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sector-card {
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .sector-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);
+        }
+        .sector-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .sector-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .sector-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 13px;
+        }
+        .metric-row + .metric-row {
+            border-top: 1px dashed #f1f5f9;
+        }
+        .status-badge-ok {
+            background-color: #dcfce7;
+            color: #166534;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-badge-alert {
+            background-color: #fee2e2;
+            color: #991b1b;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon" style="background-color: var(--primary);"><i class="fa-solid fa-brain"></i></div>
+            <div class="logo-text">
+                <h3>NeuroControl</h3>
+                <span style="font-size: 10px; color: #38bdf8; display:block;">Painel Executivo</span>
+            </div>
+        </div>
+        <ul class="nav-links" id="sidebarNavLinks">
+            <!-- Gerado dinamicamente via menu_permissao.js -->
+        </ul>
+
+        <div class="user-profile-sidebar">
+            <div class="user-avatar" id="userAvatar" style="background-color: var(--primary); color: white;">DIR</div>
+            <div class="user-info-side">
+                <span class="user-name-side" id="userNameSide">Diretoria</span>
+                <span class="user-dept-side" id="userDeptSide">Visão Geral da Clínica</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div>
+                <span style="font-size: 13px; font-weight:600; color:var(--text-muted);">Status Geral do Sistema: <strong style="color:var(--success);">Saudável (Online)</strong></span>
+            </div>
+            <div class="top-bar-right">
+                <div class="user-profile-header">
+                    <span style="font-size: 13px; font-weight: 600;" id="userHeaderName">Diretora</span>
+                    <div class="user-avatar" style="background-color: var(--primary); color: white;">DIR</div>
+                    <button class="btn btn-secondary" onclick="logout()" style="padding: 6px 12px; font-size: 11px;"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN TITLE AREA -->
+        <div class="dashboard-title-area">
+            <div>
+                <h2>Visão Consolidada da Diretoria</h2>
+                <p>Acompanhamento 360º dos afazeres, pendências e faturamento de todos os setores</p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <input type="month" class="form-control" id="mesFiltroConsolidado" style="width: 150px; margin:0; font-size:13px;" onchange="carregarVisaoConsolidada()">
+                <button class="btn btn-secondary" onclick="carregarVisaoConsolidada()"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+                <button class="btn btn-secondary" onclick="exportarFaturamentoExcel()" style="background-color:#10b981; color:white; border:none;"><i class="fa-solid fa-file-excel"></i> Exportar Faturamento</button>
+                <button class="btn btn-secondary" onclick="exportarExcecoesExcel()" style="background-color:#f59e0b; color:white; border:none;"><i class="fa-solid fa-file-excel"></i> Exportar Exceções CI</button>
+            </div>
+        </div>
+
+        <!-- KPIS FINANCEIROS DE TOPO -->
+        <div class="kpi-grid" style="margin-bottom: 24px;">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Receita Estimada do Mês</span>
+                    <div class="kpi-icon" style="background-color: var(--primary-light); color: var(--primary);"><i class="fa-solid fa-sack-dollar"></i></div>
+                </div>
+                <div class="kpi-value" id="kpiReceitaEstimada">R$ 0,00</div>
+                <div class="kpi-subtext" style="color:var(--text-muted);">Total de guias autorizadas</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Receita Validada / Auditada</span>
+                    <div class="kpi-icon" style="background-color: var(--success-light); color: var(--success);"><i class="fa-solid fa-circle-check"></i></div>
+                </div>
+                <div class="kpi-value" id="kpiReceitaValidada" style="color: var(--success);">R$ 0,00</div>
+                <div class="kpi-subtext" style="color:var(--success);">Prontas para emissão e faturamento</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Receita em Risco (Inconsistente)</span>
+                    <div class="kpi-icon" style="background-color: var(--danger-light); color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                </div>
+                <div class="kpi-value" id="kpiReceitaRisco" style="color: var(--danger);">R$ 0,00</div>
+                <div class="kpi-subtext" style="color:var(--danger);">Guias rasuradas ou sem assinatura</div>
+            </div>
+        </div>
+
+        <!-- DASHBOARD DE SETORES (3x2 GRID) -->
+        <div class="content-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+            
+            <!-- CARD 1: SOLICITAÇÃO -->
+            <div class="sector-card">
+                <div class="sector-header">
+                    <div class="sector-title">
+                        <div class="sector-icon" style="background-color: #3b82f6;"><i class="fa-solid fa-file-invoice"></i></div>
+                        <span>Setor de Solicitação</span>
+                    </div>
+                    <a href="dashboard_operacional.html" class="btn btn-secondary" style="padding:4px 8px; font-size:11px;">Acessar</a>
+                </div>
+                <div class="metric-row">
+                    <span>Guias Cadastradas no Mês:</span>
+                    <strong id="solTotalMes">0</strong>
+                </div>
+                <div class="metric-row">
+                    <span>Alertas SLA (> 3 dias ociosas):</span>
+                    <span id="solSLA" class="status-badge-ok">0 guias</span>
+                </div>
+                <div class="metric-row">
+                    <span>Status de Emissão:</span>
+                    <span class="status-badge-ok"><i class="fa-solid fa-check"></i> Operacional</span>
+                </div>
+            </div>
+
+            <!-- CARD 2: AGENDAMENTO -->
+            <div class="sector-card">
+                <div class="sector-header">
+                    <div class="sector-title">
+                        <div class="sector-icon" style="background-color: #0284c7;"><i class="fa-solid fa-calendar-days"></i></div>
+                        <span>Setor de Agendamento</span>
+                    </div>
+                    <a href="dashboard_operacional.html" class="btn btn-secondary" style="padding:4px 8px; font-size:11px;">Acessar</a>
+                </div>
+                <div class="metric-row">
+                    <span>Aguardando Agendamento:</span>
+                    <strong id="agenPendente">0 guias</strong>
+                </div>
+                <div class="metric-row">
+                    <span>Lotes Digitais em Trânsito:</span>
+                    <strong id="agenProtocolos">0 lotes</strong>
+                </div>
+                <div class="metric-row">
+                    <span>Status de Vínculo:</span>
+                    <span class="status-badge-ok"><i class="fa-solid fa-check"></i> Em dia</span>
+                </div>
+            </div>
+
+            <!-- CARD 3: RECEPÇÃO -->
+            <div class="sector-card">
+                <div class="sector-header">
+                    <div class="sector-title">
+                        <div class="sector-icon" style="background-color: #10b981;"><i class="fa-solid fa-hotel"></i></div>
+                        <span>Recepção e Balcão</span>
+                    </div>
+                    <a href="dashboard_recepcao.html" class="btn btn-secondary" style="padding:4px 8px; font-size:11px;">Acessar</a>
+                </div>
+                <div class="metric-row">
+                    <span>Agendamentos Hoje:</span>
+                    <strong id="recHoje">0</strong>
+                </div>
+                <div class="metric-row">
+                    <span>Sessões Assinadas Hoje:</span>
+                    <strong id="recAssinadas" style="color:var(--success);">0</strong>
+                </div>
+                <div class="metric-row">
+                    <span>Alertas / Guia Ausente na Pasta:</span>
+                    <span id="recAlertas" class="status-badge-ok">0 pendências</span>
+                </div>
+            </div>
+
+            <!-- CARD 4: CONTROLE INTERNO (CI) -->
+            <div class="sector-card">
+                <div class="sector-header">
+                    <div class="sector-title">
+                        <div class="sector-icon" style="background-color: #ef4444;"><i class="fa-solid fa-shield-halved"></i></div>
+                        <span>Controle Interno (CI)</span>
+                    </div>
+                    <a href="dashboard_ci.html" class="btn btn-secondary" style="padding:4px 8px; font-size:11px;">Acessar</a>
+                </div>
+                <div class="metric-row">
+                    <span>Lotes Físicos para Auditar:</span>
+                    <strong id="ciPendentes">0 lotes</strong>
+                </div>
+                <div class="metric-row">
+                    <span>Guias Devolvidas por Rasura:</span>
+                    <span id="ciInconsistentes" class="status-badge-ok">0 guias</span>
+                </div>
+                <div class="metric-row">
+                    <span>Overrides Faturados sem Assinatura:</span>
+                    <span id="ciOverrides" class="status-badge-ok">0 guias</span>
+                </div>
+            </div>
+
+            <!-- CARD 5: FATURAMENTO & FINANCEIRO -->
+            <div class="sector-card">
+                <div class="sector-header">
+                    <div class="sector-title">
+                        <div class="sector-icon" style="background-color: #8b5cf6;"><i class="fa-solid fa-chart-line"></i></div>
+                        <span>Faturamento & Financeiro</span>
+                    </div>
+                    <a href="dashboard_faturamento.html" class="btn btn-secondary" style="padding:4px 8px; font-size:11px;">Acessar</a>
+                </div>
+                <div class="metric-row">
+                    <span>Guias Prontas para Envio:</span>
+                    <strong id="fatProntas">0 guias</strong>
+                </div>
+                <div class="metric-row">
+                    <span>Status das Tabelas TUSS:</span>
+                    <span class="status-badge-ok"><i class="fa-solid fa-check"></i> Atualizadas</span>
+                </div>
+                <div class="metric-row">
+                    <span>Status de Negociações:</span>
+                    <span class="status-badge-ok"><i class="fa-solid fa-check"></i> Ativas</span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="js/menu_permissao.js"></script>
+    <script src="js/dashboard_geral.js"></script>
+</body>
+</html>

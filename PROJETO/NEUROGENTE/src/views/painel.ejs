@@ -7,6 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .bg-em_fila { background: #e67e22 !important; color: white !important; }
+        .btn-queue { background: #e67e22; color: white; }
+        .btn-queue:hover { background: #d35400; }
+    </style>
 </head>
 <body style="color: #333;">
 
@@ -83,21 +88,28 @@
                         if(sol.tipo.toLowerCase().includes('benefício')) icone = '💊';
                         if(sol.tipo.toLowerCase().includes('atestado')) icone = '🏥';
                         if(sol.tipo.toLowerCase().includes('aba')) icone = '🧩';
+                        if(sol.tipo.toLowerCase().includes('suporte')) icone = '🛠️';
+
+                        let tipoExibicao = sol.tipo;
+                        if(sol.tipo === 'suporte_computador') tipoExibicao = 'Suporte de Computador';
+                        if(sol.tipo === 'suporte_email') tipoExibicao = 'Suporte de E-mail';
+                        if(sol.tipo === 'suporte_impressora') tipoExibicao = 'Suporte de Impressora';
+                        if(sol.tipo === 'suporte_diversos') tipoExibicao = 'Suporte de Problemas Diversos';
                     %>
-                    <% /* Adicionando style="display:none" se não for pendente */ %>
-                    <div class="request-card <%= sol.status %>" data-status="<%= sol.status %>" style="<%= sol.status !== 'pendente' ? 'display:none' : '' %>">
+                    <% /* Adicionando style="display:none" se não for pendente/em_fila */ %>
+                    <div class="request-card <%= sol.status %>" data-status="<%= sol.status %>" style="<%= (sol.status !== 'pendente' && sol.status !== 'em_fila') ? 'display:none' : '' %>">
                         <div class="card-header">
                             <div>
                                 <h4 class="card-title">
                                     <span style="font-size:1.5rem;"><%= icone %></span> 
-                                    <%= sol.tipo %>
+                                    <%= tipoExibicao %>
                                 </h4>
                                 <div class="card-meta">
                                     <span style="display:block; color:white; font-weight:700; margin-bottom:2px;"><%= sol.nome || sol.username || 'Usuario' %></span>
                                     📅 <%= new Date(sol.data_criacao).toLocaleDateString() %>
                                 </div>
                             </div>
-                            <span class="status-badge bg-<%= sol.status %>"><%= sol.status %></span>
+                            <span class="status-badge bg-<%= sol.status %>"><%= sol.status === 'em_fila' ? 'em fila' : sol.status %></span>
                         </div>
 
                         <div class="card-body-wrapper">
@@ -112,15 +124,18 @@
                                 <a href="<%= sol.caminho_anexo %>" target="_blank" class="btn-action btn-download">📎 Ver Anexo</a>
                             <% } %>
 
-                            <% if(sol.status === 'pendente') { %>
+                            <% if(sol.status === 'pendente' || (sol.status === 'em_fila' && sol.tipo.startsWith('suporte_'))) { %>
                                 <form action="/gestao/status" method="POST" style="display:contents;">
                                     <input type="hidden" name="id" value="<%= sol.id %>">
-                                    <button type="submit" name="status" value="aprovado" class="btn-action btn-approve" title="Aprovar">✅ Aprovar</button>
+                                    <button type="submit" name="status" value="aprovado" class="btn-action btn-approve" title="<%= sol.tipo.startsWith('suporte_') ? 'Aceitar' : 'Aprovar' %>"><%= sol.tipo.startsWith('suporte_') ? '✅ Aceitar' : '✅ Aprovar' %></button>
+                                    <% if (sol.status === 'pendente' && sol.tipo.startsWith('suporte_')) { %>
+                                        <button type="submit" name="status" value="em_fila" class="btn-action btn-queue" title="Na Fila">⏳ Na Fila</button>
+                                    <% } %>
                                     <button type="submit" name="status" value="recusado" class="btn-action btn-reject" title="Recusar">❌ Recusar</button>
                                 </form>
                             <% } else { %>
                                 <div style="flex:1; text-align:center; font-size:0.8rem; color:rgba(255,255,255,0.4); padding:10px;">
-                                    Processado em <%= new Date().toLocaleDateString() %> 
+                                    Processado <%= sol.status === 'aprovado' ? '✅' : '❌' %>
                                 </div>
                             <% } %>
                         </div>
@@ -485,10 +500,10 @@
                 if (filterType === 'todos') {
                     card.style.display = 'flex';
                 } else if (filterType === 'pendente') {
-                    if (status === 'pendente') card.style.display = 'flex';
+                    if (status === 'pendente' || status === 'em_fila') card.style.display = 'flex';
                     else card.style.display = 'none';
                 } else if (filterType === 'historico') {
-                    if (status !== 'pendente') card.style.display = 'flex'; // Mostra aprovados/recusados
+                    if (status !== 'pendente' && status !== 'em_fila') card.style.display = 'flex'; // Mostra aprovados/recusados
                     else card.style.display = 'none';
                 }
             });

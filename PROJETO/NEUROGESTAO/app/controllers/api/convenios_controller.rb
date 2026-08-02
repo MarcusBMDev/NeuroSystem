@@ -70,13 +70,18 @@ class Api::ConveniosController < ApplicationController
 
     begin
       Convenio.transaction do
-        # 1. Atualizar convenio_id de todos os pacientes que usam o convenio_origem
-        Paciente.where(convenio_id: id_origem).update_all(convenio_id: id_destino)
+        # 1. Atualizar convenio_id de todos os pacientes que usam o convenio_origem (incluindo inativos)
+        Paciente.unscoped.where(convenio_id: id_origem).update_all(convenio_id: id_destino)
 
         # 2. Atualizar convenio_id de todos os agendamentos que usam o convenio_origem
         Agendamento.where(convenio_id: id_origem).update_all(convenio_id: id_destino)
 
-        # 3. Remover o convênio de origem
+        # 3. Atualizar tabela de valores vinculada se existir
+        if ActiveRecord::Base.connection.table_exists?('neurocontrol_tabela_valores')
+          ActiveRecord::Base.connection.execute("UPDATE neurocontrol_tabela_valores SET convenio_id = #{id_destino.to_i} WHERE convenio_id = #{id_origem.to_i}") rescue nil
+        end
+
+        # 4. Remover o convênio de origem duplicado
         convenio_origem.destroy!
       end
 

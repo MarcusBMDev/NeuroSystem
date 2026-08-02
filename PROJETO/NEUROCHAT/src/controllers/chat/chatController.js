@@ -13,7 +13,7 @@ class ChatController {
             const type = cleanString(req.params.type);
             
             // Se o frontend mandar ?filter=today, usamos isso
-            let limit = 30;
+            let limit = parseInt(req.query.limit) || 30;
             let offset = cleanId(req.query.offset) || 0;
 
             if (req.query.filter === 'today') {

@@ -76,16 +76,88 @@
             </div>
         </div>
 
+        <!-- CARDS DE RESUMO DA RECEPÇÃO -->
+        <div class="kpi-grid" style="margin-bottom: 20px;">
+            <div class="kpi-card" style="padding: 16px;">
+                <div class="kpi-header">
+                    <span class="kpi-title">Agendados Hoje</span>
+                    <div class="kpi-icon" style="background-color: var(--primary-light); color: var(--primary);"><i class="fa-solid fa-calendar-check"></i></div>
+                </div>
+                <div class="kpi-value" id="recKpiTotal">0</div>
+                <div class="kpi-subtext">Pacientes na grade do dia</div>
+            </div>
+
+            <div class="kpi-card" style="padding: 16px;">
+                <div class="kpi-header">
+                    <span class="kpi-title">Sessões Assinadas</span>
+                    <div class="kpi-icon" style="background-color: var(--success-light); color: var(--success);"><i class="fa-solid fa-signature"></i></div>
+                </div>
+                <div class="kpi-value" id="recKpiAssinadas" style="color:var(--success);">0</div>
+                <div class="kpi-subtext" style="color:var(--success);">Presenças confirmadas no balcão</div>
+            </div>
+
+            <div class="kpi-card" style="padding: 16px;">
+                <div class="kpi-header">
+                    <span class="kpi-title">Assinaturas Pendentes</span>
+                    <div class="kpi-icon" style="background-color: var(--warning-light); color: var(--warning);"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                </div>
+                <div class="kpi-value" id="recKpiPendentes" style="color:var(--warning);">0</div>
+                <div class="kpi-subtext" style="color:var(--warning);">Aguardando paciente assinar</div>
+            </div>
+
+            <div class="kpi-card" style="padding: 16px;">
+                <div class="kpi-header">
+                    <span class="kpi-title">Sem Guia na Pasta</span>
+                    <div class="kpi-icon" style="background-color: var(--danger-light); color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                </div>
+                <div class="kpi-value" id="recKpiSemGuia" style="color:var(--danger);">0</div>
+                <div class="kpi-subtext" style="color:var(--danger);">Alerta de falta de guia física</div>
+            </div>
+        </div>
+
+        <!-- BARRA DE FILTROS (UNIDADE, ESPECIALIDADE E BUSCA RÁPIDA) -->
+        <div class="panel-card" style="margin-bottom: 20px; padding: 16px 20px;">
+            <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;">
+                <div style="display:flex; gap:12px; align-items:center; flex:1; min-width:260px;">
+                    <label for="unidadeFilterSelect" style="margin:0; font-size:12px; font-weight:700; white-space:nowrap; color:var(--text-muted);"><i class="fa-solid fa-location-dot"></i> Unidade:</label>
+                    <select class="form-control" id="unidadeFilterSelect" onchange="carregarGradeRecepcao()" style="margin:0; font-size:13px; font-weight:600;">
+                        <option value="todas">🏢 Todas as Unidades</option>
+                        <option value="1">📍 Unidade 1</option>
+                        <option value="2">📍 Unidade 2</option>
+                        <option value="3">📍 Unidade 3</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; gap:12px; align-items:center; flex:1; min-width:260px;">
+                    <label for="terapiaFilterSelect" style="margin:0; font-size:12px; font-weight:700; white-space:nowrap; color:var(--text-muted);"><i class="fa-solid fa-stethoscope"></i> Especialidade:</label>
+                    <select class="form-control" id="terapiaFilterSelect" onchange="filtrarGradeLocal()" style="margin:0; font-size:13px; font-weight:600;">
+                        <option value="todas">🎯 Todas as Especialidades</option>
+                        <option value="psic">🧠 Psicologia</option>
+                        <option value="fono">🗣️ Fonoaudiologia</option>
+                        <option value="to">🎨 Terapia Ocupacional (T.O)</option>
+                        <option value="fisi">🏃 Fisioterapia</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; gap:12px; align-items:center; flex:1.2; min-width:280px;">
+                    <div style="position:relative; width:100%;">
+                        <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i>
+                        <input type="text" class="form-control" id="searchRecepcaoInput" oninput="filtrarGradeLocal()" placeholder="Buscar paciente ou profissional..." style="padding-left:34px; margin:0; font-size:13px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- GRADE DE ATENDIMENTO -->
-        <div class="panel-card">
+        <div class="panel-card" style="border-radius:20px; border:1px solid #e2e8f0; shadow: 0 4px 20px rgba(0,0,0,0.03);">
             <div class="table-responsive">
                 <table class="data-table" id="recepcaoTable">
                     <thead>
                         <tr>
                             <th>Horário</th>
                             <th>Paciente</th>
-                            <th>Profissional</th>
-                            <th>Terapia</th>
+                            <th>Profissional / Atendimento</th>
+                            <th>Especialidade</th>
                             <th>Guia Vinculada</th>
                             <th>Status Assinatura</th>
                             <th>Ações Rápidas por Paciente</th>
@@ -93,7 +165,7 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td colspan="7" style="text-align: center; color: var(--text-muted);">Carregando grade diária...</td>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">Carregando grade diária...</td>
                         </tr>
                     </tbody>
                 </table>

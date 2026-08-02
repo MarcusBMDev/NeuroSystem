@@ -142,28 +142,30 @@ module.exports = {
                     const inRange = countPagesInRange(page_range, filePageCount);
                     totalPagesAfterRange += inRange;
 
-                    let currentFilePages = inRange;
-                    // 1. Se 2 páginas por folha, reduz a contagem de páginas para metade (lado impresso)
+                    // Cálculo da quantidade de folhas de papel A4 físicas consumidas:
+                    let physicalSheets = inRange; // Ex: 5 páginas selecionadas no range
+
+                    // 1. Se 2 páginas por folha, reduz a quantidade de lados de papel pela metade
                     if (twoPerPageTrue) {
-                        currentFilePages = Math.ceil(currentFilePages / 2);
+                        physicalSheets = Math.ceil(physicalSheets / 2);
                     }
-                    // 2. Se frente e verso, reduz o número de folhas físicas para metade
+                    // 2. Se frente e verso (duplex), 2 lados cabem em 1 folha física de papel
                     if (isDuplexTrue) {
-                        currentFilePages = Math.ceil(currentFilePages / 2);
+                        physicalSheets = Math.ceil(physicalSheets / 2);
                     }
                     
-                    totalImpressosFinal += currentFilePages;
+                    totalImpressosFinal += physicalSheets;
 
-                    console.log(`[NeuroPrint] Arquivo: ${file.originalname} | Total: ${filePageCount} | No Range: ${inRange} | Impressos/Arquivo: ${currentFilePages}`);
+                    console.log(`[NeuroPrint] Arquivo: ${file.originalname} | Total PDF: ${filePageCount} | No Range: ${inRange} | Folhas de Papel A4/Arquivo: ${physicalSheets}`);
                 } catch (pdfError) {
                     console.error(`Erro ao contar páginas do arquivo ${file.originalname}:`, pdfError);
                 }
             }
             
-            // 3. Multiplica pelas cópias
+            // 3. Multiplica pelo número de cópias solicitadas
             totalImpressosFinal = totalImpressosFinal * numCopies;
 
-            console.log(`[NeuroPrint] Resultado Final: Raw=${totalPagesRaw}, ApósRange=${totalPagesAfterRange}, Final=${totalImpressosFinal} (x${numCopies} cópias)`);
+            console.log(`[NeuroPrint] Resultado Final do Pedido: Total Páginas PDF=${totalPagesRaw}, Páginas no Range=${totalPagesAfterRange}, Folhas Físicas A4=${totalImpressosFinal} (x${numCopies} cópias)`);
             // ---------------------------
 
             // --- VALIDAÇÃO DE COTA ---

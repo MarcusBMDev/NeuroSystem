@@ -1,5 +1,5 @@
 class Api::SolicitantesController < ApplicationController
-  before_action :validar_usuario_logado!
+  before_action :validar_usuario_logado!, except: [:index]
   before_action :validar_admin!, only: [:create, :destroy]
 
   # GET /api/solicitantes
